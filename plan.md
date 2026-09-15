@@ -1,470 +1,179 @@
-Good choice. I’d scope it tightly enough that you can actually ship it, but design it so it still looks like a serious AI/SWE project.
-
-I’d call the MVP something like AidPath: an AI-powered financial-aid and benefits navigator for college students.
-
-The core problem is simple: students often qualify for scholarships, emergency grants, food assistance, work-study-related benefits, housing support, and campus programs, but the information is scattered across university pages, government sites, and PDFs. Your app turns that into a personalized, evidence-backed checklist.
-
-MVP
+# Pathaid — Scholarships, Financial Aid, and Benefits Navigator
 
-A student enters information like:
-
-School: UMass Amherst
-Year: Sophomore
-State: Massachusetts
-Employment: 12 hours/week
-Work study: Yes
-Living situation: Off campus
-Main issue: Struggling to afford groceries
+Status: implementation specification. Features and resume bullets below are targets, not claims of completed work.
 
-Then your system returns:
+Feature specifications: see [features/README.md](features/README.md) for individual feature requirements, dependencies, and acceptance criteria.
 
-3 programs you may qualify for
+## 1. Purpose and success criteria
 
-1. Campus Emergency Grant
-   Confidence: High
+Pathaid helps college students find scholarships, grants, and assistance programs and understand what they need to apply. It turns scattered official program information into personalized, source-backed checklists.
 
-Why:
+The first release is a portfolio demo built over 4–6 weeks. Its technical focus is AI workflow orchestration for program ingestion, supported by a tested Python backend and deterministic eligibility engine.
 
-- You are currently enrolled
-- You reported financial hardship
-- Sophomores are eligible
+Success means a visitor can enter a student profile, discover relevant published resources, answer missing eligibility questions, and follow an evidence-backed application checklist. An administrator can ingest an official source, review AI-extracted requirements, and publish a versioned program without changing application code.
 
-Maximum assistance:
-Up to $1,500
-
-Documents needed:
-
-- Student ID
-- Proof of unexpected expense
-- Financial aid information
+## 2. Audience and release scope
 
-Source:
-UMass official financial aid page
-
-The important part: every recommendation should have a real source and explanation.
-
-I would explicitly avoid letting the LLM invent programs.
-
-Architecture
-┌───────────────┐
-│ Next.js UI │
-└───────┬───────┘
-│
-▼
-┌───────────────┐
-│ FastAPI API │
-└───────┬───────┘
-│
-┌──────────────┴──────────────┐
-│ │
-▼ ▼
-┌──────────────┐ ┌──────────────┐
-│ PostgreSQL │ │ AI Service │
-│ │ │ │
-│ users │ │ extraction │
-│ programs │ │ retrieval │
-│ requirements │ │ explanation │
-│ applications │ └──────┬───────┘
-└──────────────┘ │
-▼
-┌────────────────┐
-│ Vector Search │
-│ pgvector │
-└────────────────┘
+- Support students attending US colleges: undergraduate, graduate, community college, part-time, and international students. Attending a US institution does not imply eligibility for any particular benefit.
+- Seed 10–20 verified programs and resources: national resources plus Massachusetts and UMass Amherst examples.
+- Accept students from any US college. Clearly identify the geographic and institutional coverage of each resource and the limits of the initial catalog.
+- Include scholarships as a first-class MVP category alongside grants, food assistance, and emergency support. Cover both merit-based and need-based scholarships from verified university and scholarship-provider sources. Include housing-related resources where verified sources are available.
+- Require no student account. Return checklists and application/source links; defer saved matches and application tracking.
+- Use AI for administrator-facing ingestion only. Student intake, follow-up questions, matching, and explanations are deterministic in v1.
 
-But there should actually be two different decision systems.
+Out of scope for v1: conversational intake, student-facing AI explanations, RAG, embeddings, pgvector, PDF ingestion, student document uploads, autonomous crawling, application submission, student accounts, and international aid systems outside the US.
 
-LLM
-↓
-Understand messy eligibility requirements
-↓
-Convert to structured rules
+## 3. Student experience
 
-"Students must be enrolled at least half time"
-↓
-{
-"field": "enrollment_status",
-"operator": "in",
-"value": ["half_time", "full_time"]
-}
-
-Normal Python code
-↓
-Evaluates student against rules
-↓
-eligible / ineligible / unknown
+1. Explain the product, limited catalog coverage, and privacy behavior before intake.
+2. Collect school, state, study level, enrollment, and assistance needs through a structured form. Normalize UMass Amherst aliases to one institution identifier; retain other school names without pretending they have campus-specific coverage.
+3. Let students choose scholarships, grants, food assistance, emergency support, or housing resources, including multiple categories. Find candidate programs using reviewed categories and coverage metadata. A lack of catalog coverage must never be presented as a finding of ineligibility.
+4. Evaluate candidates against published rules. Ask only relevant missing questions, using labels and answer types from the profile-field registry. Allow “I don’t know” for eligibility questions.
+5. Reevaluate after answers change and show likely matches first, unresolved matches next, and likely-ineligible results in a separate expandable section.
+6. Display each program’s description, eligibility outcome, reasons, unresolved conditions, verified assistance amount and deadline when available, required documents, source excerpts, verification date, and application or provider link.
+7. For scholarships, ask about major/field of study, class year, and GPA with its grading scale only when a candidate requires them. Do not assume a 4.0 scale or convert between scales without a reviewed conversion rule.
+8. Provide an actionable checklist. Unknown amounts, deadlines, or document requirements must say they are not verified and direct the student to the provider.
 
-That separation is one of the most important parts of the project.
+Use three eligibility labels:
 
-You don't want:
+| Label                 | Meaning                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------- |
+| Likely eligible       | All reviewed eligibility conditions are represented and satisfied. Provider approval is still required. |
+| Likely ineligible     | A reviewed necessary condition, including its modeled exceptions, conclusively fails.                   |
+| Need more information | Missing answers, unsupported conditions, or incomplete rule coverage prevent a supported conclusion.    |
 
-response = llm("Does this student qualify?")
+For competitive scholarships, “Likely eligible” means the student appears to meet the requirements to apply; it does not predict selection or an award. Keep selection factors such as essay quality and committee judgment separate from eligibility rules. Include verified essay, transcript, recommendation, and other submission requirements in the checklist without scoring them.
 
-You want something closer to:
+Separate missing student answers from conditions that require provider review. Do not keep asking students questions that cannot resolve a program’s incomplete rule coverage. For referral directories, describe access to the referral service separately from eligibility for benefits offered by listed providers.
 
-requirements = extract_requirements(program)
+Student answers remain in page memory and disappear on reload. The backend accepts profiles only for stateless evaluation; it must not persist them, include them in logs, or send them to OpenAI.
 
-result = eligibility_engine.evaluate(
-student_profile,
-requirements
-)
+## 4. Architecture and backend
 
-Then use the LLM to explain the result, not make every decision.
+| Component      | Choice and responsibility                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| Frontend       | Next.js, TypeScript, Tailwind; student intake/results and protected admin review UI                  |
+| API            | FastAPI and Python; validation, matching, eligibility, admin authentication, publication             |
+| Database       | PostgreSQL; program revisions, sources, rules, ingestion runs, and review history                    |
+| AI             | OpenAI structured extraction behind a small adapter; model configurable through environment settings |
+| Orchestration  | Explicit Python workflow with persisted run states, bounded retries, validation, and human approval  |
+| Infrastructure | Docker, Docker Compose, and GitHub Actions                                                           |
 
-Your database could look like this
-users
+Use a typed profile-field registry shared through API metadata. It defines accepted field names, answer types, allowed values, and question wording. Add fields only when supported by a reviewed program requirement. Keep citizenship or aid-status questions optional and program-specific; never infer status from school or nationality.
 
----
+### Data model
 
-id
-school
-state
-year
-employment_hours
-work_study
-housing_status
+- **Programs:** stable identity and a pointer to the current published revision.
+- **Program revisions:** draft/published/rejected status, descriptive fields, assistance categories, coverage, source references, checklist information, eligibility tree, completeness declaration, and review metadata. Scholarship revisions also retain the award cycle, deadline and timezone when stated, application availability (open/closed/unknown), and selection factors separately from eligibility criteria.
+- **Source snapshots:** source URL, acquisition time, content hash, retained source text, and acquisition method (webpage or pasted text).
+- **Ingestion runs:** input source, state, attempts, model/prompt/schema versions, timing, token usage when available, structured errors, and resulting draft revision.
+- **Review events:** administrator identity, decision, notes, revision, and timestamp.
 
-## programs
+Use database migrations from the start. Keep published revisions immutable; edits create a new draft. Publishing atomically updates the program’s published pointer and records the approval. A failed ingestion or rejected draft leaves the previous published revision intact.
 
-id
-name
-provider
-description
-maximum_award
-deadline
-source_url
-last_verified
+Do not create student-profile or student-application tables.
 
-## requirements
+### API boundaries
 
-id
-program_id
-field
-operator
-value
-source_text
+- `GET /api/profile-fields`: supported fields and question metadata.
+- `GET /api/programs` and `GET /api/programs/{id}`: published program summaries/details only.
+- `POST /api/evaluate`: validated transient profile and assistance filters; returns program outcomes, criterion-level reasons, missing fields, and citations tied to evaluated revision IDs.
+- Protected administrator endpoints: login/logout, create and inspect ingestion runs, retry failed runs, edit drafts, approve/publish, reject, and inspect revision history.
 
-## applications
+Authenticate one administrator with credentials supplied through deployment secrets; no public registration. Use expiring HttpOnly session cookies, secure cookies in production, CSRF protection on mutations, login throttling, and server-side authorization on every admin endpoint. Return field-level validation errors without echoing sensitive submitted values.
 
-id
-user_id
-program_id
-status
-deadline
-notes
+## 5. Eligibility engine
 
-For example:
+Use ordinary Python to evaluate a validated rule tree. The LLM proposes rules during ingestion; it never decides a student’s eligibility.
 
-program:
-Massachusetts Student Emergency Assistance
+- Support equality, membership, numeric comparisons, and nested AND/OR groups over allowlisted profile fields.
+- Reject incompatible types, unknown fields/operators, empty groups, and excessively large or deeply nested trees.
+- Evaluate each condition as true, false, or unknown. Missing answers remain unknown; never coerce unanswered fields to false or zero.
+- AND: any false condition makes the group false; all true makes it true; otherwise unknown.
+- OR: any true condition makes the group true; all false makes it false; otherwise unknown.
+- Explicitly represent unsupported conditions as unknown. An incomplete eligibility model cannot produce “Likely eligible.”
+- Do not encode a condition as independently disqualifying if unmodeled exceptions could override it; mark that condition unresolved until its exceptions are represented.
+- Treat application availability separately from eligibility: exclude verified closed cycles from actionable matches and make them available in a closed-opportunities section. Unknown dates or availability require checking with the provider; do not assume a scholarship repeats annually or is currently open.
+- Collect missing fields only from branches that could change the outcome. Generate questions and explanations from templates and reviewed evidence.
+- Every criterion must refer to a source snapshot and a supporting excerpt. Explain a failed alternative within an OR group as an alternative, not as a program-wide rejection.
 
-requirements:
+Tests must use synthetic rules for edge cases rather than inventing real program requirements. All illustrative names, amounts, and eligibility claims from the original draft require official-source verification before entering the catalog.
 
-state = Massachusetts
-enrollment_status = enrolled
-financial_need = true
-Where AI actually comes in
+## 6. AI ingestion and orchestration
 
-This is where the project becomes much stronger than an ordinary CRUD app.
+The core AI deliverable is a controlled, inspectable ingestion workflow:
 
-1. Requirement extraction
+```text
+Official URL or pasted text + source URL
+  → acquire and normalize source
+  → extract a structured draft with OpenAI
+  → validate fields, rules, and evidence references
+  → flag unsupported or ambiguous conditions
+  → administrator reviews and edits
+  → explicit approval publishes a revision
+```
 
-Feed a government/university page like:
+### Run lifecycle and failure behavior
 
-Applicants must currently be enrolled at least half time and demonstrate unexpected financial hardship.
+Persist transitions through `queued`, `acquiring`, `extracting`, `validating`, and `awaiting_review`, with terminal `published`, `rejected`, or `failed` states. An edit after review invalidates the prior validation result and requires validation again before publication.
 
-Have the model output:
+Use a lightweight worker process backed by PostgreSQL run records; defer Redis and Celery. Claim jobs atomically with a lease so work is not executed concurrently. Expired leases are recoverable after a worker restart. Reuse persisted successful source/extraction stages when retrying later failures. Deduplicate repeated job submissions with an idempotency key.
 
-{
-"requirements": [
-{
-"field": "enrollment_status",
-"operator": "in",
-"value": ["half_time", "full_time"]
-},
-{
-"field": "financial_hardship",
-"operator": "equals",
-"value": true
-}
-]
-}
+Permit at most three automatic attempts per transient acquisition or model failure, with exponential backoff. Authentication/configuration failures, unsafe URLs, and invalid drafts stop for administrator action. A manual retry creates a linked new attempt while retaining prior diagnostics. Configure source-size, output-token, request-timeout, and per-run limits; prevent unbounded model loops. Use one worker by default to bound concurrency.
 
-Use structured outputs / JSON schema so the response has to follow your format.
+### Extraction and review contract
 
-2. RAG
+- Accept public HTTP(S) pages or pasted source text accompanied by its URL. Treat pasted material as administrator-supplied, not automatically verified against the live page.
+- Validate destinations and redirects, block private/local/reserved addresses, and prevent DNS rebinding from bypassing the checks. Bound redirects, download size, and duration; accept supported text content only.
+- Preserve source text and provenance before extraction. External source text is untrusted data and cannot authorize tools, publication, or changes to the workflow.
+- Request schema-constrained program fields, proposed rules, source excerpts, and unresolved conditions. For scholarships, distinguish mandatory eligibility criteria from competitive selection preferences, and extract the award cycle, application deadline, award amount, and required application materials when supported by the source. Validate semantic types and ensure cited excerpts occur in the retained source.
+- Flag omissions, ambiguous language, unsupported logic, model refusals, and invalid output. Schema validity alone does not establish factual correctness or complete rule coverage.
+- Present original text and extracted fields/rules side by side. Let the administrator edit, reject, or explicitly approve a draft and attest to source accuracy and coverage completeness.
+- The model has no publishing authority. Every new or changed program requires administrator approval.
 
-Students can ask:
+Record stage latency, attempts, validation errors, model/prompt/schema versions, and token usage when available. Operational logs must omit student answers, admin credentials, and API keys. Keep source content in the database rather than duplicating it in logs.
 
-"Why don't I qualify for this?"
+### Agent terminology and future extension
 
-Retrieve the relevant sections of the original aid documentation and have the model answer only from those passages.
+The v1 implementation supports the claim **AI workflow orchestration**: the application coordinates acquisition, model execution, validation, retries, persisted state, and human review. It is not yet a model-directed tool-using agent.
 
-3. Conversational intake
+A future **agent harness** milestone may add bounded model-selected tools for source inspection and extraction repair, with typed tool interfaces, per-run state, tool-call budgets, traces, and evaluations. It must retain the deterministic evaluator and approval boundary. This milestone is deferred and must not be claimed on a resume until implemented and tested.
 
-Instead of forcing users through a 40-field form:
+## 7. Dataset and evaluations
 
-"I'm a sophomore at UMass. I work around 15 hours per week and live off campus."
+### Catalog
 
-The LLM extracts:
+Curate 10–20 real programs/resources from official university, government, and provider pages. Include at least four scholarships spanning merit-based and need-based opportunities, with at least two available beyond UMass; the remaining entries cover grants and basic-needs resources. Verify current application cycles instead of importing expired awards as open opportunities. Record source URL, snapshot, verification date, and reviewer for every published revision. Publish seed data only after review; seed import must not manufacture a human-approval event.
 
-{
-"year": "sophomore",
-"school": "UMass Amherst",
-"employment_hours": 15,
-"housing": "off_campus"
-}
+Prefer conservative partial screening for complex benefits. Retain unresolved conditions and provider referral steps instead of simplifying a program until it appears universally eligible. Manually reverify the catalog before the public demo and display last-verified dates.
 
-Then your app asks only for missing information.
+### Required tests
 
-4. Document understanding
+- **Eligibility:** 100 synthetic profiles with independently specified expected outcomes, covering every rule operator, numeric boundaries, AND/OR exceptions, missing answers, unsupported conditions, and incomplete coverage. Require all expected outcomes to pass.
+- **Scholarships:** GPA threshold boundaries and unknown grading scales, major/class-year restrictions, optional selection preferences versus mandatory criteria, application eligibility versus award selection, closed cycles, missing deadline/timezone information, and application-material checklists.
+- **Extraction:** a fixed versioned set of at least 10 source excerpts with manually labeled fields, criteria, and evidence spans. Include scholarship sources, ambiguous requirements, exceptions, and unsupported logic. Report field accuracy, criterion precision/recall, unsupported-claim rate, and evidence fidelity with explicit denominators. Do not invent performance numbers or measure retrieval precision when retrieval is absent.
+- **Workflow:** transient failures, exhausted retries, worker restart, duplicate submissions, invalid model output, refusal, missing API key, review edits, rejection, and publication of a replacement revision.
+- **Backend:** unauthorized admin access, CSRF, unsafe URL/redirect handling, invalid profiles, published-only reads, atomic publication, and absence of student persistence or value-bearing error logs.
+- **Frontend:** intake → results → missing answer → reevaluation, school without campus coverage, unknown answers, empty catalog/filter results, API errors, responsive layout, keyboard use, and accessible labels.
+- **End to end:** student screening and admin ingestion/review/publication journeys. Use a deterministic model stub in CI; live OpenAI evaluations are explicit, separately budgeted runs.
 
-Later, allow uploads like:
+GitHub Actions runs backend tests, frontend type/build checks, migration checks against PostgreSQL, and representative browser tests. Record real evaluation results and reproducible commands in project documentation.
 
-financial aid award letter
-tuition bill
-lease
-employment documentation
+## 8. Delivery milestones
 
-The model extracts relevant information and helps fill the profile.
+| Milestone           | Target    | Completion evidence                                                                                             |
+| ------------------- | --------- | --------------------------------------------------------------------------------------------------------------- |
+| Foundation          | Week 1    | Schema/migrations, profile registry, eligibility engine, representative reviewed resources, passing logic tests |
+| Student flow        | Week 2    | Structured intake, follow-up questions, cited results, actionable checklists, privacy behavior                  |
+| AI orchestration    | Weeks 3–4 | Source acquisition, structured extraction, durable runs/retries, admin review and versioned publication         |
+| Evaluation and demo | Weeks 5–6 | 10–20 reviewed resources including at least four scholarships, 100-profile evaluation, extraction report, browser tests, hosted demo and README      |
 
-That's probably a V2 feature rather than MVP.
+## 9. Deployment and operations
 
-One feature I really want you to build
-
-Have the system distinguish between:
-
-LIKELY ELIGIBLE
-LIKELY INELIGIBLE
-NEED MORE INFORMATION
-
-That third option matters.
-
-Suppose SNAP eligibility requires certain employment conditions.
-
-Instead of hallucinating:
-
-"Yes, you qualify."
-
-The system says:
-
-Eligibility: NEED MORE INFORMATION
-
-I still need to know:
-
-1. Do you participate in federal work study?
-2. Do you have a meal plan?
-3. Approximately how many hours do you work each week?
-
-Then after the user responds, the eligibility engine runs again.
-
-That's a real agentic workflow, rather than just chatbot behavior.
-
-Build it in phases
-
-I'd keep the initial dataset intentionally small.
-
-Phase 1 — 10–20 programs
-
-Start with:
-
-UMass-specific aid
-Massachusetts state programs
-Federal student programs
-SNAP/student food assistance
-Local food resources
-Emergency grants
-
-Manually collect these initially.
-
-Build:
-
-PostgreSQL schema
-program CRUD
-student profile
-eligibility engine
-basic React UI
-
-No AI yet.
-
-Phase 2 — AI ingestion
-
-Create:
-
-URL
-↓
-scraper
-↓
-page text
-↓
-LLM
-↓
-structured program
-↓
-human approval
-↓
-database
-
-Your admin dashboard could literally show:
-
-AI detected:
-
-Program: Emergency Assistance Fund
-
-Requirement 1:
-"Must be a currently enrolled undergraduate student"
-
-Converted rule:
-student_status = undergraduate
-enrollment = active
-
-[Approve] [Edit] [Reject]
-
-That is a very legitimate application of AI.
-
-Phase 3 — conversational matching
-
-User asks:
-
-"I'm struggling with groceries."
-
-Your agent should understand that this maps primarily to:
-
-food assistance
-emergency assistance
-SNAP
-campus pantry
-
-Then run eligibility rules.
-
-Phase 4 — evaluations
-
-This is what could make the project stand out.
-
-Create test cases:
-
-## Student A
-
-Massachusetts resident
-Full-time
-Work study
-10 hr/week job
-
-Expected:
-Program A → eligible
-Program B → eligible
-Program C → insufficient information
-
-Run 100 synthetic profiles.
-
-Measure:
-
-Eligibility accuracy
-Requirement extraction accuracy
-Retrieval precision
-Hallucination rate
-Citation accuracy
-
-Now you have an actual AI system you can evaluate.
-
-Tech stack I'd use
-
-Because you're targeting SWE, I wouldn't overcomplicate it.
-
-Frontend
-Next.js
-TypeScript
-Tailwind
-
-Backend
-FastAPI
-Python
-
-Database
-PostgreSQL
-pgvector
-
-AI
-OpenAI / Anthropic API
-Structured outputs
-Embeddings
-Tool calling
-
-Infrastructure
-Docker
-GitHub Actions
-AWS / Render / Railway / Vercel
-
-And eventually:
-
-Redis
-Celery / Dramatiq
-
-for program ingestion jobs.
-
-One powerful AI agent design
-
-Your agent could have these tools:
-
-search_programs(query)
-
-get_program(program_id)
-
-evaluate_eligibility(program_id, student_id)
-
-retrieve_requirements(program_id)
-
-update_student_profile(field, value)
-
-find_missing_requirements(program_id, student_id)
-
-Then a conversation could be:
-
-USER
-I'm having trouble paying for groceries.
-
-AGENT
-→ search_programs("food assistance college students")
-
-Found:
-SNAP
-UMass Meal Assistance
-Student Care Supply Closet
-
-→ evaluate_eligibility(...)
-
-SNAP:
-missing work-study status
-
-AGENT
-Are you currently participating in a federal work-study
-program?
-
-User:
-
-Yes.
-
-Agent:
-
-→ update_student_profile(work_study=True)
-
-→ evaluate_eligibility(SNAP)
-
-Likely eligible.
-
-That is a much more convincing demonstration of modern AI tooling than:
-
-ChatGPT wrapper
-→ answer
-And this could eventually become a strong resume project
-
-Something like:
-
-AidPath — AI Financial Assistance Navigator | Next.js, FastAPI, PostgreSQL, pgvector, OpenAI
-• Engineered an AI-powered financial-assistance platform that matches college students with government, university, and nonprofit aid programs using structured eligibility rules extracted from unstructured web documents.
-• Built an agentic workflow combining tool calling, retrieval-augmented generation, and deterministic eligibility evaluation to identify missing information, personalize recommendations, and provide source-backed explanations.
-• Developed an automated ingestion pipeline that converts aid documentation into validated structured program data using schema-constrained LLM outputs and human-in-the-loop review.
-
-If you execute this well, I think it fits your resume much better than another pure ML project because it shows backend engineering + databases + AI systems + product thinking + reliability all in the same project.
-
-The very first thing I would build is not the chatbot. Build the program + requirements schema and a Python eligibility engine first. Once that works, the AI becomes the layer that populates and interacts with the system rather than being the entire system.
+- Provide Docker Compose for frontend, API, worker, and PostgreSQL, plus migrations and an explicit seed command.
+- Student matching must run from reviewed seed data without an OpenAI API key. Ingestion should report a clear configuration error when a key is absent.
+- Target a hosted public student flow and protected admin interface within **$25/month total** for hosting and API usage. Verify current provider pricing before selecting services or provisioning paid resources.
+- Keep secrets outside the repository. Provide `.env.example`, setup instructions, health/readiness endpoints, migration steps, and database backup/restore instructions.
+- Deploy behind HTTPS. Restrict CORS/origins to the frontend, keep database/worker private, and prevent request-body logging at the proxy and application layers.
+- Track service errors, failed ingestion runs, and source verification age. Document catalog limitations and ongoing manual maintenance.
+- Do not represent deployment, live AI evaluation, or human source review as completed without the corresponding evidence.
