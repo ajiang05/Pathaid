@@ -1,6 +1,6 @@
 # Deterministic eligibility and follow-up questions
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: core evaluator and synthetic tests implemented; catalog/API integration pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Evaluate reviewed eligibility rules reproducibly and identify information that could change the result.
