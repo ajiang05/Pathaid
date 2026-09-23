@@ -13,7 +13,7 @@ Convert official source text into structured, evidence-backed drafts that an adm
 - Preserve ambiguous or unsupported requirements as unresolved. Schema validity and matching excerpts do not prove semantic correctness or completeness.
 - Surface refusals, invalid output, unsupported logic, and configuration errors for review or failure handling.
 - Record model, prompt, and schema versions plus token usage when available.
-- The model receives official program text, never student profiles, and has no publishing authority.
+- This extraction model receives official program text, never student profiles, and has no publishing authority. Student recommendation explanations use a separate, consent-gated model path.
 
 ## Interfaces and dependencies
 Input: saved [source snapshot](06-source-acquisition.md). Output: proposed revision plus validation findings for [admin review](09-admin-review-and-publication.md), managed by the [orchestrator](08-ingestion-orchestration.md).
@@ -25,4 +25,4 @@ Input: saved [source snapshot](06-source-acquisition.md). Output: proposed revis
 - Run the fixed extraction benchmark described in [evaluations](10-quality-evaluations.md); record actual results.
 
 ## Exclusions
-Student-facing model calls, RAG, and autonomous tool selection.
+Student-facing model calls from the extraction workflow, RAG, and autonomous tool selection.

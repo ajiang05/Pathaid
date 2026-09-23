@@ -4,7 +4,7 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 
 ## Student features
 
-- [Student intake and transient profile](01-student-intake.md)
+- [Student account and editable profile](01-student-intake.md)
 - [Personalized scholarship and assistance discovery](02-personalized-discovery.md)
 - [Deterministic eligibility and follow-up questions](03-eligibility-engine.md)
 - [Source-backed results and application checklists](04-results-and-checklists.md)
@@ -24,6 +24,6 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 
 ## Implementation order
 
-Start with the profile registry, catalog, and eligibility engine. Connect intake, discovery, and checklists. Then build source acquisition, extraction, orchestration, and admin review. Add relevant evaluations as each feature is implemented and complete deployment after the release checks pass. Document numbers are identifiers, not a strict build sequence.
+Start with student sign-up/login, the profile registry, and editable profile storage. Prototype the student screens in Google Stitch. Build the reviewed catalog and deterministic eligibility engine, then connect the personalized home page, discovery, checklists, and grounded AI recommendation explanations. Build source acquisition, extraction, orchestration, and admin review. Add relevant evaluations and observability as each feature is implemented; complete deployment after the release checks pass. Document numbers are identifiers, not a strict build sequence.
 
-Future agent-harness work is described as deferred in the orchestration specification. Chat, RAG, student accounts, and application tracking remain outside the MVP.
+Future agent-harness work is described as deferred in the orchestration specification. Chat, RAG, and application tracking remain outside the MVP.

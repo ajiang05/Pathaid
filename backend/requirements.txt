@@ -1,0 +1,7 @@
+# HTTP API framework and local ASGI server.
+fastapi>=0.115,<1
+uvicorn>=0.34,<1
+# Database ORM, schema migration tool, and PostgreSQL driver.
+SQLAlchemy>=2.0,<3
+alembic>=1.15,<2
+psycopg[binary]>=3.2,<4
