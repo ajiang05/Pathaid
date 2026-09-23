@@ -19,10 +19,17 @@ Use PostgreSQL in deployed environments by setting `DATABASE_URL` to a `postgres
 ## API
 
 - `GET /api/profile-fields` returns field metadata.
+- `GET /api/programs` lists current published program revisions. Repeat the
+  `categories` query parameter to filter by one or more assistance categories.
+- `GET /api/programs/{id}` returns one current published revision with source
+  provenance but without the retained source body.
 - `POST /api/auth/signup` and `POST /api/auth/login` accept `{ "email": "...", "password": "..." }`, set an HttpOnly session cookie, and return a CSRF token.
 - `GET /api/auth/session` returns a fresh CSRF token after page reload.
 - `POST /api/auth/logout` requires the `X-CSRF-Token` header.
 - `GET /api/profile`, `PATCH /api/profile`, and `DELETE /api/profile` access only the signed-in account. PATCH accepts `{ "fields": { ... }, "ai_opt_in": false }`; send `null` for a field to remove its saved answer. PATCH and DELETE require `X-CSRF-Token`.
+- `POST /api/evaluate` combines the signed-in student's saved profile with
+  temporary `answers`, evaluates published candidates, and returns deterministically
+  ranked outcomes. Temporary answers are not persisted.
 
 All profile fields remain optional. The account opt-in flag is stored but no student data is sent to OpenAI in this feature. Passwords are hashed with scrypt; session and CSRF tokens are stored as SHA-256 hashes. The rate limit uses the direct peer address and is shared through the database. Behind a reverse proxy, configure a trusted peer address policy before public deployment.
 

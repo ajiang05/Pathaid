@@ -1,6 +1,6 @@
 # Deterministic eligibility and follow-up questions
 
-Status: core evaluator and synthetic tests implemented; catalog/API integration pending. Parent specification: [plan.md](../plan.md).
+Status: core evaluator, synthetic tests, and authenticated evaluation API implemented; real reviewed catalog data and frontend follow-up flow pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Evaluate reviewed eligibility rules reproducibly and identify information that could change the result.

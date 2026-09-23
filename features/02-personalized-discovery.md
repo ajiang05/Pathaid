@@ -1,6 +1,6 @@
 # Personalized scholarship and assistance discovery
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: backend candidate filtering, deterministic ranking, and ranking-factor responses implemented; frontend home page and AI explanations pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Show signed-in students a personalized home page of scholarships, grants, and basic-needs resources relevant to their saved profile.
