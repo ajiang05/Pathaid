@@ -27,3 +27,6 @@ Use PostgreSQL in deployed environments by setting `DATABASE_URL` to a `postgres
 All profile fields remain optional. The account opt-in flag is stored but no student data is sent to OpenAI in this feature. Passwords are hashed with scrypt; session and CSRF tokens are stored as SHA-256 hashes. The rate limit uses the direct peer address and is shared through the database. Behind a reverse proxy, configure a trusted peer address policy before public deployment.
 
 Run tests with `.venv/bin/pytest -q`.
+
+Both pytest and Alembic are configured to treat `backend/` as the Python
+package root, so the commands above work without setting `PYTHONPATH`.
