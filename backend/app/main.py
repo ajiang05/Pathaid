@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from .catalog import get_published_revision, list_published_revisions
 from .catalog_schemas import ProgramDetail, ProgramSummary, SourceReference
 from .database import get_db
+from .discovery import RankingRecord, rank_records
 from .eligibility import RuleValidationError, evaluate_eligibility
 from .evaluation_schemas import (
     CriterionResponse,
@@ -349,11 +350,35 @@ def evaluate_programs(
 
     candidates = list_published_revisions(db, categories=categories)
     try:
-        results = [evaluate_revision(revision, combined_profile) for revision in candidates]
+        evaluated_by_id = {
+            revision.program_id: evaluate_revision(revision, combined_profile)
+            for revision in candidates
+        }
     except RuleValidationError:
         # Invalid rule trees should be blocked before publication. Avoid
         # exposing internal catalog content if that invariant is ever broken.
         raise HTTPException(500, detail="A published program cannot be evaluated") from None
+    ranked = rank_records(
+        [
+            RankingRecord(
+                program_id=revision.program_id,
+                name=revision.name,
+                eligibility_label=evaluated_by_id[revision.program_id].label,
+                application_availability=revision.application_availability,
+                application_deadline=revision.application_deadline,
+                coverage=revision.coverage,
+            )
+            for revision in candidates
+        ],
+        combined_profile,
+    )
+    results: list[ProgramEvaluationResponse] = []
+    for ranked_record in ranked:
+        result = evaluated_by_id[ranked_record.record.program_id]
+        result.availability_section = ranked_record.section
+        result.relevance = ranked_record.relevance
+        result.ranking_factors = dict(ranked_record.ranking_factors)
+        results.append(result)
     return EvaluationResponse(categories=categories, results=results)
 
 

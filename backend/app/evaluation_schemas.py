@@ -52,6 +52,9 @@ class ProgramEvaluationResponse(BaseModel):
     application_deadline: str | None
     deadline_timezone: str | None
     coverage: dict[str, Any]
+    availability_section: str | None = None
+    relevance: str | None = None
+    ranking_factors: dict[str, str] = Field(default_factory=dict)
 
 
 class EvaluationResponse(BaseModel):

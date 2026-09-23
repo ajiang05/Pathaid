@@ -98,6 +98,8 @@ def test_evaluation_combines_saved_and_temporary_answers_without_saving(evaluati
     assert baseline.status_code == 200
     by_name = {result["name"]: result for result in baseline.json()["results"]}
     assert by_name["State Scholarship"]["label"] == "Likely eligible"
+    assert by_name["State Scholarship"]["availability_section"] == "Open opportunities"
+    assert by_name["State Scholarship"]["ranking_factors"]["eligibility_group"] == "Likely eligible"
     assert by_name["GPA Scholarship"]["label"] == "Need more information"
     assert by_name["GPA Scholarship"]["missing_fields"][0]["field"] == "gpa"
 
