@@ -1,0 +1,5 @@
+# Include every runtime dependency above.
+-r requirements.txt
+# Test runner and in-process HTTP client used by FastAPI's TestClient.
+pytest>=8,<10
+httpx>=0.27,<1

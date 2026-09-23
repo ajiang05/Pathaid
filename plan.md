@@ -6,33 +6,38 @@ Feature specifications: see [features/README.md](features/README.md) for individ
 
 ## 1. Purpose and success criteria
 
-Pathaid helps college students find scholarships, grants, and assistance programs and understand what they need to apply. It turns scattered official program information into personalized, source-backed checklists.
+Pathaid addresses two related problems: financial-aid opportunities are scattered across provider websites, and students often cannot tell whether they meet the requirements to apply. It helps college students find scholarships, grants, and basic-needs assistance and turns reviewed official program information into personalized, source-backed checklists.
 
-The first release is a portfolio demo built over 4–6 weeks. Its technical focus is AI workflow orchestration for program ingestion, supported by a tested Python backend and deterministic eligibility engine.
+The first release is a portfolio demo built over 4–6 weeks. Its technical focus is AI workflow orchestration for program ingestion and grounded scholarship recommendations, supported by a tested Python backend and deterministic eligibility engine.
 
-Success means a visitor can enter a student profile, discover relevant published resources, answer missing eligibility questions, and follow an evidence-backed application checklist. An administrator can ingest an official source, review AI-extracted requirements, and publish a versioned program without changing application code.
+Success means a student can sign up, create and edit a profile, open a home page of relevant scholarships and other resources, understand why each is recommended and whether they appear eligible to apply, and follow an evidence-backed checklist to the official application page. An administrator can ingest an official source, review AI-extracted requirements, and publish a versioned program without changing application code. Before the portfolio release, five students complete observed usability sessions and recurring usability problems are addressed.
 
 ## 2. Audience and release scope
 
 - Support students attending US colleges: undergraduate, graduate, community college, part-time, and international students. Attending a US institution does not imply eligibility for any particular benefit.
+- Center the initial experience and campus-specific coverage on UMass Amherst students while retaining national opportunities for students at other US institutions.
 - Seed 10–20 verified programs and resources: national resources plus Massachusetts and UMass Amherst examples.
 - Accept students from any US college. Clearly identify the geographic and institutional coverage of each resource and the limits of the initial catalog.
 - Include scholarships as a first-class MVP category alongside grants, food assistance, and emergency support. Cover both merit-based and need-based scholarships from verified university and scholarship-provider sources. Include housing-related resources where verified sources are available.
-- Require no student account. Return checklists and application/source links; defer saved matches and application tracking.
-- Use AI for administrator-facing ingestion only. Student intake, follow-up questions, matching, and explanations are deterministic in v1.
+- Require student sign-up and login so students can save and edit their profile and return to their personalized home page. Defer application tracking.
+- Use AI for administrator-facing ingestion and student-facing scholarship recommendation explanations grounded in published program data. Intake questions, eligibility decisions, and the candidate set remain deterministic.
 
-Out of scope for v1: conversational intake, student-facing AI explanations, RAG, embeddings, pgvector, PDF ingestion, student document uploads, autonomous crawling, application submission, student accounts, and international aid systems outside the US.
+Out of scope for v1: conversational intake, RAG, embeddings, pgvector, PDF ingestion, student document uploads, autonomous crawling, application submission, application tracking, and international aid systems outside the US.
 
 ## 3. Student experience
 
-1. Explain the product, limited catalog coverage, and privacy behavior before intake.
-2. Collect school, state, study level, enrollment, and assistance needs through a structured form. Normalize UMass Amherst aliases to one institution identifier; retain other school names without pretending they have campus-specific coverage.
+1. Explain the product, limited catalog coverage, and privacy behavior before sign-up using calm, plain language and visible source-verification cues. Let students create an account and log in.
+2. Onboarding creates an editable profile through a short structured intake for school, state, study level, enrollment, and assistance needs. Normalize UMass Amherst aliases to one institution identifier; retain other school names without pretending they have campus-specific coverage.
 3. Let students choose scholarships, grants, food assistance, emergency support, or housing resources, including multiple categories. Find candidate programs using reviewed categories and coverage metadata. A lack of catalog coverage must never be presented as a finding of ineligibility.
-4. Evaluate candidates against published rules. Ask only relevant missing questions, using labels and answer types from the profile-field registry. Allow “I don’t know” for eligibility questions.
-5. Reevaluate after answers change and show likely matches first, unresolved matches next, and likely-ineligible results in a separate expandable section.
+4. Evaluate candidates against published rules. Ask sensitive or detailed questions, including income, aid status, ethnicity, citizenship or immigration status, GPA, major, and class year, only when a candidate's reviewed requirements need them. Use labels and answer types from the profile-field registry and allow “I don’t know.” When a financial requirement permits it, prefer reviewed income ranges or aid indicators such as Pell eligibility or Student Aid Index thresholds over collecting exact household income.
+5. Show a personalized home page after onboarding. Reevaluate after profile edits and rank results deterministically. Show likely-eligible matches first, unresolved matches next, and likely-ineligible results in a separate expandable section. Within each actionable eligibility group, order verified-open opportunities by the nearest known deadline, followed by opportunities whose deadlines are unknown. Break ties by institutional or geographic relevance and then program name. Put verified-closed opportunities in a separate section and expose the factors that determined each result's position.
 6. Display each program’s description, eligibility outcome, reasons, unresolved conditions, verified assistance amount and deadline when available, required documents, source excerpts, verification date, and application or provider link.
 7. For scholarships, ask about major/field of study, class year, and GPA with its grading scale only when a candidate requires them. Do not assume a 4.0 scale or convert between scales without a reviewed conversion rule.
-8. Provide an actionable checklist. Unknown amounts, deadlines, or document requirements must say they are not verified and direct the student to the provider.
+8. Provide an actionable checklist and official provider or application link. Unknown amounts, deadlines, or document requirements must say they are not verified and direct the student to the provider.
+
+Use an LLM to generate a concise, optional “why this scholarship fits” explanation from the student's relevant profile fields, the deterministic result, and reviewed source excerpts. Validate the output against the supplied program revision; display source-backed reasons and unresolved requirements separately. The model cannot invent eligibility, change ranking, or claim an award is likely. If generation fails or is unavailable, show a template explanation so the home page still works.
+
+Prototype the student flow in Google Stitch before frontend implementation. Cover the landing page, sign-up/login, profile creation and editing, follow-up questions, personalized home page, ranked results, and program details with corresponding mobile and desktop designs. Give both screen sizes equal design priority and use a calm, clear, trustworthy visual and writing style.
 
 Use three eligibility labels:
 
@@ -46,20 +51,20 @@ For competitive scholarships, “Likely eligible” means the student appears to
 
 Separate missing student answers from conditions that require provider review. Do not keep asking students questions that cannot resolve a program’s incomplete rule coverage. For referral directories, describe access to the referral service separately from eligibility for benefits offered by listed providers.
 
-Student answers remain in page memory and disappear on reload. The backend accepts profiles only for stateless evaluation; it must not persist them, include them in logs, or send them to OpenAI.
+Store profile fields only for authenticated students, encrypt traffic, and give students a way to edit and delete their profile and account. Explain which fields are saved and which relevant fields may be sent to OpenAI for recommendation explanations; obtain explicit opt-in before sending any student data. Never send identity, credentials, or unnecessary sensitive fields. If a student declines, use deterministic recommendations and template explanations. Never include profile values in operational logs.
 
 ## 4. Architecture and backend
 
 | Component      | Choice and responsibility                                                                            |
 | -------------- | ---------------------------------------------------------------------------------------------------- |
-| Frontend       | Next.js, TypeScript, Tailwind; student intake/results and protected admin review UI                  |
-| API            | FastAPI and Python; validation, matching, eligibility, admin authentication, publication             |
-| Database       | PostgreSQL; program revisions, sources, rules, ingestion runs, and review history                    |
-| AI             | OpenAI structured extraction behind a small adapter; model configurable through environment settings |
+| Frontend       | Next.js, TypeScript, Tailwind; student auth/profile/home page and protected admin review UI           |
+| API            | FastAPI and Python; student auth/profile, validation, matching, eligibility, admin review, publication |
+| Database       | PostgreSQL; student accounts/profiles, program revisions, sources, rules, runs, and review history    |
+| AI             | OpenAI extraction and grounded recommendation explanations behind configurable adapters               |
 | Orchestration  | Explicit Python workflow with persisted run states, bounded retries, validation, and human approval  |
 | Infrastructure | Docker, Docker Compose, and GitHub Actions                                                           |
 
-Use a typed profile-field registry shared through API metadata. It defines accepted field names, answer types, allowed values, and question wording. Add fields only when supported by a reviewed program requirement. Keep citizenship or aid-status questions optional and program-specific; never infer status from school or nationality.
+Use a typed profile-field registry shared through API metadata. It defines accepted field names, answer types, allowed values, question wording, sensitivity, and whether a field may appear during progressive follow-up. Add fields only when supported by a reviewed program requirement. Keep citizenship, ethnicity, income, and aid-status questions optional and program-specific; never infer status from school, name, location, or nationality.
 
 ### Data model
 
@@ -68,19 +73,21 @@ Use a typed profile-field registry shared through API metadata. It defines accep
 - **Source snapshots:** source URL, acquisition time, content hash, retained source text, and acquisition method (webpage or pasted text).
 - **Ingestion runs:** input source, state, attempts, model/prompt/schema versions, timing, token usage when available, structured errors, and resulting draft revision.
 - **Review events:** administrator identity, decision, notes, revision, and timestamp.
+- **Student accounts and profiles:** credential hash, account metadata, editable profile fields, consent preference, and deletion timestamps. Keep profile access scoped to the account owner; do not store model prompts or generated text containing profile values by default.
 
 Use database migrations from the start. Keep published revisions immutable; edits create a new draft. Publishing atomically updates the program’s published pointer and records the approval. A failed ingestion or rejected draft leaves the previous published revision intact.
 
-Do not create student-profile or student-application tables.
+Do not create student-application tables.
 
 ### API boundaries
 
 - `GET /api/profile-fields`: supported fields and question metadata.
 - `GET /api/programs` and `GET /api/programs/{id}`: published program summaries/details only.
-- `POST /api/evaluate`: validated transient profile and assistance filters; returns program outcomes, criterion-level reasons, missing fields, and citations tied to evaluated revision IDs.
+- `POST /api/evaluate`: authenticated student's saved profile plus validated session answers and assistance filters; returns deterministically ordered program outcomes, criterion-level reasons, missing fields, citations tied to evaluated revision IDs, application availability, verified deadline data, applicable coverage, and the ranking factors shown to the student. Persist new answers only when the student saves them to their profile.
+- Student endpoints: sign-up/login/logout, read/update/delete own profile and account, and fetch a personalized home page. Recommendation explanation requests require the student's AI opt-in and accept only server-selected published candidates.
 - Protected administrator endpoints: login/logout, create and inspect ingestion runs, retry failed runs, edit drafts, approve/publish, reject, and inspect revision history.
 
-Authenticate one administrator with credentials supplied through deployment secrets; no public registration. Use expiring HttpOnly session cookies, secure cookies in production, CSRF protection on mutations, login throttling, and server-side authorization on every admin endpoint. Return field-level validation errors without echoing sensitive submitted values.
+Authenticate students with hashed passwords and server-side account ownership checks. Authenticate one administrator with credentials supplied through deployment secrets; no public administrator registration. Use expiring HttpOnly session cookies, secure cookies in production, CSRF protection on mutations, and throttling for login and sign-up. Return field-level validation errors without echoing sensitive submitted values.
 
 ## 5. Eligibility engine
 
@@ -94,6 +101,7 @@ Use ordinary Python to evaluate a validated rule tree. The LLM proposes rules du
 - Explicitly represent unsupported conditions as unknown. An incomplete eligibility model cannot produce “Likely eligible.”
 - Do not encode a condition as independently disqualifying if unmodeled exceptions could override it; mark that condition unresolved until its exceptions are represented.
 - Treat application availability separately from eligibility: exclude verified closed cycles from actionable matches and make them available in a closed-opportunities section. Unknown dates or availability require checking with the provider; do not assume a scholarship repeats annually or is currently open.
+- Rank without an LLM or opaque score. Preserve the eligibility-group, deadline, relevance, and program-name ordering defined in the student experience, and derive every ranking factor from reviewed catalog data and the student's explicit answers. The LLM may explain a recommendation but cannot select or reorder candidates.
 - Collect missing fields only from branches that could change the outcome. Generate questions and explanations from templates and reviewed evidence.
 - Every criterion must refer to a source snapshot and a supporting excerpt. Explain a failed alternative within an OR group as an alternative, not as a program-wide rejection.
 
@@ -133,6 +141,10 @@ Permit at most three automatic attempts per transient acquisition or model failu
 
 Record stage latency, attempts, validation errors, model/prompt/schema versions, and token usage when available. Operational logs must omit student answers, admin credentials, and API keys. Keep source content in the database rather than duplicating it in logs.
 
+### Student recommendation explanations
+
+Send only the consented, minimum relevant profile fields plus the selected published revision and its evidence excerpts to the explanation model. Require a short structured response tied to cited revision IDs; reject unsupported claims, invented deadlines or amounts, and eligibility conclusions that differ from the deterministic engine. Show a template explanation on refusal, timeout, validation failure, or missing API key. Bound request time, tokens, and per-user request frequency, and record aggregate latency, error rate, and token usage without recording student values.
+
 ### Agent terminology and future extension
 
 The v1 implementation supports the claim **AI workflow orchestration**: the application coordinates acquisition, model execution, validation, retries, persisted state, and human review. It is not yet a model-directed tool-using agent.
@@ -151,29 +163,34 @@ Prefer conservative partial screening for complex benefits. Retain unresolved co
 
 - **Eligibility:** 100 synthetic profiles with independently specified expected outcomes, covering every rule operator, numeric boundaries, AND/OR exceptions, missing answers, unsupported conditions, and incomplete coverage. Require all expected outcomes to pass.
 - **Scholarships:** GPA threshold boundaries and unknown grading scales, major/class-year restrictions, optional selection preferences versus mandatory criteria, application eligibility versus award selection, closed cycles, missing deadline/timezone information, and application-material checklists.
+- **Ranking:** eligibility-group order, nearest verified-open deadline, unknown deadlines, institutional and geographic tie-breakers, stable program-name ties, ranking explanations, and separation of closed opportunities.
+- **Student accounts and recommendations:** sign-up/login/logout, profile ownership and edits, deletion, consent enforcement, minimal model payloads, unsupported-claim rejection, and deterministic fallback when AI is disabled or fails.
 - **Extraction:** a fixed versioned set of at least 10 source excerpts with manually labeled fields, criteria, and evidence spans. Include scholarship sources, ambiguous requirements, exceptions, and unsupported logic. Report field accuracy, criterion precision/recall, unsupported-claim rate, and evidence fidelity with explicit denominators. Do not invent performance numbers or measure retrieval precision when retrieval is absent.
 - **Workflow:** transient failures, exhausted retries, worker restart, duplicate submissions, invalid model output, refusal, missing API key, review edits, rejection, and publication of a replacement revision.
-- **Backend:** unauthorized admin access, CSRF, unsafe URL/redirect handling, invalid profiles, published-only reads, atomic publication, and absence of student persistence or value-bearing error logs.
-- **Frontend:** intake → results → missing answer → reevaluation, school without campus coverage, unknown answers, empty catalog/filter results, API errors, responsive layout, keyboard use, and accessible labels.
+- **Backend:** unauthorized student/admin access, CSRF, unsafe URL/redirect handling, invalid profiles, published-only reads, atomic publication, profile deletion, and absence of value-bearing error logs.
+- **Frontend:** sign-up → short profile intake → personalized home page → progressively requested answer → ranked results → profile edit and reevaluation, sensitive questions appearing only for relevant candidates, school without campus coverage, unknown answers, empty catalog/filter results, API errors, corresponding mobile and desktop layouts, keyboard use, and accessible labels.
 - **End to end:** student screening and admin ingestion/review/publication journeys. Use a deterministic model stub in CI; live OpenAI evaluations are explicit, separately budgeted runs.
+- **Usability:** observe five students signing up, completing and editing a profile, interpreting recommendations and eligibility results, using a checklist, and reaching an official application page; record findings and address problems that recur across sessions before release.
 
 GitHub Actions runs backend tests, frontend type/build checks, migration checks against PostgreSQL, and representative browser tests. Record real evaluation results and reproducible commands in project documentation.
 
 ## 8. Delivery milestones
 
-| Milestone           | Target    | Completion evidence                                                                                             |
-| ------------------- | --------- | --------------------------------------------------------------------------------------------------------------- |
-| Foundation          | Week 1    | Schema/migrations, profile registry, eligibility engine, representative reviewed resources, passing logic tests |
-| Student flow        | Week 2    | Structured intake, follow-up questions, cited results, actionable checklists, privacy behavior                  |
-| AI orchestration    | Weeks 3–4 | Source acquisition, structured extraction, durable runs/retries, admin review and versioned publication         |
-| Evaluation and demo | Weeks 5–6 | 10–20 reviewed resources including at least four scholarships, 100-profile evaluation, extraction report, browser tests, hosted demo and README      |
+Implement student sign-up, login, the typed profile-field registry, and editable profile storage as the first feature. Use that foundation for the personalized home page and deterministic evaluation. Prototype the account and student flow in Stitch before building its frontend screens; add AI recommendation explanations after source-backed matching works.
+
+| Milestone           | Target    | Completion evidence                                                                                                                                                              |
+| ------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Foundation          | Week 1    | Schema/migrations, student authentication/profile storage, profile registry, eligibility engine, representative reviewed resources, passing logic tests                           |
+| Student flow        | Week 2    | Stitch prototype, sign-up, editable profile, personalized home page, progressive questions, ranked cited results, checklists, privacy controls                                    |
+| AI orchestration    | Weeks 3–4 | Source acquisition, structured extraction, durable runs/retries, admin review/publication, grounded recommendation explanations with fallback                                     |
+| Evaluation and demo | Weeks 5–6 | 10–20 reviewed resources including at least four scholarships, 100-profile evaluation, extraction report, browser tests, five student usability sessions, observability, demo |
 
 ## 9. Deployment and operations
 
 - Provide Docker Compose for frontend, API, worker, and PostgreSQL, plus migrations and an explicit seed command.
-- Student matching must run from reviewed seed data without an OpenAI API key. Ingestion should report a clear configuration error when a key is absent.
+- Student matching must run from reviewed seed data without an OpenAI API key. Recommendation explanations fall back to templates; ingestion reports a clear configuration error when a key is absent.
 - Target a hosted public student flow and protected admin interface within **$25/month total** for hosting and API usage. Verify current provider pricing before selecting services or provisioning paid resources.
 - Keep secrets outside the repository. Provide `.env.example`, setup instructions, health/readiness endpoints, migration steps, and database backup/restore instructions.
 - Deploy behind HTTPS. Restrict CORS/origins to the frontend, keep database/worker private, and prevent request-body logging at the proxy and application layers.
-- Track service errors, failed ingestion runs, and source verification age. Document catalog limitations and ongoing manual maintenance.
+- Add an observability tool for API/frontend errors, request latency, recommendation model latency and failures, failed ingestion runs, and source verification age. Use aggregate counts and redacted traces; exclude passwords, profile fields, prompts containing student data, and source text. Document catalog limitations and ongoing manual maintenance.
 - Do not represent deployment, live AI evaluation, or human source review as completed without the corresponding evidence.

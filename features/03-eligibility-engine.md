@@ -17,13 +17,13 @@ Evaluate reviewed eligibility rules reproducibly and identify information that c
 - Generate reasons and questions from templates, retaining the source citation for every criterion. Explain failed OR alternatives in their group context.
 
 ## Interfaces and dependencies
-`POST /api/evaluate` accepts a transient validated profile and filters. Return evaluated revision IDs, outcomes, criterion results, missing field metadata, and citations. Use the registry from [intake](01-student-intake.md) and published rules from the [catalog](05-program-catalog.md).
+`POST /api/evaluate` combines the authenticated student's saved profile with validated session answers and filters. Return evaluated revision IDs, outcomes, criterion results, missing field metadata, and citations. Persist new answers only when the student saves them. Use the registry from [profile](01-student-intake.md) and published rules from the [catalog](05-program-catalog.md).
 
 ## Acceptance criteria
 - All 100 independently labeled synthetic-profile cases pass.
 - Tests cover every operator, exact numeric boundaries, nested alternatives, unknown answers, incomplete coverage, and exceptions.
 - A resolved OR branch does not trigger questions about irrelevant alternatives.
-- Identical profiles and revisions produce identical results without a model call or profile persistence.
+- Identical profile values and revisions produce identical results without a model call; evaluation alone does not change the saved profile.
 
 ## Exclusions
 LLM eligibility decisions and scholarship winner selection.

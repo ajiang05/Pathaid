@@ -13,7 +13,7 @@ Maintain a small, reliable catalog that supports personalized scholarship and be
 - Scholarship revisions additionally retain award cycle, deadline/timezone when stated, open/closed/unknown availability, and selection factors separately from eligibility rules.
 - Store source snapshots and review events. Preserve published revisions as immutable records; edits create drafts.
 - Use PostgreSQL migrations and an explicit reviewed-seed import. Never manufacture a human review event or import draft examples as verified programs.
-- No student-profile or application-tracking tables.
+- Student account/profile storage belongs to [student account and profile](01-student-intake.md), outside the catalog schema. Do not create application-tracking tables.
 
 ## Interfaces and dependencies
 Public `GET /api/programs` and `GET /api/programs/{id}` expose published information only. [Review and publication](09-admin-review-and-publication.md) controls changes; [source acquisition](06-source-acquisition.md) supplies provenance.
