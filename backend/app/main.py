@@ -18,6 +18,14 @@ from sqlalchemy.orm import Session
 from .catalog import get_published_revision, list_published_revisions
 from .catalog_schemas import ProgramDetail, ProgramSummary, SourceReference
 from .database import get_db
+from .eligibility import RuleValidationError, evaluate_eligibility
+from .evaluation_schemas import (
+    CriterionResponse,
+    EvaluationRequest,
+    EvaluationResponse,
+    MissingFieldResponse,
+    ProgramEvaluationResponse,
+)
 from .models import AuthAttempt, ProgramRevision, Student, StudentSession
 from .profile_fields import FIELDS, validate_profile_patch
 
@@ -99,6 +107,55 @@ def program_detail(revision: ProgramRevision) -> ProgramDetail:
             )
             for source in revision.sources
         ],
+    )
+
+
+def missing_field_response(field_name: str) -> MissingFieldResponse:
+    """Convert registry metadata into a safe follow-up question contract."""
+
+    spec = FIELDS[field_name]
+    return MissingFieldResponse(
+        field=field_name,
+        question=spec["question"],
+        answer_type=spec["type"],
+        values=spec.get("values"),
+        sensitive=spec["sensitive"],
+    )
+
+
+def evaluate_revision(revision: ProgramRevision, profile: dict) -> ProgramEvaluationResponse:
+    """Evaluate and serialize one exact published program revision."""
+
+    evaluated = evaluate_eligibility(
+        revision_id=revision.id,
+        rule=revision.eligibility_tree,
+        profile=profile,
+        field_registry=FIELDS,
+        coverage_complete=revision.coverage_complete,
+    )
+    return ProgramEvaluationResponse(
+        program_id=revision.program_id,
+        revision_id=revision.id,
+        name=revision.name,
+        label=evaluated.label.value,
+        truth=evaluated.truth.value,
+        criteria=[
+            CriterionResponse(
+                field=criterion.field,
+                operator=criterion.operator,
+                truth=criterion.truth.value,
+                reason=criterion.reason,
+                answerable=criterion.answerable,
+                evidence=dict(criterion.evidence),
+            )
+            for criterion in evaluated.criteria
+        ],
+        missing_fields=[missing_field_response(field_name) for field_name in evaluated.missing_fields],
+        unresolved_conditions=list(evaluated.unresolved_conditions),
+        application_availability=revision.application_availability,
+        application_deadline=revision.application_deadline.isoformat() if revision.application_deadline else None,
+        deadline_timezone=revision.deadline_timezone,
+        coverage=revision.coverage,
     )
 
 
@@ -269,6 +326,35 @@ def program(program_id: str, db: Session = Depends(get_db)):
         # through the public endpoint.
         raise HTTPException(404, detail="Program not found")
     return program_detail(revision)
+
+
+@app.post("/api/evaluate", response_model=EvaluationResponse)
+def evaluate_programs(
+    body: EvaluationRequest,
+    request: Request,
+    identity: tuple[Student, StudentSession] = Depends(current_session),
+    db: Session = Depends(get_db),
+):
+    """Evaluate published candidates without persisting temporary answers."""
+
+    check_origin(request)
+    student = identity[0]
+    # Validation returns a new dictionary; it never mutates the JSON profile
+    # currently attached to the authenticated student record.
+    combined_profile = validate_profile_patch(body.answers, student.profile)
+    categories = body.categories or combined_profile.get("assistance_categories", [])
+    allowed_categories = set(FIELDS["assistance_categories"]["values"])
+    if not categories or any(category not in allowed_categories for category in categories) or len(set(categories)) != len(categories):
+        raise HTTPException(422, detail={"field": "categories", "message": "Invalid category selection"})
+
+    candidates = list_published_revisions(db, categories=categories)
+    try:
+        results = [evaluate_revision(revision, combined_profile) for revision in candidates]
+    except RuleValidationError:
+        # Invalid rule trees should be blocked before publication. Avoid
+        # exposing internal catalog content if that invariant is ever broken.
+        raise HTTPException(500, detail="A published program cannot be evaluated") from None
+    return EvaluationResponse(categories=categories, results=results)
 
 
 @app.post("/api/auth/signup", status_code=201)
