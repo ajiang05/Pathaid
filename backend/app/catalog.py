@@ -24,7 +24,7 @@ def _published_revision_query() -> Select:
             & (Program.current_published_revision_id == ProgramRevision.id),
         )
         .where(ProgramRevision.status == "published")
-        .options(selectinload(ProgramRevision.sources))
+        .options(selectinload(ProgramRevision.sources), selectinload(ProgramRevision.program))
     )
 
 
