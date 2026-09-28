@@ -37,3 +37,24 @@ Run tests with `.venv/bin/pytest -q`.
 
 Both pytest and Alembic are configured to treat `backend/` as the Python
 package root, so the commands above work without setting `PYTHONPATH`.
+
+## Source acquisition
+
+`app.source_service.acquire_and_persist_source` is the internal entry point for
+Feature 06. It accepts either `WebSourceRequest` or `PastedSourceRequest`,
+normalizes the source, calculates its SHA-256 hash, and saves an immutable
+`SourceSnapshot`. It is intentionally not exposed as a public API route; the
+protected ingestion orchestrator will call it after admin authentication exists.
+
+Web acquisition permits public HTTP(S) text pages only. It validates and pins
+every DNS destination, validates every redirect, rejects HTTPS downgrades, and
+uses these defaults:
+
+- 5 redirects
+- 10 seconds for the complete acquisition
+- 2 MB downloaded content
+- 500,000 normalized text characters
+
+The test suite injects fake resolvers and transports and never retrieves live
+websites. Pasted text is labeled `pasted_text` and is not checked against the
+live source URL.
