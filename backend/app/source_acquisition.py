@@ -8,13 +8,19 @@ never interpret webpage text as instructions or grant it application authority.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import ipaddress
 import re
+import socket
+import ssl
+import time
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
+from email.message import Message
 from html.parser import HTMLParser
-from typing import Literal
-from urllib.parse import SplitResult, urlsplit, urlunsplit
+from typing import Callable, Iterable, Literal, Mapping, Protocol
+from urllib.parse import SplitResult, urljoin, urlsplit, urlunsplit
 
 
 @dataclass(frozen=True)
@@ -65,6 +71,31 @@ class AcquiredSource:
     content_hash: str
     source_byte_count: int
     redirect_count: int
+
+
+@dataclass(frozen=True)
+class HttpResponse:
+    """One bounded HTTP response returned by an injectable single-hop transport."""
+
+    status: int
+    headers: Mapping[str, str]
+    body: bytes
+
+
+class SingleHopTransport(Protocol):
+    """Transport contract that connects to one already-validated IP address."""
+
+    def fetch(
+        self,
+        url: ValidatedUrl,
+        address: str,
+        *,
+        timeout_seconds: float,
+        max_response_bytes: int,
+    ) -> HttpResponse: ...
+
+
+Resolver = Callable[[str, int], Iterable[str]]
 
 
 class AcquisitionError(Exception):
@@ -143,6 +174,230 @@ def prepare_pasted_source(
         source_byte_count=len(encoded),
         redirect_count=0,
     )
+
+
+def acquire_web_source(
+    request: WebSourceRequest,
+    config: AcquisitionConfig = AcquisitionConfig(),
+    *,
+    resolver: Resolver | None = None,
+    transport: SingleHopTransport | None = None,
+) -> AcquiredSource:
+    """Retrieve one public text page through validated, IP-pinned hops."""
+
+    original = validate_source_url(request.source_url)
+    current = original
+    redirect_count = 0
+    deadline = time.monotonic() + config.timeout_seconds
+    resolver = resolver or system_resolver
+    transport = transport or SocketHttpTransport()
+
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise AcquisitionError("timeout", "Source acquisition timed out.", retryable=True)
+        addresses = resolve_public_addresses(current, resolver, remaining)
+        response = _fetch_from_addresses(current, addresses, transport, deadline, config.max_response_bytes)
+
+        if response.status in {301, 302, 303, 307, 308}:
+            if redirect_count >= config.max_redirects:
+                raise AcquisitionError("redirect_limit", "The source exceeded the redirect limit.")
+            location = response.headers.get("location")
+            if not location:
+                raise AcquisitionError("invalid_redirect", "The source returned a redirect without a destination.")
+            destination = validate_source_url(urljoin(current.url, location))
+            if current.scheme == "https" and destination.scheme == "http":
+                raise AcquisitionError("https_downgrade", "HTTPS sources cannot redirect to HTTP.")
+            current = destination
+            redirect_count += 1
+            continue
+
+        if response.status == 429 or 500 <= response.status <= 599:
+            raise AcquisitionError("upstream_unavailable", "The source provider is temporarily unavailable.", retryable=True)
+        if not 200 <= response.status <= 299:
+            raise AcquisitionError("upstream_rejected", "The source provider did not return a successful response.")
+        if len(response.body) > config.max_response_bytes:
+            # Defend against custom transports that fail to enforce the contract.
+            raise AcquisitionError("response_too_large", "The source exceeds the configured size limit.")
+
+        content_type = response.headers.get("content-type")
+        if not content_type:
+            raise AcquisitionError("unsupported_content_type", "The source did not identify a supported text type.")
+        media_type, charset = _parse_content_type(content_type)
+        if media_type not in {"text/html", "application/xhtml+xml", "text/plain"}:
+            raise AcquisitionError("unsupported_content_type", "The source is not a supported text page.")
+        content_encoding = response.headers.get("content-encoding", "identity").strip().casefold()
+        if content_encoding not in {"", "identity"}:
+            raise AcquisitionError("unsupported_content_encoding", "The source returned an unsupported content encoding.")
+        try:
+            decoded = response.body.decode(charset or "utf-8", errors="strict")
+        except (LookupError, UnicodeDecodeError) as error:
+            raise AcquisitionError("invalid_text_encoding", "The source text encoding is invalid or unsupported.") from error
+
+        normalized = (
+            normalize_html(decoded, config.max_text_characters)
+            if media_type in {"text/html", "application/xhtml+xml"}
+            else normalize_text(decoded, config.max_text_characters)
+        )
+        return AcquiredSource(
+            original_url=original.url,
+            final_url=current.url,
+            acquisition_method="webpage",
+            media_type=media_type,
+            normalized_text=normalized,
+            content_hash=hash_text(normalized),
+            source_byte_count=len(response.body),
+            redirect_count=redirect_count,
+        )
+
+
+def system_resolver(hostname: str, port: int) -> Iterable[str]:
+    """Resolve TCP addresses through the operating system resolver."""
+
+    return [item[4][0] for item in socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)]
+
+
+def resolve_public_addresses(url: ValidatedUrl, resolver: Resolver, timeout_seconds: float) -> tuple[str, ...]:
+    """Resolve a hostname and reject the whole result if any answer is unsafe."""
+
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pathaid-dns")
+    future = executor.submit(lambda: tuple(resolver(url.hostname, url.port)))
+    try:
+        raw_addresses = future.result(timeout=max(timeout_seconds, 0.001))
+    except FutureTimeoutError as error:
+        future.cancel()
+        raise AcquisitionError("timeout", "Source acquisition timed out.", retryable=True) from error
+    except (OSError, socket.gaierror) as error:
+        raise AcquisitionError("dns_failure", "The source hostname could not be resolved.", retryable=True) from error
+    finally:
+        # A platform DNS call cannot always be cancelled, so do not wait for a
+        # timed-out resolver thread before returning the bounded workflow error.
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    addresses: list[str] = []
+    for raw_address in raw_addresses:
+        try:
+            address = ipaddress.ip_address(raw_address)
+        except ValueError as error:
+            raise AcquisitionError("dns_failure", "The source hostname returned an invalid address.", retryable=True) from error
+        if not _is_public_address(address):
+            raise AcquisitionError("unsafe_address", "The source URL resolves to a prohibited destination.")
+        normalized = str(address)
+        if normalized not in addresses:
+            addresses.append(normalized)
+    if not addresses:
+        raise AcquisitionError("dns_failure", "The source hostname did not resolve to an address.", retryable=True)
+    return tuple(addresses)
+
+
+class SocketHttpTransport:
+    """Single-hop HTTP transport that connects to the validated address only."""
+
+    def fetch(
+        self,
+        url: ValidatedUrl,
+        address: str,
+        *,
+        timeout_seconds: float,
+        max_response_bytes: int,
+    ) -> HttpResponse:
+        connection: http.client.HTTPConnection
+        if url.scheme == "https":
+            connection = _PinnedHTTPSConnection(url.hostname, address, url.port, timeout_seconds)
+        else:
+            connection = http.client.HTTPConnection(address, url.port, timeout=timeout_seconds)
+        headers = {
+            "Host": _host_header(url),
+            "User-Agent": "Pathaid/1.0 source-acquisition",
+            "Accept": "text/html, application/xhtml+xml, text/plain",
+            "Accept-Encoding": "identity",
+            "Connection": "close",
+        }
+        try:
+            connection.request("GET", url.request_target, headers=headers)
+            response = connection.getresponse()
+            response_headers = {name.casefold(): value for name, value in response.getheaders()}
+            length = response_headers.get("content-length")
+            if length is not None:
+                try:
+                    if int(length) > max_response_bytes:
+                        raise AcquisitionError("response_too_large", "The source exceeds the configured size limit.")
+                except ValueError:
+                    pass
+            body = response.read(max_response_bytes + 1)
+            if len(body) > max_response_bytes:
+                raise AcquisitionError("response_too_large", "The source exceeds the configured size limit.")
+            return HttpResponse(response.status, response_headers, body)
+        except AcquisitionError:
+            raise
+        except (socket.timeout, TimeoutError) as error:
+            raise AcquisitionError("timeout", "Source acquisition timed out.", retryable=True) from error
+        except ssl.SSLError as error:
+            raise AcquisitionError("tls_failure", "The source HTTPS certificate or connection is invalid.") from error
+        except (OSError, http.client.HTTPException) as error:
+            raise AcquisitionError("network_failure", "The source could not be retrieved.", retryable=True) from error
+        finally:
+            connection.close()
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """Use a validated IP for TCP while checking TLS against the hostname."""
+
+    def __init__(self, hostname: str, address: str, port: int, timeout: float):
+        super().__init__(hostname, port, timeout=timeout, context=ssl.create_default_context())
+        self._validated_address = address
+
+    def connect(self) -> None:
+        self.sock = socket.create_connection(
+            (self._validated_address, self.port),
+            self.timeout,
+            self.source_address,
+        )
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=self.host)
+
+
+def _fetch_from_addresses(
+    url: ValidatedUrl,
+    addresses: tuple[str, ...],
+    transport: SingleHopTransport,
+    deadline: float,
+    max_response_bytes: int,
+) -> HttpResponse:
+    """Try validated addresses in resolver order within the shared deadline."""
+
+    last_error: AcquisitionError | None = None
+    for address in addresses:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise AcquisitionError("timeout", "Source acquisition timed out.", retryable=True)
+        try:
+            return transport.fetch(
+                url,
+                address,
+                timeout_seconds=remaining,
+                max_response_bytes=max_response_bytes,
+            )
+        except AcquisitionError as error:
+            if not error.retryable:
+                raise
+            last_error = error
+    if last_error is not None:
+        raise last_error
+    raise AcquisitionError("network_failure", "The source could not be retrieved.", retryable=True)
+
+
+def _parse_content_type(value: str) -> tuple[str, str | None]:
+    """Parse a media type and optional charset using the standard email parser."""
+
+    message = Message()
+    message["content-type"] = value
+    return message.get_content_type().casefold(), message.get_content_charset()
+
+
+def _host_header(url: ValidatedUrl) -> str:
+    """Return the original host syntax used for HTTP routing."""
+
+    return f"[{url.hostname}]" if ":" in url.hostname else url.hostname
 
 
 def normalize_text(value: str, max_characters: int) -> str:
