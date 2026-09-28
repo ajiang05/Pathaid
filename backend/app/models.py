@@ -1,4 +1,4 @@
-"""SQLAlchemy models for student accounts, sessions, and rate limiting."""
+"""SQLAlchemy models for student accounts and the reviewed program catalog."""
 
 from datetime import datetime
 from uuid import uuid4
@@ -101,8 +101,15 @@ class SourceSnapshot(Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    # source_url is the administrator-submitted address; final_url records the
+    # destination after validated redirects. Older snapshots may lack the new
+    # provenance fields added after the initial catalog migration.
     source_url: Mapped[str] = mapped_column(String(2048))
+    final_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     acquisition_method: Mapped[str] = mapped_column(String(20))
+    media_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source_byte_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    redirect_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     content_hash: Mapped[str] = mapped_column(String(64), index=True)
     source_text: Mapped[str] = mapped_column(Text)
