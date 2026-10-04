@@ -20,7 +20,7 @@ RuleValue: TypeAlias = str | int | float | bool | list[str]
 class StrictModel(BaseModel):
     """Reject fields outside the reviewed extraction contract."""
 
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
 
 
 class EvidenceReference(StrictModel):
