@@ -58,3 +58,29 @@ uses these defaults:
 The test suite injects fake resolvers and transports and never retrieves live
 websites. Pasted text is labeled `pasted_text` and is not checked against the
 live source URL.
+
+## Requirement extraction
+
+`app.extraction.OpenAIExtractionAdapter` is the internal Feature 07 model
+boundary. It sends a saved source snapshot to the Responses API using the
+strict `ExtractedProgramDraft` schema. It does not accept student profiles and
+cannot publish a revision. `app.extraction_validation.validate_extracted_draft`
+then checks rule fields and operand types, exact evidence occurrence, snapshot
+identity, coverage, deadlines, and application URLs before later orchestration
+can place a proposal into admin review.
+
+Set `OPENAI_API_KEY` only in the server or worker environment. The extraction
+model defaults to `gpt-6-luna` and can be changed with
+`PATHAID_EXTRACTION_MODEL`. Optional positive limits are
+`PATHAID_EXTRACTION_TIMEOUT_SECONDS`,
+`PATHAID_EXTRACTION_MAX_OUTPUT_TOKENS`, and
+`PATHAID_EXTRACTION_MAX_SOURCE_CHARACTERS`. A missing key produces an explicit
+configuration error; ordinary backend tests do not need a key or make model
+calls.
+
+The fixed synthetic dataset is `data/extraction_benchmark_v1.json`. Its 10
+manually labeled cases cover scholarship GPA and scale boundaries, mandatory
+criteria versus selection preferences, major and class-year restrictions,
+closed cycles, missing deadlines, and unsupported conditions. The offline
+suite validates the dataset and metric harness; live model measurements are a
+separate budgeted command and have not been claimed.
