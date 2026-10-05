@@ -84,3 +84,29 @@ criteria versus selection preferences, major and class-year restrictions,
 closed cycles, missing deadlines, and unsupported conditions. The offline
 suite validates the dataset and metric harness; live model measurements are a
 separate budgeted command and have not been claimed.
+
+## Ingestion worker
+
+Feature 08 persists each workflow and its stage attempts in the database. A
+run advances through acquisition, extraction, validation, and creation of an
+unpublished catalog revision. Each successful stage is committed before the
+next one begins, so a restarted worker reuses its source snapshot and stored
+extraction instead of repeating completed external work.
+
+Process at most one due stage from `backend/`:
+
+```sh
+.venv/bin/python -m app.worker --once
+```
+
+Omit `--once` for continuous polling. The default deployment uses one worker.
+Database leases fence concurrent workers and allow recovery after expiration.
+Transient acquisition or provider errors receive at most three attempts with
+5- and 10-second delays. Unsafe input, refusal, missing credentials, and
+invalid drafts stop for administrator action.
+
+`PATHAID_WORKER_POLL_SECONDS`, `PATHAID_WORKER_LEASE_SECONDS`, and
+`PATHAID_INGESTION_RETRY_BASE_SECONDS` control worker timing.
+`PATHAID_INGESTION_MAX_ATTEMPTS` may lower the attempt limit but cannot exceed
+three. The workflow currently stops at `awaiting_review`; protected review and
+publication APIs belong to Feature 09.

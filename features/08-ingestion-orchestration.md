@@ -1,6 +1,8 @@
 # Durable AI ingestion orchestration
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: durable run and attempt persistence, idempotent submission, leased stage claiming, bounded retries, restart recovery, offline worker, validation, and unpublished draft creation implemented; protected admin APIs, review/publication transitions, and deployed PostgreSQL verification remain pending. Parent specification: [plan.md](../plan.md).
+
+The internal workflow intentionally stops at `awaiting_review`. Feature 09 owns administrator authentication, editing, rejection, approval, and the transitions to `published` or `rejected`.
 
 ## Goal
 Coordinate source acquisition, AI extraction, validation, retries, and review as a recoverable workflow.
