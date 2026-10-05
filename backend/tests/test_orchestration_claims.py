@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.database import Base
-from app.models import IngestionRun
+from app.models import IngestionRun, SourceSnapshot
 from app.orchestration import (
     IngestionSubmission,
     OrchestrationError,
@@ -104,12 +104,22 @@ def test_manual_retry_links_history_and_reuses_snapshot(sessions):
 
     with sessions() as db:
         failed = create_ingestion_run(db, IngestionSubmission("old", WebSourceRequest("https://example.edu/aid")))
+        snapshot = SourceSnapshot(
+            source_url="https://example.edu/aid",
+            final_url="https://example.edu/aid",
+            acquisition_method="webpage",
+            content_hash="a" * 64,
+            source_text="Retained source.",
+        )
+        db.add(snapshot)
+        db.flush()
         failed.state = "failed"
-        failed.source_snapshot_id = None
+        failed.source_snapshot_id = snapshot.id
         db.commit()
         child = create_manual_retry(db, failed.id, "manual-1")
         assert child.parent_run_id == failed.id
-        assert child.state == "queued"
+        assert child.source_snapshot_id == snapshot.id
+        assert child.state == "extracting"
 
 
 def test_valid_lease_loads_owned_run(sessions):

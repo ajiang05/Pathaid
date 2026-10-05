@@ -121,8 +121,8 @@ def claim_next_run(
         raise OrchestrationError("invalid_worker", "A worker identifier is required.")
     current = clock()
     candidates = list(
-        db.scalars(
-            select(IngestionRun.id)
+        db.execute(
+            select(IngestionRun.id, IngestionRun.state)
             .where(
                 IngestionRun.state.in_(ACTIVE_STATES),
                 or_(IngestionRun.next_attempt_at.is_(None), IngestionRun.next_attempt_at <= current),
@@ -132,19 +132,21 @@ def claim_next_run(
             .limit(20)
         )
     )
-    for run_id in candidates:
+    for run_id, candidate_state in candidates:
         token = secrets.token_hex(32)
         expiry = current + timedelta(seconds=config.lease_seconds)
         claimed = db.execute(
             update(IngestionRun)
             .where(
                 IngestionRun.id == run_id,
-                IngestionRun.state.in_(ACTIVE_STATES),
+                # Including the selected state prevents an old candidate read
+                # from moving a run backward after another worker advanced it.
+                IngestionRun.state == candidate_state,
                 or_(IngestionRun.next_attempt_at.is_(None), IngestionRun.next_attempt_at <= current),
                 or_(IngestionRun.lease_expires_at.is_(None), IngestionRun.lease_expires_at <= current),
             )
             .values(
-                state="acquiring" if db.get(IngestionRun, run_id).state == "queued" else db.get(IngestionRun, run_id).state,
+                state="acquiring" if candidate_state == "queued" else candidate_state,
                 lease_owner=worker_id,
                 lease_token=token,
                 lease_expires_at=expiry,

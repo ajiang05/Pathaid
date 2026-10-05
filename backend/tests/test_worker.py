@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.extraction import DeterministicExtractionStub
 from app.extraction_schemas import ExtractedProgramDraft
-from app.models import IngestionRun
+from app.models import IngestionRun, ProgramRevision
 from app.orchestration import IngestionSubmission, create_ingestion_run
 from app.source_acquisition import PastedSourceRequest
 from app.worker import WorkerConfig, process_next_run
@@ -76,6 +76,10 @@ def test_three_worker_cycles_reach_admin_review_offline(sessions):
         stored = db.get(IngestionRun, run.id)
         assert stored.state == "awaiting_review"
         assert stored.draft_revision_id
+        assert db.query(ProgramRevision).count() == 1
+    assert not process_next_run(sessions, worker_id="worker", provider_factory=lambda: provider, clock=lambda: NOW)
+    with sessions() as db:
+        assert db.query(ProgramRevision).count() == 1
 
 
 def test_worker_returns_false_when_no_run_is_due(sessions):
