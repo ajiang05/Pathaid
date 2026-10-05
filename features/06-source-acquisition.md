@@ -1,6 +1,6 @@
 # Official source acquisition and provenance
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: internal validation, bounded webpage acquisition, normalization, provenance persistence, migration, and mocked tests implemented; admin/orchestrator integration and PostgreSQL verification pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Turn an administrator-supplied source into bounded, inspectable text for extraction.

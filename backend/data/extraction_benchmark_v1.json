@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0",
+  "labeling": "Manual synthetic labels; criteria are mandatory unless labeled selection or unsupported.",
+  "cases": [
+    {
+      "id": "gpa-boundary",
+      "source_text": "Merit Award. Applicants must have a GPA of at least 3.0 on a 4.0 scale.",
+      "fields": {"name": "Merit Award", "categories": ["scholarships"]},
+      "claims": [
+        {"kind": "condition", "subject": "gpa:gte", "value": 3.0, "evidence": "Applicants must have a GPA of at least 3.0 on a 4.0 scale."},
+        {"kind": "condition", "subject": "gpa_scale:eq", "value": 4.0, "evidence": "Applicants must have a GPA of at least 3.0 on a 4.0 scale."}
+      ]
+    },
+    {
+      "id": "selection-preference",
+      "source_text": "Service Scholarship. Full-time students may apply. Preference is given to community volunteers.",
+      "fields": {"name": "Service Scholarship", "categories": ["scholarships"]},
+      "claims": [
+        {"kind": "condition", "subject": "enrollment:eq", "value": "full_time", "evidence": "Full-time students may apply."},
+        {"kind": "selection", "subject": "Preference is given to community volunteers.", "value": null, "evidence": "Preference is given to community volunteers."}
+      ]
+    },
+    {
+      "id": "major-restriction",
+      "source_text": "Engineering Grant. Applicants must major in civil engineering.",
+      "fields": {"name": "Engineering Grant", "categories": ["grants"]},
+      "claims": [
+        {"kind": "condition", "subject": "major:eq", "value": "civil engineering", "evidence": "Applicants must major in civil engineering."}
+      ]
+    },
+    {
+      "id": "class-year-options",
+      "source_text": "Upper Class Award. Applicants must be in their third or fourth year.",
+      "fields": {"name": "Upper Class Award", "categories": ["scholarships"]},
+      "claims": [
+        {"kind": "condition", "subject": "class_year:in", "value": ["third", "fourth"], "evidence": "Applicants must be in their third or fourth year."}
+      ]
+    },
+    {
+      "id": "closed-cycle",
+      "source_text": "Spring Completion Fund. The 2026 cycle is closed. The deadline was March 1, 2026 at 5:00 PM Eastern Time.",
+      "fields": {"name": "Spring Completion Fund", "categories": ["emergency"], "award_cycle": "2026", "application_deadline": "2026-03-01T17:00:00-05:00", "deadline_timezone": "America/New_York", "application_availability": "closed"},
+      "claims": []
+    },
+    {
+      "id": "missing-deadline",
+      "source_text": "Campus Food Grant. Applications are open; no deadline is listed.",
+      "fields": {"name": "Campus Food Grant", "categories": ["food"], "application_deadline": null, "deadline_timezone": null, "application_availability": "open"},
+      "claims": []
+    },
+    {
+      "id": "ambiguous-progress",
+      "source_text": "Persistence Scholarship. Students must maintain satisfactory academic progress as determined by the committee.",
+      "fields": {"name": "Persistence Scholarship", "categories": ["scholarships"]},
+      "claims": [
+        {"kind": "unsupported", "subject": "Satisfactory academic progress is determined by the committee.", "value": null, "evidence": "Students must maintain satisfactory academic progress as determined by the committee."}
+      ]
+    },
+    {
+      "id": "state-coverage",
+      "source_text": "Massachusetts Housing Support. Students attending college in Massachusetts may apply.",
+      "fields": {"name": "Massachusetts Housing Support", "categories": ["housing"]},
+      "claims": [
+        {"kind": "condition", "subject": "state:eq", "value": "MA", "evidence": "Students attending college in Massachusetts may apply."}
+      ]
+    },
+    {
+      "id": "institution-restriction",
+      "source_text": "UMass Amherst Emergency Aid. Applicants must attend the University of Massachusetts Amherst.",
+      "fields": {"name": "UMass Amherst Emergency Aid", "categories": ["emergency"]},
+      "claims": [
+        {"kind": "condition", "subject": "school:eq", "value": "University of Massachusetts Amherst", "evidence": "Applicants must attend the University of Massachusetts Amherst."}
+      ]
+    },
+    {
+      "id": "pell-and-amount",
+      "source_text": "Access Grant. Applicants must be Pell eligible. Awards are $1,500.",
+      "fields": {"name": "Access Grant", "categories": ["grants"], "assistance_amount": "$1,500"},
+      "claims": [
+        {"kind": "condition", "subject": "pell_eligible:eq", "value": true, "evidence": "Applicants must be Pell eligible."}
+      ]
+    }
+  ]
+}

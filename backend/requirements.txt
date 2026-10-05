@@ -5,3 +5,5 @@ uvicorn>=0.34,<1
 SQLAlchemy>=2.0,<3
 alembic>=1.15,<2
 psycopg[binary]>=3.2,<4
+# Structured Outputs client used by the requirement-extraction adapter.
+openai>=2,<3

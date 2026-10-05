@@ -1,6 +1,6 @@
 # Student account and editable profile
 
-Status: backend implementation in progress; frontend and end-to-end flow pending. Parent specification: [plan.md](../plan.md).
+Status: backend account/profile API and tests implemented; frontend, PostgreSQL verification, and end-to-end flow pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Let students sign up, log in, and maintain the profile used for personalized scholarships and assistance resources.

@@ -7,7 +7,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,8 +15,19 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .catalog import get_published_revision, list_published_revisions
+from .catalog_schemas import ProgramDetail, ProgramSummary, SourceReference
 from .database import get_db
-from .models import AuthAttempt, Student, StudentSession
+from .discovery import RankingRecord, rank_records
+from .eligibility import RuleValidationError, evaluate_eligibility
+from .evaluation_schemas import (
+    CriterionResponse,
+    EvaluationRequest,
+    EvaluationResponse,
+    MissingFieldResponse,
+    ProgramEvaluationResponse,
+)
+from .models import AuthAttempt, ProgramRevision, Student, StudentSession
 from .profile_fields import FIELDS, validate_profile_patch
 
 
@@ -54,6 +65,99 @@ class ProfilePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     fields: dict
     ai_opt_in: bool | None = None
+
+
+def program_summary(revision: ProgramRevision) -> ProgramSummary:
+    """Convert an internal revision into its stable public list contract."""
+
+    return ProgramSummary(
+        id=revision.program_id,
+        revision_id=revision.id,
+        slug=revision.program.slug,
+        name=revision.name,
+        description=revision.description,
+        categories=revision.categories,
+        coverage=revision.coverage,
+        assistance_amount=revision.assistance_amount,
+        application_deadline=revision.application_deadline,
+        deadline_timezone=revision.deadline_timezone,
+        application_availability=revision.application_availability,
+        verified_at=revision.verified_at,
+    )
+
+
+def program_detail(revision: ProgramRevision) -> ProgramDetail:
+    """Convert a revision to detail output while omitting retained source text."""
+
+    summary = program_summary(revision).model_dump()
+    return ProgramDetail(
+        **summary,
+        checklist=revision.checklist,
+        eligibility_tree=revision.eligibility_tree,
+        coverage_complete=revision.coverage_complete,
+        award_cycle=revision.award_cycle,
+        selection_factors=revision.selection_factors,
+        provider_url=revision.provider_url,
+        application_url=revision.application_url,
+        sources=[
+            SourceReference(
+                id=source.id,
+                source_url=source.source_url,
+                acquired_at=source.acquired_at,
+                acquisition_method=source.acquisition_method,
+            )
+            for source in revision.sources
+        ],
+    )
+
+
+def missing_field_response(field_name: str) -> MissingFieldResponse:
+    """Convert registry metadata into a safe follow-up question contract."""
+
+    spec = FIELDS[field_name]
+    return MissingFieldResponse(
+        field=field_name,
+        question=spec["question"],
+        answer_type=spec["type"],
+        values=spec.get("values"),
+        sensitive=spec["sensitive"],
+    )
+
+
+def evaluate_revision(revision: ProgramRevision, profile: dict) -> ProgramEvaluationResponse:
+    """Evaluate and serialize one exact published program revision."""
+
+    evaluated = evaluate_eligibility(
+        revision_id=revision.id,
+        rule=revision.eligibility_tree,
+        profile=profile,
+        field_registry=FIELDS,
+        coverage_complete=revision.coverage_complete,
+    )
+    return ProgramEvaluationResponse(
+        program_id=revision.program_id,
+        revision_id=revision.id,
+        name=revision.name,
+        label=evaluated.label.value,
+        truth=evaluated.truth.value,
+        criteria=[
+            CriterionResponse(
+                field=criterion.field,
+                operator=criterion.operator,
+                truth=criterion.truth.value,
+                reason=criterion.reason,
+                answerable=criterion.answerable,
+                evidence=dict(criterion.evidence),
+            )
+            for criterion in evaluated.criteria
+        ],
+        missing_fields=[missing_field_response(field_name) for field_name in evaluated.missing_fields],
+        unresolved_conditions=list(evaluated.unresolved_conditions),
+        application_availability=revision.application_availability,
+        application_deadline=revision.application_deadline.isoformat() if revision.application_deadline else None,
+        deadline_timezone=revision.deadline_timezone,
+        coverage=revision.coverage,
+    )
 
 
 def now() -> datetime:
@@ -196,6 +300,86 @@ def profile_fields():
 
     # None is the wire representation of an unanswered or unknown value.
     return {"fields": FIELDS, "unknown_answer": None}
+
+
+@app.get("/api/programs", response_model=list[ProgramSummary])
+def programs(
+    categories: list[str] | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """List current published revisions, optionally filtered by category."""
+
+    requested = categories or []
+    unknown = sorted(set(requested).difference(FIELDS["assistance_categories"]["values"]))
+    if unknown:
+        # Return field names rather than reflecting arbitrary submitted values.
+        raise HTTPException(422, detail={"field": "categories", "message": "Invalid category"})
+    return [program_summary(revision) for revision in list_published_revisions(db, categories=requested)]
+
+
+@app.get("/api/programs/{program_id}", response_model=ProgramDetail)
+def program(program_id: str, db: Session = Depends(get_db)):
+    """Return the current published detail for one stable program ID."""
+
+    revision = get_published_revision(db, program_id)
+    if revision is None:
+        # Draft-only, rejected, unknown, and malformed pointers all look absent
+        # through the public endpoint.
+        raise HTTPException(404, detail="Program not found")
+    return program_detail(revision)
+
+
+@app.post("/api/evaluate", response_model=EvaluationResponse)
+def evaluate_programs(
+    body: EvaluationRequest,
+    request: Request,
+    identity: tuple[Student, StudentSession] = Depends(current_session),
+    db: Session = Depends(get_db),
+):
+    """Evaluate published candidates without persisting temporary answers."""
+
+    check_origin(request)
+    student = identity[0]
+    # Validation returns a new dictionary; it never mutates the JSON profile
+    # currently attached to the authenticated student record.
+    combined_profile = validate_profile_patch(body.answers, student.profile)
+    categories = body.categories or combined_profile.get("assistance_categories", [])
+    allowed_categories = set(FIELDS["assistance_categories"]["values"])
+    if not categories or any(category not in allowed_categories for category in categories) or len(set(categories)) != len(categories):
+        raise HTTPException(422, detail={"field": "categories", "message": "Invalid category selection"})
+
+    candidates = list_published_revisions(db, categories=categories)
+    try:
+        evaluated_by_id = {
+            revision.program_id: evaluate_revision(revision, combined_profile)
+            for revision in candidates
+        }
+    except RuleValidationError:
+        # Invalid rule trees should be blocked before publication. Avoid
+        # exposing internal catalog content if that invariant is ever broken.
+        raise HTTPException(500, detail="A published program cannot be evaluated") from None
+    ranked = rank_records(
+        [
+            RankingRecord(
+                program_id=revision.program_id,
+                name=revision.name,
+                eligibility_label=evaluated_by_id[revision.program_id].label,
+                application_availability=revision.application_availability,
+                application_deadline=revision.application_deadline,
+                coverage=revision.coverage,
+            )
+            for revision in candidates
+        ],
+        combined_profile,
+    )
+    results: list[ProgramEvaluationResponse] = []
+    for ranked_record in ranked:
+        result = evaluated_by_id[ranked_record.record.program_id]
+        result.availability_section = ranked_record.section
+        result.relevance = ranked_record.relevance
+        result.ranking_factors = dict(ranked_record.ranking_factors)
+        results.append(result)
+    return EvaluationResponse(categories=categories, results=results)
 
 
 @app.post("/api/auth/signup", status_code=201)

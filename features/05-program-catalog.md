@@ -1,6 +1,6 @@
 # Verified program catalog and revision storage
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: versioned storage, migration, published-only queries, and public read APIs implemented; reviewed seed catalog, PostgreSQL verification, and admin publication flow pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Maintain a small, reliable catalog that supports personalized scholarship and benefits screening.

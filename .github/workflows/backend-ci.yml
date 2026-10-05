@@ -1,0 +1,81 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+# A newer push supersedes an older run for the same branch or pull request.
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# The workflow only needs permission to check out repository contents.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Migrations and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: pathaid_test
+          POSTGRES_USER: pathaid
+          POSTGRES_PASSWORD: pathaid
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pathaid -d pathaid_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      DATABASE_URL: postgresql+psycopg://pathaid:pathaid@localhost:5432/pathaid_test
+      PATHAID_PUBLIC_ORIGIN: http://localhost:3000
+      PATHAID_SECURE_COOKIES: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Require one migration head
+        run: |
+          head_count="$(alembic heads | sed '/^[[:space:]]*$/d' | wc -l)"
+          test "$head_count" -eq 1
+
+      - name: Apply PostgreSQL migrations
+        run: alembic upgrade head
+
+      - name: Check models match migrations
+        run: alembic check
+
+      # The suite injects deterministic providers, so CI makes no paid model calls.
+      - name: Run backend tests
+        run: pytest -q
