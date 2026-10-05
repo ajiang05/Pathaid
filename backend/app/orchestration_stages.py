@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import re
+from dataclasses import asdict
 from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .extraction import ExtractionError, ExtractionProvider
-from .models import IngestionRun, IngestionStageAttempt, SourceSnapshot
+from .extraction_schemas import ExtractedProgramDraft
+from .extraction_validation import validate_extracted_draft
+from .models import IngestionRun, IngestionStageAttempt, Program, ProgramRevision, SourceSnapshot
 from .orchestration import (
     Clock,
     OrchestrationConfig,
@@ -114,6 +119,117 @@ def process_extraction_stage(
     run.total_tokens = result.usage.total_tokens
     run.state = "validating"
     _finish_success(db, run, attempt, clock)
+
+
+def process_validation_stage(
+    db: Session,
+    lease: RunLease,
+    config: OrchestrationConfig = OrchestrationConfig(),
+    *,
+    clock: Clock = utc_now,
+) -> None:
+    """Validate stored output and atomically create an unpublished revision."""
+
+    run = require_lease(db, lease, clock=clock)
+    if run.state != "validating":
+        raise ValueError("The leased run is not in the validating stage")
+    snapshot = db.get(SourceSnapshot, run.source_snapshot_id)
+    if snapshot is None or run.extracted_draft is None:
+        _fail_without_attempt(db, run, "missing_stage_output", "The validation prerequisites are unavailable.", clock)
+        return
+    attempt = _start_attempt(db, run, "validating", config, clock)
+    if attempt is None:
+        return
+    try:
+        draft = ExtractedProgramDraft.model_validate(run.extracted_draft)
+    except Exception:
+        _finish_failure(db, run, attempt, "invalid_output", "The stored extraction output is invalid.", False, config, clock)
+        return
+
+    result = validate_extracted_draft(draft, snapshot)
+    run.validation_findings = [asdict(finding) for finding in result.findings]
+    if not result.is_valid:
+        _finish_failure(db, run, attempt, "invalid_draft", "The extracted draft failed deterministic validation.", False, config, clock)
+        return
+    try:
+        program = _target_program(db, run, draft)
+        revision = _build_revision(program, snapshot, draft)
+        db.add(revision)
+        db.flush()
+    except (ValueError, ZoneInfoNotFoundError):
+        db.rollback()
+        # The rollback also removed the running attempt, so restore a concise
+        # terminal outcome without persisting malformed extracted values.
+        run = require_lease(db, lease, clock=clock)
+        attempt = _start_attempt(db, run, "validating", config, clock)
+        if attempt is not None:
+            _finish_failure(db, run, attempt, "invalid_draft", "The extracted draft could not become a catalog revision.", False, config, clock)
+        return
+
+    run.draft_revision_id = revision.id
+    run.state = "awaiting_review"
+    run.completed_at = clock()
+    _finish_success(db, run, attempt, clock)
+
+
+def _target_program(db: Session, run: IngestionRun, draft: ExtractedProgramDraft) -> Program:
+    """Use the requested program or create a private identity for a new one."""
+
+    if run.target_program_id:
+        program = db.get(Program, run.target_program_id)
+        if program is None:
+            raise ValueError("Target program no longer exists")
+        return program
+    base = re.sub(r"[^a-z0-9]+", "-", draft.name.casefold()).strip("-") or "program"
+    # The suffix prevents concurrent sources with similar names from colliding;
+    # Feature 09 can expose a reviewed slug before first publication.
+    program = Program(slug=f"{base[:110]}-{run.id[:8]}")
+    db.add(program)
+    db.flush()
+    run.target_program_id = program.id
+    return program
+
+
+def _build_revision(
+    program: Program,
+    snapshot: SourceSnapshot,
+    draft: ExtractedProgramDraft,
+) -> ProgramRevision:
+    """Map validated model output while reserving completeness for a human."""
+
+    revision = ProgramRevision(
+        program=program,
+        status="draft",
+        name=draft.name,
+        description=draft.description,
+        categories=list(draft.categories),
+        coverage=draft.coverage.model_dump(mode="json"),
+        checklist=[item.model_dump(mode="json") for item in draft.checklist],
+        eligibility_tree=draft.eligibility_tree.model_dump(mode="json"),
+        coverage_complete=False,
+        award_cycle=draft.award_cycle,
+        application_deadline=_deadline(draft.application_deadline, draft.deadline_timezone),
+        deadline_timezone=draft.deadline_timezone,
+        application_availability=draft.application_availability,
+        assistance_amount=draft.assistance_amount,
+        selection_factors=[item.model_dump(mode="json") for item in draft.selection_factors],
+        unresolved_conditions=[item.model_dump(mode="json") for item in draft.unresolved_conditions],
+        provider_url=snapshot.final_url or snapshot.source_url,
+        application_url=draft.application_url,
+    )
+    revision.sources.append(snapshot)
+    return revision
+
+
+def _deadline(value: str | None, timezone_name: str | None) -> datetime | None:
+    """Parse validated ISO data and apply a stated named timezone when needed."""
+
+    if value is None:
+        return None
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None and timezone_name:
+        parsed = parsed.replace(tzinfo=ZoneInfo(timezone_name))
+    return parsed
 
 
 def _start_attempt(
