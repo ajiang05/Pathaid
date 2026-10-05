@@ -143,6 +143,9 @@ class ProgramRevision(Base):
     application_availability: Mapped[str] = mapped_column(String(20), default="unknown", index=True)
     assistance_amount: Mapped[str | None] = mapped_column(String(240), nullable=True)
     selection_factors: Mapped[list] = mapped_column(JSON, default=list)
+    # Ambiguous source statements remain visible to reviewers instead of being
+    # discarded or silently converted into machine-answerable requirements.
+    unresolved_conditions: Mapped[list] = mapped_column(JSON, default=list)
     provider_url: Mapped[str] = mapped_column(String(2048))
     application_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -167,3 +170,75 @@ class ReviewEvent(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     revision: Mapped[ProgramRevision] = relationship(back_populates="review_events")
+
+
+class IngestionRun(Base):
+    """Durable state for one source-to-review workflow execution."""
+
+    __tablename__ = "ingestion_runs"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('queued', 'acquiring', 'extracting', 'validating', "
+            "'awaiting_review', 'published', 'rejected', 'failed')",
+            name="ck_ingestion_run_state",
+        ),
+        CheckConstraint("source_method IN ('webpage', 'pasted_text')", name="ck_ingestion_source_method"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    idempotency_key: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    request_fingerprint: Mapped[str] = mapped_column(String(64))
+    parent_run_id: Mapped[str | None] = mapped_column(ForeignKey("ingestion_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    target_program_id: Mapped[str | None] = mapped_column(ForeignKey("programs.id", ondelete="SET NULL"), nullable=True, index=True)
+    source_url: Mapped[str] = mapped_column(String(2048))
+    source_method: Mapped[str] = mapped_column(String(20))
+    # Pasted source text must survive a worker restart before acquisition. It
+    # remains in the database and is never copied into operational logs.
+    input_source_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    state: Mapped[str] = mapped_column(String(24), default="queued", index=True)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    lease_owner: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    lease_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    source_snapshot_id: Mapped[str | None] = mapped_column(ForeignKey("source_snapshots.id", ondelete="SET NULL"), nullable=True, index=True)
+    draft_revision_id: Mapped[str | None] = mapped_column(ForeignKey("program_revisions.id", ondelete="SET NULL"), nullable=True, index=True)
+    extracted_draft: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    validation_findings: Mapped[list] = mapped_column(JSON, default=list)
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    schema_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    provider_request_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    error_retryable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stage_attempts: Mapped[list["IngestionStageAttempt"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan", order_by="IngestionStageAttempt.started_at"
+    )
+
+
+class IngestionStageAttempt(Base):
+    """Append-only timing and safe outcome for one workflow stage attempt."""
+
+    __tablename__ = "ingestion_stage_attempts"
+    __table_args__ = (
+        CheckConstraint("stage IN ('acquiring', 'extracting', 'validating')", name="ck_ingestion_attempt_stage"),
+        CheckConstraint("outcome IN ('running', 'succeeded', 'retry_scheduled', 'failed')", name="ck_ingestion_attempt_outcome"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    run_id: Mapped[str] = mapped_column(ForeignKey("ingestion_runs.id", ondelete="CASCADE"), index=True)
+    stage: Mapped[str] = mapped_column(String(20))
+    attempt_number: Mapped[int] = mapped_column(Integer)
+    outcome: Mapped[str] = mapped_column(String(24), default="running")
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    run: Mapped[IngestionRun] = relationship(back_populates="stage_attempts")
