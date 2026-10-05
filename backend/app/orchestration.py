@@ -151,9 +151,15 @@ def claim_next_run(
                 next_attempt_at=None,
                 updated_at=current,
             )
+            # Database comparison is authoritative. Python-side session
+            # evaluation can mix SQLite's naive timestamps with aware UTC.
+            .execution_options(synchronize_session=False)
         )
         if claimed.rowcount == 1:
             db.commit()
+            # Conditional bulk updates bypass in-memory synchronization. Clear
+            # cached rows so lease checks read the committed fencing values.
+            db.expire_all()
             return RunLease(run_id, worker_id, token, expiry)
         db.rollback()
     return None

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from .models import SourceSnapshot
 from .source_acquisition import (
+    AcquiredSource,
     AcquisitionConfig,
     PastedSourceRequest,
     Resolver,
@@ -19,20 +20,19 @@ from .source_acquisition import (
 SourceRequest = WebSourceRequest | PastedSourceRequest
 
 
-def acquire_and_persist_source(
-    db: Session,
+def acquire_source(
     request: SourceRequest,
     config: AcquisitionConfig = AcquisitionConfig(),
     *,
     resolver: Resolver | None = None,
     transport: SingleHopTransport | None = None,
-) -> SourceSnapshot:
-    """Acquire one source completely, then commit its immutable snapshot."""
+) -> AcquiredSource:
+    """Acquire and validate one source without starting a database write."""
 
     if isinstance(request, PastedSourceRequest):
-        acquired = prepare_pasted_source(request, config)
+        return prepare_pasted_source(request, config)
     elif isinstance(request, WebSourceRequest):
-        acquired = acquire_web_source(
+        return acquire_web_source(
             request,
             config,
             resolver=resolver,
@@ -40,6 +40,10 @@ def acquire_and_persist_source(
         )
     else:
         raise TypeError("Unsupported source request type")
+
+
+def persist_acquired_source(db: Session, acquired: AcquiredSource, *, commit: bool = True) -> SourceSnapshot:
+    """Add an acquired snapshot and optionally commit its surrounding stage."""
 
     snapshot = SourceSnapshot(
         source_url=acquired.original_url,
@@ -52,6 +56,10 @@ def acquire_and_persist_source(
         source_text=acquired.normalized_text,
     )
     db.add(snapshot)
+    if not commit:
+        # The orchestrator commits the snapshot and run transition together.
+        db.flush()
+        return snapshot
     try:
         db.commit()
     except Exception:
@@ -61,3 +69,17 @@ def acquire_and_persist_source(
         raise
     db.refresh(snapshot)
     return snapshot
+
+
+def acquire_and_persist_source(
+    db: Session,
+    request: SourceRequest,
+    config: AcquisitionConfig = AcquisitionConfig(),
+    *,
+    resolver: Resolver | None = None,
+    transport: SingleHopTransport | None = None,
+) -> SourceSnapshot:
+    """Acquire one source completely, then commit its immutable snapshot."""
+
+    acquired = acquire_source(request, config, resolver=resolver, transport=transport)
+    return persist_acquired_source(db, acquired)
