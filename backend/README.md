@@ -1,5 +1,7 @@
 # Pathaid backend
 
+[![Backend CI](https://github.com/ajiang05/Pathaid/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/ajiang05/Pathaid/actions/workflows/backend-ci.yml)
+
 The first feature provides student sign-up, login/logout, editable profiles, account deletion, and profile-field metadata. It has no frontend. Scholarship evaluation and recommendation generation are later features.
 
 ## Local setup
@@ -37,6 +39,11 @@ Run tests with `.venv/bin/pytest -q`.
 
 Both pytest and Alembic are configured to treat `backend/` as the Python
 package root, so the commands above work without setting `PYTHONPATH`.
+
+GitHub Actions runs the same backend suite against PostgreSQL on every backend
+push and pull request. It requires a single Alembic head, upgrades a fresh
+database, checks that SQLAlchemy metadata matches the migrations, and then
+runs the offline tests without an OpenAI API key.
 
 ## Source acquisition
 
