@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .catalog import get_published_revision, list_published_revisions
+from .admin_auth import router as admin_auth_router
 from .catalog_schemas import ProgramDetail, ProgramSummary, SourceReference
 from .database import get_db
 from .discovery import RankingRecord, rank_records
@@ -33,6 +34,7 @@ from .profile_fields import FIELDS, validate_profile_patch
 
 # The FastAPI object connects route decorators below to the ASGI application.
 app = FastAPI(title="Pathaid API")
+app.include_router(admin_auth_router)
 COOKIE_NAME = "pathaid_session"
 SESSION_DAYS = 7
 # This is a deliberately small syntax check, not an attempt to determine

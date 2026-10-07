@@ -63,6 +63,27 @@ class AuthAttempt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
+class AdminSession(Base):
+    """Revocable session for the single deployment-configured administrator."""
+
+    __tablename__ = "admin_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    admin_email: Mapped[str] = mapped_column(String(254), index=True)
+    csrf_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AdminAuthAttempt(Base):
+    """Privacy-reduced admin login attempt used for database-backed throttling."""
+
+    __tablename__ = "admin_auth_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    address: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
 # A revision can cite several source snapshots, and a snapshot can support
 # several revisions. The join table preserves that many-to-many relationship.
 revision_sources = Table(
