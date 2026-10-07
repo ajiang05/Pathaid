@@ -116,4 +116,35 @@ invalid drafts stop for administrator action.
 `PATHAID_INGESTION_RETRY_BASE_SECONDS` control worker timing.
 `PATHAID_INGESTION_MAX_ATTEMPTS` may lower the attempt limit but cannot exceed
 three. The workflow currently stops at `awaiting_review`; protected review and
-publication APIs belong to Feature 09.
+publication APIs then require the deployment-configured administrator.
+
+## Administrator review
+
+Feature 09 uses one administrator identity supplied through deployment
+secrets. Generate an encoded password hash from `backend/` without saving the
+plain password:
+
+```sh
+.venv/bin/python -c 'from app.main import password_hash; import getpass; print(password_hash(getpass.getpass("Admin password: ")))'
+```
+
+Set the result as `PATHAID_ADMIN_PASSWORD_HASH` and set the login identifier as
+`PATHAID_ADMIN_EMAIL`. There is no administrator registration endpoint.
+Administrator sessions use a separate HttpOnly cookie, rotate CSRF tokens,
+expire after four hours, and are throttled by direct peer address.
+
+Protected backend endpoints support:
+
+- administrator login, session refresh, and logout;
+- ingestion submission, listing, detail inspection, and manual retry;
+- retained source text, extraction metadata, validation findings, and stage history;
+- draft editing with deterministic rule and exact-evidence revalidation;
+- revision history and copy-on-edit replacement drafts;
+- explicit approval or rejection with an append-only review decision; and
+- atomic publication of a valid revision without exposing drafts publicly.
+
+Approval requires source-accuracy attestation and an explicit completeness
+decision. A revision marked incomplete can publish only when its unsupported or
+unresolved requirements remain recorded for conservative eligibility results.
+The protected admin frontend is intentionally deferred until its source and
+draft comparison screens have a wireframe.

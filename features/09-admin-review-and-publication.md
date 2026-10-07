@@ -1,6 +1,8 @@
 # Protected admin review and publication
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: backend administrator authentication, protected ingestion inspection, draft editing and revalidation, revision history, rejection, atomic publication, and copy-on-edit replacement drafts implemented; admin frontend and deployed PostgreSQL concurrency verification remain pending. Parent specification: [plan.md](../plan.md).
+
+The backend review workflow is complete without frontend screens. A wireframe is required before implementing the source-and-draft comparison interface.
 
 ## Goal
 Give one administrator control over the accuracy and publication of AI-generated program drafts.
