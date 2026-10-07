@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+import hashlib
 from dataclasses import asdict
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -45,6 +47,13 @@ class RejectionRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
     notes: str | None = Field(default=None, max_length=2000)
+
+
+class ReplacementDraftRequest(BaseModel):
+    """Idempotency key for copying a published revision into review."""
+
+    model_config = ConfigDict(extra="forbid")
+    idempotency_key: str = Field(min_length=1, max_length=200)
 
 
 def revision_fields(revision: ProgramRevision) -> dict:
@@ -201,6 +210,85 @@ def list_program_revisions(
     }
 
 
+@router.post("/programs/{program_id}/drafts", status_code=201)
+def create_replacement_draft(
+    program_id: str,
+    body: ReplacementDraftRequest,
+    _admin: AdminSession = Depends(require_admin_csrf),
+    db: Session = Depends(get_db),
+):
+    """Copy the current immutable publication into a new editable revision."""
+
+    existing_run = db.scalar(select(IngestionRun).where(IngestionRun.idempotency_key == body.idempotency_key))
+    if existing_run is not None:
+        if existing_run.target_program_id != program_id or existing_run.draft_revision_id is None:
+            raise HTTPException(409, detail="The idempotency key was already used for different input")
+        return revision_fields(db.get(ProgramRevision, existing_run.draft_revision_id))
+
+    program = db.scalar(select(Program).where(Program.id == program_id).with_for_update())
+    if program is None or program.current_published_revision_id is None:
+        raise HTTPException(404, detail="Published program not found")
+    published = db.scalar(
+        select(ProgramRevision)
+        .where(
+            ProgramRevision.id == program.current_published_revision_id,
+            ProgramRevision.program_id == program.id,
+            ProgramRevision.status == "published",
+        )
+        .options(selectinload(ProgramRevision.sources))
+    )
+    if published is None or len(published.sources) != 1:
+        raise HTTPException(409, detail="The published revision cannot be copied for review")
+
+    source = published.sources[0]
+    proposal = _proposal_from_revision(published)
+    revision = ProgramRevision(
+        program=program,
+        status="draft",
+        validation_status="valid",
+        validation_findings=[],
+        name=published.name,
+        description=published.description,
+        categories=copy.deepcopy(published.categories),
+        coverage=copy.deepcopy(published.coverage),
+        checklist=copy.deepcopy(published.checklist),
+        eligibility_tree=copy.deepcopy(published.eligibility_tree),
+        coverage_complete=False,
+        award_cycle=published.award_cycle,
+        application_deadline=published.application_deadline,
+        deadline_timezone=published.deadline_timezone,
+        application_availability=published.application_availability,
+        assistance_amount=published.assistance_amount,
+        selection_factors=copy.deepcopy(published.selection_factors),
+        unresolved_conditions=copy.deepcopy(published.unresolved_conditions),
+        provider_url=published.provider_url,
+        application_url=published.application_url,
+    )
+    revision.sources.append(source)
+    db.add(revision)
+    db.flush()
+    fingerprint = hashlib.sha256(f"replacement:{program.id}:{published.id}".encode()).hexdigest()
+    run = IngestionRun(
+        idempotency_key=body.idempotency_key,
+        request_fingerprint=fingerprint,
+        target_program_id=program.id,
+        source_url=source.source_url,
+        source_method=source.acquisition_method,
+        state="awaiting_review",
+        source_snapshot_id=source.id,
+        draft_revision_id=revision.id,
+        extracted_draft=proposal,
+        validation_findings=[],
+    )
+    db.add(run)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, detail="The replacement draft request conflicted with another submission") from None
+    return revision_fields(revision)
+
+
 @router.post("/revisions/{revision_id}/approve")
 def approve_revision(
     revision_id: str,
@@ -342,3 +430,26 @@ def _clean_notes(notes: str | None) -> str | None:
 
     cleaned = notes.strip() if notes else ""
     return cleaned or None
+
+
+def _proposal_from_revision(revision: ProgramRevision) -> dict:
+    """Recreate the strict review proposal from immutable published fields."""
+
+    deadline = revision.application_deadline.isoformat() if revision.application_deadline else None
+    return {
+        "name": revision.name,
+        "description": revision.description,
+        "categories": copy.deepcopy(revision.categories),
+        "coverage": copy.deepcopy(revision.coverage),
+        "checklist": copy.deepcopy(revision.checklist),
+        "eligibility_tree": copy.deepcopy(revision.eligibility_tree),
+        "coverage_complete": revision.coverage_complete,
+        "award_cycle": revision.award_cycle,
+        "application_deadline": deadline,
+        "deadline_timezone": revision.deadline_timezone,
+        "application_availability": revision.application_availability,
+        "assistance_amount": revision.assistance_amount,
+        "selection_factors": copy.deepcopy(revision.selection_factors),
+        "application_url": revision.application_url,
+        "unresolved_conditions": copy.deepcopy(revision.unresolved_conditions),
+    }

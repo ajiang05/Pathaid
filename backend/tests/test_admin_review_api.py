@@ -281,3 +281,43 @@ def test_rejection_preserves_public_pointer_and_records_decision(review_client):
         assert run.state == "rejected"
         assert event.decision == "rejected"
         assert event.notes == "Evidence needs clarification."
+
+
+def test_editing_published_program_creates_a_new_draft(review_client):
+    """Published data remains immutable while a copied revision enters review."""
+
+    api, engine, ids = review_client
+    headers = authenticate(api)
+    with Session(engine) as db:
+        original = db.get(ProgramRevision, ids["revision"])
+        original.status = "published"
+        original.coverage_complete = True
+        original.verified_at = original.created_at
+        program = db.get(Program, ids["program"])
+        program.current_published_revision_id = original.id
+        original_run = db.query(IngestionRun).filter_by(draft_revision_id=original.id).one()
+        original_run.state = "published"
+        db.commit()
+    first = api.post(
+        f"/api/admin/programs/{ids['program']}/drafts",
+        headers=headers,
+        json={"idempotency_key": "replacement-1"},
+    )
+    second = api.post(
+        f"/api/admin/programs/{ids['program']}/drafts",
+        headers=headers,
+        json={"idempotency_key": "replacement-1"},
+    )
+    assert first.status_code == second.status_code == 201
+    assert first.json()["id"] == second.json()["id"]
+    assert first.json()["id"] != ids["revision"]
+    assert first.json()["status"] == "draft"
+    assert first.json()["coverage_complete"] is False
+    with Session(engine) as db:
+        program = db.get(Program, ids["program"])
+        original = db.get(ProgramRevision, ids["revision"])
+        replacement = db.get(ProgramRevision, first.json()["id"])
+        assert program.current_published_revision_id == original.id
+        assert original.status == "published"
+        assert replacement.name == original.name
+        assert db.query(ProgramRevision).filter_by(program_id=program.id).count() == 2
