@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app, password_hash
-from app.models import IngestionRun, Program, ProgramRevision, SourceSnapshot
+from app.models import IngestionRun, Program, ProgramRevision, ReviewEvent, SourceSnapshot
 
 
 SOURCE = "Synthetic Award. Applicants must have a 3.0 GPA."
@@ -166,3 +166,118 @@ def test_published_revision_is_immutable(review_client):
         db.commit()
     body = {"draft": editable_draft(ids["snapshot"]), "provider_url": "https://example.edu/aid"}
     assert api.patch(f"/api/admin/revisions/{ids['revision']}", headers=headers, json=body).status_code == 409
+
+
+def test_approval_requires_attestations_and_publishes_atomically(review_client):
+    """One explicit approval updates revision, run, pointer, and review history."""
+
+    api, engine, ids = review_client
+    headers = authenticate(api)
+    missing_attestation = api.post(
+        f"/api/admin/revisions/{ids['revision']}/approve",
+        headers=headers,
+        json={"source_accurate": False, "coverage_complete": True},
+    )
+    assert missing_attestation.status_code == 422
+    response = api.post(
+        f"/api/admin/revisions/{ids['revision']}/approve",
+        headers=headers,
+        json={"source_accurate": True, "coverage_complete": True, "notes": "Reviewed against source."},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "published"
+    assert response.json()["coverage_complete"] is True
+    # The existing public catalog route now resolves the approved revision.
+    assert api.get(f"/api/programs/{ids['program']}").status_code == 200
+    with Session(engine) as db:
+        program = db.get(Program, ids["program"])
+        run = db.query(IngestionRun).filter_by(draft_revision_id=ids["revision"]).one()
+        events = db.query(ReviewEvent).filter_by(revision_id=ids["revision"]).all()
+        assert program.current_published_revision_id == ids["revision"]
+        assert run.state == "published"
+        assert len(events) == 1
+        assert events[0].decision == "approved"
+
+
+def test_repeated_approval_cannot_create_duplicate_events(review_client):
+    """A second decision returns conflict and preserves one recorded event."""
+
+    api, engine, ids = review_client
+    headers = authenticate(api)
+    body = {"source_accurate": True, "coverage_complete": True}
+    assert api.post(f"/api/admin/revisions/{ids['revision']}/approve", headers=headers, json=body).status_code == 200
+    assert api.post(f"/api/admin/revisions/{ids['revision']}/approve", headers=headers, json=body).status_code == 409
+    with Session(engine) as db:
+        assert db.query(ReviewEvent).filter_by(revision_id=ids["revision"]).count() == 1
+
+
+def test_incomplete_attestation_requires_retained_unresolved_logic(review_client):
+    """A reviewer cannot claim incompleteness without explaining its cause."""
+
+    api, _, ids = review_client
+    headers = authenticate(api)
+    response = api.post(
+        f"/api/admin/revisions/{ids['revision']}/approve",
+        headers=headers,
+        json={"source_accurate": True, "coverage_complete": False},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["field"] == "coverage_complete"
+
+
+def test_incomplete_revision_can_publish_with_explicit_unresolved_condition(review_client):
+    """Conservative publication retains ambiguity instead of claiming eligibility."""
+
+    api, engine, ids = review_client
+    headers = authenticate(api)
+    unresolved = {
+        "description": "The provider must interpret academic standing.",
+        "evidence": {"snapshot_id": ids["snapshot"], "excerpt": "Applicants must have a 3.0 GPA."},
+    }
+    with Session(engine) as db:
+        run = db.query(IngestionRun).filter_by(draft_revision_id=ids["revision"]).one()
+        payload = editable_draft(ids["snapshot"])
+        payload["coverage_complete"] = False
+        payload["eligibility_tree"] = {
+            "type": "unsupported",
+            "description": unresolved["description"],
+            "evidence": unresolved["evidence"],
+        }
+        payload["unresolved_conditions"] = [unresolved]
+        run.extracted_draft = payload
+        revision = db.get(ProgramRevision, ids["revision"])
+        revision.eligibility_tree = payload["eligibility_tree"]
+        revision.unresolved_conditions = [unresolved]
+        revision.validation_status = "valid"
+        db.commit()
+    response = api.post(
+        f"/api/admin/revisions/{ids['revision']}/approve",
+        headers=headers,
+        json={"source_accurate": True, "coverage_complete": False},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["coverage_complete"] is False
+    assert response.json()["unresolved_conditions"] == [unresolved]
+
+
+def test_rejection_preserves_public_pointer_and_records_decision(review_client):
+    """Rejecting a candidate revision never makes it publicly readable."""
+
+    api, engine, ids = review_client
+    headers = authenticate(api)
+    response = api.post(
+        f"/api/admin/revisions/{ids['revision']}/reject",
+        headers=headers,
+        json={"notes": "Evidence needs clarification."},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "rejected"
+    assert api.get(f"/api/programs/{ids['program']}").status_code == 404
+    with Session(engine) as db:
+        program = db.get(Program, ids["program"])
+        run = db.query(IngestionRun).filter_by(draft_revision_id=ids["revision"]).one()
+        event = db.query(ReviewEvent).filter_by(revision_id=ids["revision"]).one()
+        assert program.current_published_revision_id is None
+        assert run.state == "rejected"
+        assert event.decision == "rejected"
+        assert event.notes == "Evidence needs clarification."

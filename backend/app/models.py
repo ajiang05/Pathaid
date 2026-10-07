@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, Table, Text, Column, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, Table, Text, Column, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -186,6 +186,7 @@ class ReviewEvent(Base):
     __tablename__ = "review_events"
     __table_args__ = (
         CheckConstraint("decision IN ('approved', 'rejected')", name="ck_review_event_decision"),
+        UniqueConstraint("revision_id", name="uq_review_event_revision"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)

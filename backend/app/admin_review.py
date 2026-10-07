@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from .admin_auth import current_admin, require_admin_csrf
 from .database import get_db
 from .extraction_schemas import ExtractedProgramDraft
 from .extraction_validation import validate_extracted_draft
-from .models import AdminSession, IngestionRun, Program, ProgramRevision, SourceSnapshot
+from .models import AdminSession, IngestionRun, Program, ProgramRevision, ReviewEvent, SourceSnapshot
 from .source_acquisition import AcquisitionError, validate_source_url
 
 
@@ -28,6 +29,22 @@ class RevisionUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     draft: ExtractedProgramDraft
     provider_url: str = Field(min_length=1, max_length=2048)
+
+
+class ApprovalRequest(BaseModel):
+    """Explicit reviewer attestations required before publication."""
+
+    model_config = ConfigDict(extra="forbid")
+    source_accurate: bool
+    coverage_complete: bool
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class RejectionRequest(BaseModel):
+    """Optional explanation retained with a rejection decision."""
+
+    model_config = ConfigDict(extra="forbid")
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 def revision_fields(revision: ProgramRevision) -> dict:
@@ -184,6 +201,97 @@ def list_program_revisions(
     }
 
 
+@router.post("/revisions/{revision_id}/approve")
+def approve_revision(
+    revision_id: str,
+    body: ApprovalRequest,
+    admin: AdminSession = Depends(require_admin_csrf),
+    db: Session = Depends(get_db),
+):
+    """Atomically publish one currently valid and explicitly attested draft."""
+
+    if body.source_accurate is not True:
+        raise HTTPException(422, detail={"field": "source_accurate", "message": "Source accuracy must be attested"})
+    revision = db.scalar(
+        select(ProgramRevision)
+        .where(ProgramRevision.id == revision_id)
+        .with_for_update()
+        .options(selectinload(ProgramRevision.sources))
+    )
+    if revision is None:
+        raise HTTPException(404, detail="Revision not found")
+    if revision.status != "draft":
+        raise HTTPException(409, detail="The revision already has a review decision")
+    if revision.validation_status != "valid":
+        raise HTTPException(409, detail="The draft must pass validation before approval")
+    run = db.scalar(select(IngestionRun).where(IngestionRun.draft_revision_id == revision.id).with_for_update())
+    if run is None or run.state != "awaiting_review" or len(revision.sources) != 1:
+        raise HTTPException(409, detail="The draft is not ready for approval")
+
+    payload = dict(run.extracted_draft or {})
+    payload["coverage_complete"] = body.coverage_complete
+    try:
+        draft = ExtractedProgramDraft.model_validate(payload)
+    except ValidationError:
+        raise HTTPException(422, detail={"field": "coverage_complete", "message": "Completeness conflicts with unresolved requirements"}) from None
+    if body.coverage_complete and (draft.unresolved_conditions or _contains_unsupported(draft.eligibility_tree)):
+        raise HTTPException(422, detail={"field": "coverage_complete", "message": "Unresolved requirements prevent complete coverage"})
+    validation = validate_extracted_draft(draft, revision.sources[0])
+    if not validation.is_valid:
+        revision.validation_status = "invalid"
+        revision.validation_findings = [asdict(finding) for finding in validation.findings]
+        db.commit()
+        raise HTTPException(409, detail="The draft failed validation and cannot be published")
+
+    program = db.scalar(select(Program).where(Program.id == revision.program_id).with_for_update())
+    if program is None:
+        raise HTTPException(409, detail="The draft program no longer exists")
+    reviewed_at = datetime.now(timezone.utc)
+    revision.coverage_complete = body.coverage_complete
+    revision.status = "published"
+    revision.verified_at = reviewed_at
+    program.current_published_revision_id = revision.id
+    run.state = "published"
+    run.completed_at = reviewed_at
+    db.add(ReviewEvent(revision=revision, reviewer=admin.admin_email, decision="approved", notes=_clean_notes(body.notes)))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, detail="The revision already has a review decision") from None
+    return revision_fields(revision)
+
+
+@router.post("/revisions/{revision_id}/reject")
+def reject_revision(
+    revision_id: str,
+    body: RejectionRequest,
+    admin: AdminSession = Depends(require_admin_csrf),
+    db: Session = Depends(get_db),
+):
+    """Reject a draft atomically without changing the public program pointer."""
+
+    revision = db.scalar(select(ProgramRevision).where(ProgramRevision.id == revision_id).with_for_update())
+    if revision is None:
+        raise HTTPException(404, detail="Revision not found")
+    if revision.status != "draft":
+        raise HTTPException(409, detail="The revision already has a review decision")
+    run = db.scalar(select(IngestionRun).where(IngestionRun.draft_revision_id == revision.id).with_for_update())
+    if run is None or run.state != "awaiting_review":
+        raise HTTPException(409, detail="The draft is not awaiting review")
+    reviewed_at = datetime.now(timezone.utc)
+    revision.status = "rejected"
+    run.state = "rejected"
+    run.completed_at = reviewed_at
+    db.add(ReviewEvent(revision=revision, reviewer=admin.admin_email, decision="rejected", notes=_clean_notes(body.notes)))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, detail="The revision already has a review decision") from None
+    return revision_fields(revision)
+
+
 def _apply_draft(
     revision: ProgramRevision,
     draft: ExtractedProgramDraft,
@@ -219,3 +327,18 @@ def _deadline(value: str | None, timezone_name: str | None) -> datetime | None:
     if parsed.tzinfo is None and timezone_name:
         parsed = parsed.replace(tzinfo=ZoneInfo(timezone_name))
     return parsed
+
+
+def _contains_unsupported(rule) -> bool:
+    """Find mandatory requirements that still need provider interpretation."""
+
+    if getattr(rule, "type", None) == "unsupported":
+        return True
+    return any(_contains_unsupported(child) for child in getattr(rule, "children", []))
+
+
+def _clean_notes(notes: str | None) -> str | None:
+    """Normalize optional review notes without inventing content."""
+
+    cleaned = notes.strip() if notes else ""
+    return cleaned or None
