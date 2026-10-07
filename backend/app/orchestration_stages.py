@@ -200,6 +200,8 @@ def _build_revision(
     revision = ProgramRevision(
         program=program,
         status="draft",
+        validation_status="valid",
+        validation_findings=[],
         name=draft.name,
         description=draft.description,
         categories=list(draft.categories),

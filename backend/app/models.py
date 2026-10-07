@@ -144,11 +144,15 @@ class ProgramRevision(Base):
     __table_args__ = (
         CheckConstraint("status IN ('draft', 'published', 'rejected')", name="ck_program_revision_status"),
         CheckConstraint("application_availability IN ('open', 'closed', 'unknown')", name="ck_application_availability"),
+        CheckConstraint("validation_status IN ('pending', 'valid', 'invalid')", name="ck_program_revision_validation_status"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     program_id: Mapped[str] = mapped_column(ForeignKey("programs.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
+    # Admin edits reset validation before deterministic checks are rerun.
+    validation_status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    validation_findings: Mapped[list] = mapped_column(JSON, default=list)
     name: Mapped[str] = mapped_column(String(240))
     description: Mapped[str] = mapped_column(Text)
     categories: Mapped[list] = mapped_column(JSON)
