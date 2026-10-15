@@ -35,6 +35,7 @@ class Student(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Deleting an account also deletes its ORM-managed login sessions.
     sessions: Mapped[list["StudentSession"]] = relationship(cascade="all, delete-orphan")
+    recommendation_attempts: Mapped[list["RecommendationAttempt"]] = relationship(cascade="all, delete-orphan")
 
 
 class StudentSession(Base):
@@ -60,6 +61,22 @@ class AuthAttempt(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     # This is a SHA-256 digest of the peer address, not the raw IP address.
     address: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class RecommendationAttempt(Base):
+    """Aggregate model usage retained without prompts, answers, or generated text."""
+
+    __tablename__ = "recommendation_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), index=True)
+    revision_id: Mapped[str] = mapped_column(ForeignKey("program_revisions.id", ondelete="CASCADE"), index=True)
+    outcome: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
