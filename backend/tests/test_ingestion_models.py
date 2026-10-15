@@ -79,3 +79,31 @@ def test_run_lifecycle_constraints(database, field, value):
         db.add(run)
         with pytest.raises(IntegrityError):
             db.commit()
+
+
+def test_revision_validation_status_constraint(database):
+    """Review validation state cannot contain undocumented values."""
+
+    from app.models import Program, ProgramRevision
+
+    revision = ProgramRevision(
+        program=Program(slug="invalid-validation"),
+        status="draft",
+        validation_status="unchecked",
+        validation_findings=[],
+        name="Synthetic",
+        description="Synthetic.",
+        categories=["scholarships"],
+        coverage={"national": True, "states": [], "institutions": []},
+        checklist=[],
+        eligibility_tree={"type": "unsupported", "description": "Review", "evidence": {"snapshot_id": "x", "excerpt": "x"}},
+        coverage_complete=False,
+        application_availability="unknown",
+        selection_factors=[],
+        unresolved_conditions=[],
+        provider_url="https://example.edu",
+    )
+    with Session(database) as db:
+        db.add(revision)
+        with pytest.raises(IntegrityError):
+            db.commit()

@@ -1,6 +1,14 @@
 # Source-backed results and application checklists
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: backend implemented; student frontend awaits approved wireframes. Parent specification: [plan.md](../plan.md).
+
+## Implementation status
+- `POST /api/evaluate` returns complete reviewed program details, explicit verification states, exact-revision source links, checklist items, selection factors, and a deterministic explanation.
+- `POST /api/programs/{id}/recommendation-explanation` reevaluates an exact published revision and accepts temporary follow-up answers without saving them.
+- Scholarship model assistance requires recorded opt-in, sends only rule-relevant profile fields, and lets the model select reviewed reasons rather than write factual claims.
+- Missing credentials, refusal, provider failure, invalid selections, and rate limits return the deterministic source-backed template.
+- Aggregate attempt outcomes and token counts are stored for operations; prompts, profile values, and explanation text are not stored.
+- Responsive layouts, accessibility states, and the student interaction flow remain pending until the Google Stitch wireframes are available.
 
 ## Goal
 Explain each match and help students take the next application step.

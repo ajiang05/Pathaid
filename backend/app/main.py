@@ -15,7 +15,10 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .catalog import get_published_revision, list_published_revisions
+from .catalog import get_published_revision, get_published_revision_version, list_published_revisions
+from .admin_auth import router as admin_auth_router
+from .admin_api import router as admin_router
+from .admin_review import router as admin_review_router
 from .catalog_schemas import ProgramDetail, ProgramSummary, SourceReference
 from .database import get_db
 from .discovery import RankingRecord, rank_records
@@ -27,12 +30,23 @@ from .evaluation_schemas import (
     MissingFieldResponse,
     ProgramEvaluationResponse,
 )
-from .models import AuthAttempt, ProgramRevision, Student, StudentSession
+from .models import AuthAttempt, ProgramRevision, RecommendationAttempt, Student, StudentSession
 from .profile_fields import FIELDS, validate_profile_patch
+from .recommendations import (
+    OpenAIRecommendationAdapter,
+    RecommendationError,
+    model_payload,
+    render_model_selection,
+    template_explanation,
+)
+from .recommendation_schemas import RecommendationRequest, RecommendationResponse
 
 
 # The FastAPI object connects route decorators below to the ASGI application.
 app = FastAPI(title="Pathaid API")
+app.include_router(admin_auth_router)
+app.include_router(admin_router)
+app.include_router(admin_review_router)
 COOKIE_NAME = "pathaid_session"
 SESSION_DAYS = 7
 # This is a deliberately small syntax check, not an attempt to determine
@@ -134,30 +148,90 @@ def evaluate_revision(revision: ProgramRevision, profile: dict) -> ProgramEvalua
         field_registry=FIELDS,
         coverage_complete=revision.coverage_complete,
     )
-    return ProgramEvaluationResponse(
+    source_by_id = {source.id: source for source in revision.sources}
+
+    def reviewed_items(items: list) -> list:
+        """Attach a public URL to evidence embedded in checklist-like items."""
+
+        rendered = []
+        for original in items:
+            if not isinstance(original, dict):
+                rendered.append(original)
+                continue
+            item = dict(original)
+            evidence = item.get("evidence")
+            if isinstance(evidence, dict):
+                evidence = dict(evidence)
+                source = source_by_id.get(evidence.get("snapshot_id"))
+                evidence["source_url"] = source.source_url if source else None
+                item["evidence"] = evidence
+            rendered.append(item)
+        return rendered
+
+    result = ProgramEvaluationResponse(
         program_id=revision.program_id,
         revision_id=revision.id,
         name=revision.name,
+        description=revision.description,
+        categories=list(revision.categories),
         label=evaluated.label.value,
         truth=evaluated.truth.value,
         criteria=[
             CriterionResponse(
+                id=f"criterion-{index}",
                 field=criterion.field,
                 operator=criterion.operator,
                 truth=criterion.truth.value,
                 reason=criterion.reason,
                 answerable=criterion.answerable,
-                evidence=dict(criterion.evidence),
+                evidence={
+                    **dict(criterion.evidence),
+                    # Evidence must resolve within this exact revision. A null
+                    # URL exposes a broken publication invariant without
+                    # silently linking to some other revision's source.
+                    "source_url": (
+                        source_by_id[criterion.evidence["snapshot_id"]].source_url
+                        if criterion.evidence.get("snapshot_id") in source_by_id
+                        else None
+                    ),
+                },
             )
-            for criterion in evaluated.criteria
+            for index, criterion in enumerate(evaluated.criteria, 1)
         ],
         missing_fields=[missing_field_response(field_name) for field_name in evaluated.missing_fields],
-        unresolved_conditions=list(evaluated.unresolved_conditions),
+        unresolved_conditions=[
+            item.get("description", "Provider confirmation is required") if isinstance(item, dict) else str(item)
+            for item in evaluated.unresolved_conditions
+        ],
         application_availability=revision.application_availability,
         application_deadline=revision.application_deadline.isoformat() if revision.application_deadline else None,
         deadline_timezone=revision.deadline_timezone,
+        deadline_verification="verified" if revision.application_deadline else "unverified",
+        deadline_timezone_verification="verified" if revision.deadline_timezone else "unverified",
+        assistance_amount=revision.assistance_amount,
+        amount_verification="verified" if revision.assistance_amount else "unverified",
+        award_cycle=revision.award_cycle,
+        award_cycle_verification="verified" if revision.award_cycle else "unverified",
+        checklist=reviewed_items(revision.checklist),
+        checklist_verification="verified" if revision.checklist else "unverified",
+        selection_factors=reviewed_items(revision.selection_factors),
+        verified_at=revision.verified_at,
+        provider_url=revision.provider_url,
+        application_url=revision.application_url,
+        sources=[
+            {
+                "id": source.id,
+                "source_url": source.source_url,
+                "acquired_at": source.acquired_at,
+                "acquisition_method": source.acquisition_method,
+            }
+            for source in revision.sources
+        ],
         coverage=revision.coverage,
+        template_explanation="",
     )
+    result.template_explanation = template_explanation(result)
+    return result
 
 
 def now() -> datetime:
@@ -380,6 +454,119 @@ def evaluate_programs(
         result.ranking_factors = dict(ranked_record.ranking_factors)
         results.append(result)
     return EvaluationResponse(categories=categories, results=results)
+
+
+def _record_recommendation_attempt(
+    db: Session,
+    *,
+    student_id: str,
+    revision_id: str,
+    outcome: str,
+    model: str | None = None,
+    usage=None,
+) -> None:
+    """Persist only aggregate provider metadata, never a prompt or explanation."""
+
+    db.add(
+        RecommendationAttempt(
+            student_id=student_id,
+            revision_id=revision_id,
+            outcome=outcome,
+            model=model,
+            input_tokens=getattr(usage, "input_tokens", None),
+            output_tokens=getattr(usage, "output_tokens", None),
+            total_tokens=getattr(usage, "total_tokens", None),
+            created_at=now(),
+        )
+    )
+    db.commit()
+
+
+@app.post("/api/programs/{program_id}/recommendation-explanation", response_model=RecommendationResponse)
+def recommendation_explanation(
+    program_id: str,
+    body: RecommendationRequest,
+    request: Request,
+    identity: tuple[Student, StudentSession] = Depends(current_session),
+    db: Session = Depends(get_db),
+):
+    """Return a grounded template or a consent-gated model-assisted version."""
+
+    check_origin(request)
+    student = identity[0]
+    revision = get_published_revision_version(db, program_id, body.revision_id)
+    if revision is None:
+        raise HTTPException(404, detail="Published program revision not found")
+    combined_profile = validate_profile_patch(body.answers, student.profile)
+    try:
+        result = evaluate_revision(revision, combined_profile)
+    except RuleValidationError:
+        raise HTTPException(500, detail="A published program cannot be evaluated") from None
+
+    fallback = RecommendationResponse(
+        program_id=program_id,
+        revision_id=revision.id,
+        eligibility_label=result.label,
+        explanation=result.template_explanation,
+        criterion_ids=[],
+        unresolved_ids=[],
+        generated_by="template",
+    )
+    if "scholarships" not in revision.categories:
+        fallback.fallback_reason = "unsupported_category"
+        return fallback
+    if not student.ai_opt_in:
+        fallback.fallback_reason = "ai_opt_out"
+        return fallback
+
+    try:
+        hourly_limit = int(os.environ.get("PATHAID_RECOMMENDATION_ATTEMPTS_PER_HOUR", "10"))
+    except ValueError:
+        hourly_limit = 10
+    hourly_limit = max(1, min(hourly_limit, 100))
+    recent_attempts = db.scalar(
+        select(func.count()).select_from(RecommendationAttempt).where(
+            RecommendationAttempt.student_id == student.id,
+            RecommendationAttempt.created_at >= now() - timedelta(hours=1),
+        )
+    )
+    if recent_attempts >= hourly_limit:
+        fallback.fallback_reason = "rate_limited"
+        return fallback
+
+    provider = getattr(app.state, "recommendation_provider", None)
+    try:
+        provider = provider or OpenAIRecommendationAdapter()
+        generated = provider.select(model_payload(result, combined_profile))
+        explanation, criterion_ids, unresolved_ids = render_model_selection(result, generated.selection)
+    except RecommendationError as error:
+        _record_recommendation_attempt(
+            db,
+            student_id=student.id,
+            revision_id=revision.id,
+            outcome=error.code,
+            model=getattr(getattr(provider, "config", None), "model", None),
+        )
+        fallback.fallback_reason = error.code
+        return fallback
+
+    _record_recommendation_attempt(
+        db,
+        student_id=student.id,
+        revision_id=revision.id,
+        outcome="success",
+        model=generated.model,
+        usage=generated.usage,
+    )
+    return RecommendationResponse(
+        program_id=program_id,
+        revision_id=revision.id,
+        eligibility_label=result.label,
+        explanation=explanation,
+        criterion_ids=criterion_ids,
+        unresolved_ids=unresolved_ids,
+        generated_by="model_assisted",
+    )
 
 
 @app.post("/api/auth/signup", status_code=201)

@@ -51,6 +51,20 @@ def get_published_revision(db: Session, program_id: str) -> ProgramRevision | No
     return db.scalar(_published_revision_query().where(Program.id == program_id))
 
 
+def get_published_revision_version(db: Session, program_id: str, revision_id: str) -> ProgramRevision | None:
+    """Return an exact historically published revision owned by a program."""
+
+    return db.scalar(
+        select(ProgramRevision)
+        .where(
+            ProgramRevision.id == revision_id,
+            ProgramRevision.program_id == program_id,
+            ProgramRevision.status == "published",
+        )
+        .options(selectinload(ProgramRevision.sources), selectinload(ProgramRevision.program))
+    )
+
+
 def get_published_revision_by_slug(db: Session, slug: str) -> ProgramRevision | None:
     """Resolve a public revision through its stable human-readable slug."""
 

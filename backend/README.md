@@ -2,7 +2,10 @@
 
 [![Backend CI](https://github.com/ajiang05/Pathaid/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/ajiang05/Pathaid/actions/workflows/backend-ci.yml)
 
-The first feature provides student sign-up, login/logout, editable profiles, account deletion, and profile-field metadata. It has no frontend. Scholarship evaluation and recommendation generation are later features.
+The backend provides student accounts and profiles, a reviewed versioned catalog,
+deterministic discovery and eligibility, source-backed application results, optional
+grounded scholarship recommendation assistance, and protected ingestion and review
+workflows. The student and administrator frontends await approved wireframes.
 
 ## Local setup
 
@@ -31,9 +34,27 @@ Use PostgreSQL in deployed environments by setting `DATABASE_URL` to a `postgres
 - `GET /api/profile`, `PATCH /api/profile`, and `DELETE /api/profile` access only the signed-in account. PATCH accepts `{ "fields": { ... }, "ai_opt_in": false }`; send `null` for a field to remove its saved answer. PATCH and DELETE require `X-CSRF-Token`.
 - `POST /api/evaluate` combines the signed-in student's saved profile with
   temporary `answers`, evaluates published candidates, and returns deterministically
-  ranked outcomes. Temporary answers are not persisted.
+  ranked, source-backed outcomes with verification states, checklists, selection
+  factors, and a template explanation. Temporary answers are not persisted.
+- `POST /api/programs/{id}/recommendation-explanation` accepts an exact published
+  `revision_id` and optional temporary `answers`. It always returns a grounded
+  template and uses optional model assistance only after the student opts in.
 
-All profile fields remain optional. The account opt-in flag is stored but no student data is sent to OpenAI in this feature. Passwords are hashed with scrypt; session and CSRF tokens are stored as SHA-256 hashes. The rate limit uses the direct peer address and is shared through the database. Behind a reverse proxy, configure a trusted peer address policy before public deployment.
+All profile fields remain optional. Recommendation assistance sends only saved or
+temporary fields referenced by the evaluated rule; it never sends account identity,
+credentials, or unrelated profile fields. Passwords are hashed with scrypt; session
+and CSRF tokens are stored as SHA-256 hashes. The rate limit uses shared database
+records. Behind a reverse proxy, configure a trusted peer address policy before
+public deployment.
+
+Recommendation explanations default to `gpt-6-luna`. Configure the optional path
+with `OPENAI_API_KEY`, `PATHAID_RECOMMENDATION_MODEL`,
+`PATHAID_RECOMMENDATION_TIMEOUT_SECONDS`,
+`PATHAID_RECOMMENDATION_MAX_OUTPUT_TOKENS`, and
+`PATHAID_RECOMMENDATION_ATTEMPTS_PER_HOUR`. The default limit is ten attempts per
+student per hour. The server renders final prose from reviewed reasons, so model
+output cannot change an eligibility label or introduce an amount, deadline, or
+requirement. Usage records contain aggregate outcomes and token counts only.
 
 Run tests with `.venv/bin/pytest -q`.
 
@@ -116,4 +137,35 @@ invalid drafts stop for administrator action.
 `PATHAID_INGESTION_RETRY_BASE_SECONDS` control worker timing.
 `PATHAID_INGESTION_MAX_ATTEMPTS` may lower the attempt limit but cannot exceed
 three. The workflow currently stops at `awaiting_review`; protected review and
-publication APIs belong to Feature 09.
+publication APIs then require the deployment-configured administrator.
+
+## Administrator review
+
+Feature 09 uses one administrator identity supplied through deployment
+secrets. Generate an encoded password hash from `backend/` without saving the
+plain password:
+
+```sh
+.venv/bin/python -c 'from app.main import password_hash; import getpass; print(password_hash(getpass.getpass("Admin password: ")))'
+```
+
+Set the result as `PATHAID_ADMIN_PASSWORD_HASH` and set the login identifier as
+`PATHAID_ADMIN_EMAIL`. There is no administrator registration endpoint.
+Administrator sessions use a separate HttpOnly cookie, rotate CSRF tokens,
+expire after four hours, and are throttled by direct peer address.
+
+Protected backend endpoints support:
+
+- administrator login, session refresh, and logout;
+- ingestion submission, listing, detail inspection, and manual retry;
+- retained source text, extraction metadata, validation findings, and stage history;
+- draft editing with deterministic rule and exact-evidence revalidation;
+- revision history and copy-on-edit replacement drafts;
+- explicit approval or rejection with an append-only review decision; and
+- atomic publication of a valid revision without exposing drafts publicly.
+
+Approval requires source-accuracy attestation and an explicit completeness
+decision. A revision marked incomplete can publish only when its unsupported or
+unresolved requirements remain recorded for conservative eligibility results.
+The protected admin frontend is intentionally deferred until its source and
+draft comparison screens have a wireframe.

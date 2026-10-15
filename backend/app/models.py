@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, Table, Text, Column, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, Table, Text, Column, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -35,6 +35,7 @@ class Student(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     # Deleting an account also deletes its ORM-managed login sessions.
     sessions: Mapped[list["StudentSession"]] = relationship(cascade="all, delete-orphan")
+    recommendation_attempts: Mapped[list["RecommendationAttempt"]] = relationship(cascade="all, delete-orphan")
 
 
 class StudentSession(Base):
@@ -59,6 +60,43 @@ class AuthAttempt(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     # This is a SHA-256 digest of the peer address, not the raw IP address.
+    address: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class RecommendationAttempt(Base):
+    """Aggregate model usage retained without prompts, answers, or generated text."""
+
+    __tablename__ = "recommendation_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    student_id: Mapped[str] = mapped_column(ForeignKey("students.id", ondelete="CASCADE"), index=True)
+    revision_id: Mapped[str] = mapped_column(ForeignKey("program_revisions.id", ondelete="CASCADE"), index=True)
+    outcome: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class AdminSession(Base):
+    """Revocable session for the single deployment-configured administrator."""
+
+    __tablename__ = "admin_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    admin_email: Mapped[str] = mapped_column(String(254), index=True)
+    csrf_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class AdminAuthAttempt(Base):
+    """Privacy-reduced admin login attempt used for database-backed throttling."""
+
+    __tablename__ = "admin_auth_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     address: Mapped[str] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
@@ -123,11 +161,15 @@ class ProgramRevision(Base):
     __table_args__ = (
         CheckConstraint("status IN ('draft', 'published', 'rejected')", name="ck_program_revision_status"),
         CheckConstraint("application_availability IN ('open', 'closed', 'unknown')", name="ck_application_availability"),
+        CheckConstraint("validation_status IN ('pending', 'valid', 'invalid')", name="ck_program_revision_validation_status"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     program_id: Mapped[str] = mapped_column(ForeignKey("programs.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
+    # Admin edits reset validation before deterministic checks are rerun.
+    validation_status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    validation_findings: Mapped[list] = mapped_column(JSON, default=list)
     name: Mapped[str] = mapped_column(String(240))
     description: Mapped[str] = mapped_column(Text)
     categories: Mapped[list] = mapped_column(JSON)
@@ -161,6 +203,7 @@ class ReviewEvent(Base):
     __tablename__ = "review_events"
     __table_args__ = (
         CheckConstraint("decision IN ('approved', 'rejected')", name="ck_review_event_decision"),
+        UniqueConstraint("revision_id", name="uq_review_event_revision"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)

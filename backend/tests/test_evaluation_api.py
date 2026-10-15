@@ -8,26 +8,37 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import Program, ProgramRevision
+from app.models import Program, ProgramRevision, SourceSnapshot
 
 
 def catalog_revision(program: Program, name: str, rule: dict, *, status: str = "published") -> ProgramRevision:
     """Build a synthetic scholarship revision for endpoint tests."""
 
-    return ProgramRevision(
+    revision = ProgramRevision(
         program=program,
         status=status,
         name=name,
         description="Synthetic evaluation fixture.",
         categories=["scholarships"],
         coverage={"type": "national"},
-        checklist=[],
+        checklist=[{"label": "Submit a transcript", "required": True, "evidence": rule["evidence"]}],
         eligibility_tree=rule,
         coverage_complete=True,
         application_availability="open",
-        selection_factors=[],
+        selection_factors=[{"description": "Essay quality", "evidence": rule["evidence"]}],
         provider_url="https://example.edu/program",
     )
+    snapshot_id = rule["evidence"]["snapshot_id"]
+    revision.sources.append(
+        SourceSnapshot(
+            id=snapshot_id,
+            source_url=f"https://example.edu/sources/{snapshot_id}",
+            acquisition_method="webpage",
+            content_hash=(snapshot_id[0] * 64),
+            source_text=rule["evidence"]["excerpt"],
+        )
+    )
+    return revision
 
 
 @pytest.fixture
@@ -100,6 +111,14 @@ def test_evaluation_combines_saved_and_temporary_answers_without_saving(evaluati
     assert by_name["State Scholarship"]["label"] == "Likely eligible"
     assert by_name["State Scholarship"]["availability_section"] == "Open opportunities"
     assert by_name["State Scholarship"]["ranking_factors"]["eligibility_group"] == "Likely eligible"
+    assert by_name["State Scholarship"]["criteria"][0]["evidence"]["source_url"].endswith("state-source")
+    assert by_name["State Scholarship"]["checklist"][0]["label"] == "Submit a transcript"
+    assert by_name["State Scholarship"]["checklist"][0]["evidence"]["source_url"].endswith("state-source")
+    assert by_name["State Scholarship"]["checklist_verification"] == "verified"
+    assert by_name["State Scholarship"]["amount_verification"] == "unverified"
+    assert by_name["State Scholarship"]["deadline_verification"] == "unverified"
+    assert by_name["State Scholarship"]["deadline_timezone_verification"] == "unverified"
+    assert "does not predict selection or an award" in by_name["State Scholarship"]["template_explanation"]
     assert by_name["GPA Scholarship"]["label"] == "Need more information"
     assert by_name["GPA Scholarship"]["missing_fields"][0]["field"] == "gpa"
 
