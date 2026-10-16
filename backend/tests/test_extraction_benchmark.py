@@ -59,3 +59,19 @@ def test_metrics_report_explicit_denominators_for_partial_predictions():
     assert report.criterion_recall.denominator > 2
     assert report.unsupported_claim_rate.numerator == 0
     assert report.evidence_fidelity.numerator == report.evidence_fidelity.denominator == 2
+
+
+def test_metrics_count_invented_claims_and_unfaithful_evidence():
+    """A schema-valid claim with invented evidence must reduce both safety metrics."""
+
+    dataset = load_benchmark()
+    raw = gpa_prediction().model_dump(mode="json")
+    for child in raw["eligibility_tree"]["children"]:
+        child["evidence"]["excerpt"] = "This excerpt is absent from the labeled source."
+    prediction = ExtractedProgramDraft.model_validate(raw)
+    report = evaluate_extractions(dataset, {"gpa-boundary": prediction})
+
+    assert report.unsupported_claim_rate.numerator == 2
+    assert report.unsupported_claim_rate.denominator == 2
+    assert report.evidence_fidelity.numerator == 0
+    assert report.evidence_fidelity.denominator == 2

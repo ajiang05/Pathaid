@@ -58,6 +58,28 @@ requirement. Usage records contain aggregate outcomes and token counts only.
 
 Run tests with `.venv/bin/pytest -q`.
 
+Run the versioned offline quality report with:
+
+```sh
+.venv/bin/python -m app.quality_report
+```
+
+The current deterministic measurement is 100/100 expected eligibility outcomes
+on dataset version 1.0.0. The extraction dataset contains 10 cases, 28 field
+labels, and 10 claim labels. Offline CI validates the dataset and metric harness
+without claiming model accuracy. To calculate extraction field accuracy,
+criterion precision/recall, unsupported-claim rate, and evidence fidelity from a
+separately budgeted run, provide a versioned JSON artifact containing
+`dataset_version` and a `predictions` object keyed by case ID:
+
+```sh
+.venv/bin/python -m app.quality_report \
+  --extraction-predictions path/to/saved-predictions.json
+```
+
+Frontend browser checks and five student usability sessions remain pending until
+the approved wireframes and frontend implementation exist.
+
 Both pytest and Alembic are configured to treat `backend/` as the Python
 package root, so the commands above work without setting `PYTHONPATH`.
 
