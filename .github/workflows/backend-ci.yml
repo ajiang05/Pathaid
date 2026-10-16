@@ -79,3 +79,6 @@ jobs:
       # The suite injects deterministic providers, so CI makes no paid model calls.
       - name: Run backend tests
         run: pytest -q
+
+      - name: Report offline quality measurements
+        run: python -m app.quality_report

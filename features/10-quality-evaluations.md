@@ -1,6 +1,14 @@
 # Reproducible eligibility and extraction evaluations
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: backend offline evaluations implemented; live model, frontend, end-to-end, and usability evaluations remain pending. Parent specification: [plan.md](../plan.md).
+
+## Implementation status
+- A versioned dataset contains 100 explicitly labeled synthetic profiles across all rule operators, numeric boundaries, missing answers, nested AND/OR logic, incomplete coverage, unsupported conditions, possible exceptions, and GPA scale handling.
+- CI requires all 100 expected eligibility outcomes to pass and prints the dataset version, numerator, denominator, accuracy, and failures.
+- The versioned 10-case extraction dataset validates 28 field labels, 10 claim labels, and exact evidence occurrence. Its metric harness reports field accuracy, criterion precision/recall, unsupported-claim rate, and evidence fidelity with explicit denominators when supplied a saved prediction artifact.
+- Existing offline suites cover ranking, authentication/privacy, source safety, model refusal and malformed output, bounded retries, restart recovery, duplicate ingestion, review, rejection, and atomic publication with deterministic provider stubs.
+- PostgreSQL migrations and model drift are checked in GitHub Actions without an OpenAI key.
+- Live extraction measurements have not been run. Browser tests, deployed observability checks, and five student usability sessions depend on the pending frontend and deployment.
 
 ## Goal
 Measure correctness and demonstrate the AI and backend work with reproducible evidence.

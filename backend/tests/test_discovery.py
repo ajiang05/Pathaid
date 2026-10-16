@@ -89,3 +89,19 @@ def test_name_and_id_make_ties_stable():
         record("alpha", "Alpha", "Likely eligible", "open"),
     ]
     assert [item.record.program_id for item in rank_records(records, {})] == ["alpha", "a", "b", "z"]
+
+
+def test_unknown_availability_ignores_deadlines_and_uses_relevance_then_name():
+    """Unverified dates cannot silently prioritize confirm-availability records."""
+
+    early = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    late = datetime(2030, 1, 1, tzinfo=timezone.utc)
+    records = [
+        record("national-early", "Alpha", "Likely eligible", "unknown", early),
+        record("state-late", "Zulu", "Likely eligible", "unknown", late, {"states": ["MA"]}),
+        record("national-late", "Beta", "Likely eligible", "unknown", late),
+    ]
+    ranked = rank_records(records, {"state": "MA"})
+    assert [item.record.program_id for item in ranked] == ["state-late", "national-early", "national-late"]
+    assert all(item.section == "Confirm availability" for item in ranked)
+    assert all(item.ranking_factors["deadline"] == "not used for this availability section" for item in ranked)

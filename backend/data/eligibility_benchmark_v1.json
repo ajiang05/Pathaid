@@ -1,0 +1,161 @@
+{
+  "version": "1.0.0",
+  "labeling": "Manual synthetic expected outcomes. Each case records its expected label independently of the evaluator.",
+  "suites": [
+    {
+      "id": "equal-state",
+      "rule": {"type": "condition", "field": "state", "operator": "eq", "value": "MA", "evidence": {"snapshot_id": "eq", "excerpt": "Applicants must attend school in Massachusetts."}},
+      "cases": [
+        ["eq-01", {"state": "MA"}, "Likely eligible"], ["eq-02", {"state": "NY"}, "Likely ineligible"],
+        ["eq-03", {"state": "CA"}, "Likely ineligible"], ["eq-04", {}, "Need more information"],
+        ["eq-05", {"state": "MA", "gpa": 2.0}, "Likely eligible"], ["eq-06", {"state": "TX"}, "Likely ineligible"],
+        ["eq-07", {"state": "MA", "school": "Example College"}, "Likely eligible"], ["eq-08", {"state": "RI"}, "Likely ineligible"]
+      ]
+    },
+    {
+      "id": "state-membership",
+      "rule": {"type": "condition", "field": "state", "operator": "in", "value": ["MA", "RI", "CT"], "evidence": {"snapshot_id": "in", "excerpt": "Applicants must attend in MA, RI, or CT."}},
+      "cases": [
+        ["in-01", {"state": "MA"}, "Likely eligible"], ["in-02", {"state": "RI"}, "Likely eligible"],
+        ["in-03", {"state": "CT"}, "Likely eligible"], ["in-04", {"state": "NY"}, "Likely ineligible"],
+        ["in-05", {"state": "CA"}, "Likely ineligible"], ["in-06", {}, "Need more information"],
+        ["in-07", {"state": "TX"}, "Likely ineligible"], ["in-08", {"state": "MA", "major": "history"}, "Likely eligible"]
+      ]
+    },
+    {
+      "id": "category-contains",
+      "rule": {"type": "condition", "field": "assistance_categories", "operator": "contains", "value": "scholarships", "evidence": {"snapshot_id": "contains", "excerpt": "This opportunity is a scholarship."}},
+      "cases": [
+        ["contains-01", {"assistance_categories": ["scholarships"]}, "Likely eligible"],
+        ["contains-02", {"assistance_categories": ["grants", "scholarships"]}, "Likely eligible"],
+        ["contains-03", {"assistance_categories": ["food"]}, "Likely ineligible"],
+        ["contains-04", {"assistance_categories": ["housing", "emergency"]}, "Likely ineligible"],
+        ["contains-05", {}, "Need more information"],
+        ["contains-06", {"assistance_categories": ["scholarships", "food"]}, "Likely eligible"],
+        ["contains-07", {"assistance_categories": ["grants"]}, "Likely ineligible"],
+        ["contains-08", {"assistance_categories": ["emergency", "scholarships"]}, "Likely eligible"]
+      ]
+    },
+    {
+      "id": "gpa-greater-than",
+      "rule": {"type": "condition", "field": "gpa", "operator": "gt", "value": 3.0, "evidence": {"snapshot_id": "gt", "excerpt": "GPA must be above 3.0."}},
+      "cases": [
+        ["gt-01", {"gpa": 3.01}, "Likely eligible"], ["gt-02", {"gpa": 3.0}, "Likely ineligible"],
+        ["gt-03", {"gpa": 2.99}, "Likely ineligible"], ["gt-04", {"gpa": 4.0}, "Likely eligible"],
+        ["gt-05", {"gpa": 0.0}, "Likely ineligible"], ["gt-06", {}, "Need more information"],
+        ["gt-07", {"gpa": 3.5}, "Likely eligible"], ["gt-08", {"gpa": 2.5}, "Likely ineligible"]
+      ]
+    },
+    {
+      "id": "gpa-at-least",
+      "rule": {"type": "condition", "field": "gpa", "operator": "gte", "value": 3.0, "evidence": {"snapshot_id": "gte", "excerpt": "GPA must be at least 3.0."}},
+      "cases": [
+        ["gte-01", {"gpa": 3.0}, "Likely eligible"], ["gte-02", {"gpa": 2.99}, "Likely ineligible"],
+        ["gte-03", {"gpa": 3.01}, "Likely eligible"], ["gte-04", {"gpa": 4.0}, "Likely eligible"],
+        ["gte-05", {"gpa": 0.0}, "Likely ineligible"], ["gte-06", {}, "Need more information"],
+        ["gte-07", {"gpa": 3.75}, "Likely eligible"], ["gte-08", {"gpa": 2.0}, "Likely ineligible"]
+      ]
+    },
+    {
+      "id": "sai-less-than",
+      "rule": {"type": "condition", "field": "student_aid_index", "operator": "lt", "value": 5000, "evidence": {"snapshot_id": "lt", "excerpt": "Student Aid Index must be below 5000."}},
+      "cases": [
+        ["lt-01", {"student_aid_index": 4999}, "Likely eligible"], ["lt-02", {"student_aid_index": 5000}, "Likely ineligible"],
+        ["lt-03", {"student_aid_index": 5001}, "Likely ineligible"], ["lt-04", {"student_aid_index": -1500}, "Likely eligible"],
+        ["lt-05", {"student_aid_index": 0}, "Likely eligible"], ["lt-06", {}, "Need more information"],
+        ["lt-07", {"student_aid_index": 10000}, "Likely ineligible"], ["lt-08", {"student_aid_index": 2500}, "Likely eligible"]
+      ]
+    },
+    {
+      "id": "sai-at-most",
+      "rule": {"type": "condition", "field": "student_aid_index", "operator": "lte", "value": 5000, "evidence": {"snapshot_id": "lte", "excerpt": "Student Aid Index must not exceed 5000."}},
+      "cases": [
+        ["lte-01", {"student_aid_index": 5000}, "Likely eligible"], ["lte-02", {"student_aid_index": 5001}, "Likely ineligible"],
+        ["lte-03", {"student_aid_index": 4999}, "Likely eligible"], ["lte-04", {"student_aid_index": -1500}, "Likely eligible"],
+        ["lte-05", {"student_aid_index": 0}, "Likely eligible"], ["lte-06", {}, "Need more information"],
+        ["lte-07", {"student_aid_index": 999999}, "Likely ineligible"], ["lte-08", {"student_aid_index": 2500}, "Likely eligible"]
+      ]
+    },
+    {
+      "id": "mandatory-and",
+      "rule": {"type": "and", "children": [
+        {"type": "condition", "field": "state", "operator": "eq", "value": "MA", "evidence": {"snapshot_id": "and", "excerpt": "Applicant must study in Massachusetts."}},
+        {"type": "condition", "field": "enrollment", "operator": "eq", "value": "full_time", "evidence": {"snapshot_id": "and", "excerpt": "Applicant must study full time."}}
+      ]},
+      "cases": [
+        ["and-01", {"state": "MA", "enrollment": "full_time"}, "Likely eligible"],
+        ["and-02", {"state": "NY", "enrollment": "full_time"}, "Likely ineligible"],
+        ["and-03", {"state": "MA", "enrollment": "part_time"}, "Likely ineligible"],
+        ["and-04", {"state": "NY", "enrollment": "part_time"}, "Likely ineligible"],
+        ["and-05", {"state": "MA"}, "Need more information"], ["and-06", {"enrollment": "full_time"}, "Need more information"],
+        ["and-07", {"state": "NY"}, "Likely ineligible"], ["and-08", {"enrollment": "part_time"}, "Likely ineligible"],
+        ["and-09", {}, "Need more information"],
+        ["and-10", {"state": "MA", "enrollment": "full_time", "gpa": 1.0}, "Likely eligible"]
+      ]
+    },
+    {
+      "id": "alternative-or",
+      "rule": {"type": "or", "children": [
+        {"type": "condition", "field": "pell_eligible", "operator": "eq", "value": true, "evidence": {"snapshot_id": "or", "excerpt": "Pell-eligible students may apply."}},
+        {"type": "condition", "field": "income_range", "operator": "in", "value": ["under_25k", "25k_50k"], "evidence": {"snapshot_id": "or", "excerpt": "Students below the income limit may apply."}}
+      ]},
+      "cases": [
+        ["or-01", {"pell_eligible": true}, "Likely eligible"], ["or-02", {"pell_eligible": false, "income_range": "under_25k"}, "Likely eligible"],
+        ["or-03", {"pell_eligible": false, "income_range": "25k_50k"}, "Likely eligible"],
+        ["or-04", {"pell_eligible": false, "income_range": "over_100k"}, "Likely ineligible"],
+        ["or-05", {"pell_eligible": false}, "Need more information"], ["or-06", {"income_range": "over_100k"}, "Need more information"],
+        ["or-07", {}, "Need more information"], ["or-08", {"pell_eligible": true, "income_range": "over_100k"}, "Likely eligible"],
+        ["or-09", {"pell_eligible": false, "income_range": "75k_100k"}, "Likely ineligible"],
+        ["or-10", {"pell_eligible": true, "income_range": "under_25k"}, "Likely eligible"]
+      ]
+    },
+    {
+      "id": "missing-major",
+      "rule": {"type": "condition", "field": "major", "operator": "eq", "value": "computer science", "evidence": {"snapshot_id": "missing", "excerpt": "Applicant must major in computer science."}},
+      "cases": [
+        ["missing-01", {}, "Need more information"], ["missing-02", {"state": "MA"}, "Need more information"],
+        ["missing-03", {"major": "computer science"}, "Likely eligible"], ["missing-04", {"major": "history"}, "Likely ineligible"],
+        ["missing-05", {"major": "Computer Science"}, "Likely ineligible"], ["missing-06", {"major": "computer science", "gpa": 2.0}, "Likely eligible"],
+        ["missing-07", {"major": "mathematics"}, "Likely ineligible"], ["missing-08", {"school": "Example College"}, "Need more information"]
+      ]
+    },
+    {
+      "id": "unsupported-provider-rule",
+      "rule": {"type": "unsupported", "description": "Provider determines satisfactory academic progress", "evidence": {"snapshot_id": "unsupported", "excerpt": "Satisfactory progress is determined by the provider."}},
+      "cases": [
+        ["unsupported-01", {}, "Need more information"], ["unsupported-02", {"gpa": 4.0}, "Need more information"],
+        ["unsupported-03", {"state": "MA"}, "Need more information"], ["unsupported-04", {"pell_eligible": true}, "Need more information"]
+      ]
+    },
+    {
+      "id": "incomplete-reviewed-coverage",
+      "coverage_complete": false,
+      "rule": {"type": "condition", "field": "state", "operator": "eq", "value": "MA", "evidence": {"snapshot_id": "incomplete", "excerpt": "Massachusetts students are listed."}},
+      "cases": [
+        ["incomplete-01", {"state": "MA"}, "Need more information"], ["incomplete-02", {"state": "NY"}, "Likely ineligible"],
+        ["incomplete-03", {}, "Need more information"], ["incomplete-04", {"state": "CA"}, "Likely ineligible"]
+      ]
+    },
+    {
+      "id": "unmodeled-exceptions",
+      "rule": {"type": "condition", "field": "state", "operator": "eq", "value": "MA", "exceptions_complete": false, "evidence": {"snapshot_id": "exceptions", "excerpt": "Massachusetts students normally qualify; exceptions may apply."}},
+      "cases": [
+        ["exceptions-01", {"state": "MA"}, "Likely eligible"], ["exceptions-02", {"state": "NY"}, "Need more information"],
+        ["exceptions-03", {}, "Need more information"], ["exceptions-04", {"state": "CA"}, "Need more information"]
+      ]
+    },
+    {
+      "id": "gpa-and-scale",
+      "rule": {"type": "and", "children": [
+        {"type": "condition", "field": "gpa", "operator": "gte", "value": 3.0, "evidence": {"snapshot_id": "scale", "excerpt": "GPA must be at least 3.0 on a 4.0 scale."}},
+        {"type": "condition", "field": "gpa_scale", "operator": "eq", "value": 4.0, "evidence": {"snapshot_id": "scale", "excerpt": "GPA must be at least 3.0 on a 4.0 scale."}}
+      ]},
+      "cases": [
+        ["scale-01", {"gpa": 3.0, "gpa_scale": 4.0}, "Likely eligible"],
+        ["scale-02", {"gpa": 3.0}, "Need more information"],
+        ["scale-03", {"gpa": 3.0, "gpa_scale": 5.0}, "Likely ineligible"],
+        ["scale-04", {"gpa": 2.99, "gpa_scale": 4.0}, "Likely ineligible"]
+      ]
+    }
+  ]
+}
