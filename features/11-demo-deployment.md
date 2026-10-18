@@ -1,6 +1,15 @@
 # Reproducible local setup and hosted demo
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: backend container and local PostgreSQL deployment foundation implemented; frontend container, reviewed real seed catalog, external observability integration, paid hosting, and hosted verification remain pending. Parent specification: [plan.md](../plan.md).
+
+## Implementation status
+- A non-root production backend image runs the API, worker, or migration command. Docker Compose keeps PostgreSQL and the worker private and starts the API only after a successful migration.
+- Liveness and migration-aware readiness endpoints support container and hosting checks.
+- Versioned export/import tooling transfers only current publications with preserved approval events and exact retained evidence; it never creates review events.
+- Structured API events contain route templates, status, and latency without paths, query strings, bodies, credentials, profile values, prompts, or source text. Protected aggregate operations data covers failed ingestion, recommendation outcomes/latency, and oldest publication verification.
+- Environment templates and operations documentation cover secrets, local startup, migrations, reviewed catalog transfer, PostgreSQL backup/restore, and production security requirements.
+- CI builds the production image, validates Compose, applies PostgreSQL migrations, checks model drift, runs tests, and reports offline quality measurements.
+- The Next.js service and reverse proxy await wireframes and frontend implementation. No hosting provider has been selected or provisioned, no real seed bundle has been approved, and deployed backup/telemetry checks have not been claimed.
 
 ## Goal
 Make the student flow and protected administration usable locally and in a small hosted portfolio demo.

@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from .admin_auth import current_admin, require_admin_csrf
 from .database import get_db
-from .models import AdminSession, IngestionRun, SourceSnapshot
+from .models import AdminSession, IngestionRun, ProgramRevision, RecommendationAttempt, SourceSnapshot
 from .orchestration import (
     IngestionSubmission,
     OrchestrationError,
@@ -22,6 +23,50 @@ from .source_acquisition import PastedSourceRequest, WebSourceRequest
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+@router.get("/operations/summary")
+def operations_summary(
+    _admin: AdminSession = Depends(current_admin),
+    db: Session = Depends(get_db),
+):
+    """Return aggregate service signals without student or retained source values."""
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    recommendation_total = db.scalar(
+        select(func.count()).select_from(RecommendationAttempt).where(RecommendationAttempt.created_at >= cutoff)
+    )
+    recommendation_failures = db.scalar(
+        select(func.count()).select_from(RecommendationAttempt).where(
+            RecommendationAttempt.created_at >= cutoff,
+            RecommendationAttempt.outcome != "success",
+        )
+    )
+    recommendation_latency = db.scalar(
+        select(func.avg(RecommendationAttempt.latency_ms)).where(
+            RecommendationAttempt.created_at >= cutoff,
+            RecommendationAttempt.latency_ms.is_not(None),
+        )
+    )
+    oldest_verification = db.scalar(
+        select(func.min(ProgramRevision.verified_at)).where(ProgramRevision.status == "published")
+    )
+    if oldest_verification is not None and oldest_verification.tzinfo is None:
+        oldest_verification = oldest_verification.replace(tzinfo=timezone.utc)
+    verification_age_days = (
+        (datetime.now(timezone.utc) - oldest_verification).days if oldest_verification is not None else None
+    )
+    return {
+        "window_hours": 24,
+        "failed_ingestion_runs": db.scalar(
+            select(func.count()).select_from(IngestionRun).where(IngestionRun.state == "failed")
+        ),
+        "recommendation_attempts": recommendation_total,
+        "recommendation_failures": recommendation_failures,
+        "recommendation_average_latency_ms": round(float(recommendation_latency)) if recommendation_latency is not None else None,
+        "oldest_source_verification": oldest_verification,
+        "oldest_source_verification_age_days": verification_age_days,
+    }
 
 
 class IngestionRunCreate(BaseModel):

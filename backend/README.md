@@ -7,6 +7,9 @@ deterministic discovery and eligibility, source-backed application results, opti
 grounded scholarship recommendation assistance, and protected ingestion and review
 workflows. The student and administrator frontends await approved wireframes.
 
+Container startup, reviewed catalog transfer, backup, recovery, and production
+security instructions are in [`docs/deployment.md`](../docs/deployment.md).
+
 ## Local setup
 
 From `backend/`:
@@ -39,6 +42,10 @@ Use PostgreSQL in deployed environments by setting `DATABASE_URL` to a `postgres
 - `POST /api/programs/{id}/recommendation-explanation` accepts an exact published
   `revision_id` and optional temporary `answers`. It always returns a grounded
   template and uses optional model assistance only after the student opts in.
+- `GET /health/live` reports process liveness. `GET /health/ready` checks the
+  database and required migration without returning connection details.
+- `GET /api/admin/operations/summary` returns authenticated aggregate failure,
+  latency, and source-verification signals without private request content.
 
 All profile fields remain optional. Recommendation assistance sends only saved or
 temporary fields referenced by the evaluated rule; it never sends account identity,
