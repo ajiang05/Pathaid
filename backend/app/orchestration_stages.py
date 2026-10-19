@@ -12,7 +12,16 @@ from sqlalchemy.orm import Session
 from .extraction import ExtractionError, ExtractionProvider
 from .extraction_schemas import ExtractedProgramDraft
 from .extraction_validation import validate_extracted_draft
-from .models import IngestionRun, IngestionStageAttempt, Program, ProgramRevision, SourceSnapshot
+from .models import (
+    DiscoveredCandidate,
+    IngestionRun,
+    IngestionStageAttempt,
+    Program,
+    ProgramRevision,
+    ScheduledScan,
+    ScheduledSource,
+    SourceSnapshot,
+)
 from .orchestration import (
     Clock,
     OrchestrationConfig,
@@ -31,6 +40,7 @@ from .source_acquisition import (
     WebSourceRequest,
 )
 from .source_service import acquire_source, persist_acquired_source
+from .scheduled_discovery import allowed_candidate_urls, create_candidate_runs, robots_allows, source_url_in_scope
 
 
 def process_acquisition_stage(
@@ -57,13 +67,30 @@ def process_acquisition_stage(
         else WebSourceRequest(run.source_url)
     )
     try:
+        scheduled_source = db.get(ScheduledSource, run.scheduled_source_id) if run.scheduled_source_id else None
+        if scheduled_source is not None and scheduled_source.respect_robots:
+            parts = __import__("urllib.parse", fromlist=["urlsplit"]).urlsplit(scheduled_source.canonical_url)
+            robots_url = f"{parts.scheme}://{scheduled_source.allowed_hostname}/robots.txt"
+            try:
+                robots = acquire_source(WebSourceRequest(robots_url), acquisition_config, resolver=resolver, transport=transport)
+            except AcquisitionError as robots_error:
+                # A missing robots file permits access by convention. Network
+                # and safety failures still stop the scheduled scan.
+                if robots_error.code != "source_not_found":
+                    raise
+            else:
+                user_agent = __import__("os").environ.get("PATHAID_SCHEDULER_USER_AGENT", "PathaidBot/1.0")
+                if not robots_allows(scheduled_source, robots.normalized_text, run.source_url, user_agent):
+                    raise AcquisitionError("robots_disallowed", "The source disallows this scheduled scan.")
         acquired = acquire_source(
             request,
             acquisition_config,
             resolver=resolver,
             transport=transport,
+            url_policy=(lambda url: source_url_in_scope(scheduled_source, url)) if scheduled_source is not None else None,
         )
     except AcquisitionError as error:
+        _record_scheduled_failure(db, run, error.code, clock())
         _finish_failure(db, run, attempt, error.code, error.safe_message, error.retryable, orchestration_config, clock)
         return
     except Exception:
@@ -73,10 +100,60 @@ def process_acquisition_stage(
     # Recheck the fencing token after network work. An expired worker cannot
     # persist an orphaned result over a replacement worker's progress.
     run = require_lease(db, lease, clock=clock)
+    scheduled_source = db.get(ScheduledSource, run.scheduled_source_id) if run.scheduled_source_id else None
+    scan = db.get(ScheduledScan, run.scheduled_scan_id) if run.scheduled_scan_id else None
+    if scheduled_source is not None and scan is not None:
+        scheduled_source.last_attempt_at = clock()
+        scheduled_source.last_error_code = None
+        if acquired.content_hash == scheduled_source.last_content_hash:
+            scheduled_source.last_success_at = clock()
+            scheduled_source.consecutive_failures = 0
+            run.state = "unchanged"
+            run.completed_at = clock()
+            if scan is not None:
+                scan.outcome = "unchanged"
+                scan.content_changed = False
+                scan.content_hash = acquired.content_hash
+                scan.completed_at = clock()
+            _finish_success(db, run, attempt, clock)
+            return
+
     snapshot = persist_acquired_source(db, acquired, commit=False)
     run.source_snapshot_id = snapshot.id
+    if scan is not None:
+        scan.content_changed = True
+        scan.content_hash = acquired.content_hash
+    if scheduled_source is not None and scan is not None and scheduled_source.source_type == "discovery_page":
+        count = create_candidate_runs(db, scheduled_source, scan, allowed_candidate_urls(scheduled_source, acquired))
+        scan.outcome = "discovered"
+        scan.candidate_count = count
+        scan.completed_at = clock()
+        run.state = "discovered"
+        run.completed_at = clock()
+        scheduled_source.last_content_hash = acquired.content_hash
+        scheduled_source.last_success_at = clock()
+        scheduled_source.consecutive_failures = 0
+        _finish_success(db, run, attempt, clock)
+        return
+    if scan is not None:
+        scan.outcome = "changed"
     run.state = "extracting"
     _finish_success(db, run, attempt, clock)
+
+
+def _record_scheduled_failure(db: Session, run: IngestionRun, code: str, at: datetime) -> None:
+    """Attach a safe source-level failure without exposing fetched content."""
+
+    source = db.get(ScheduledSource, run.scheduled_source_id) if run.scheduled_source_id else None
+    scan = db.get(ScheduledScan, run.scheduled_scan_id) if run.scheduled_scan_id else None
+    if source is not None:
+        source.last_attempt_at = at
+        source.last_error_code = code
+        source.consecutive_failures += 1
+    if scan is not None:
+        scan.outcome = "failed"
+        scan.error_code = code
+        scan.completed_at = at
 
 
 def process_extraction_stage(
@@ -169,6 +246,22 @@ def process_validation_stage(
     run.draft_revision_id = revision.id
     run.state = "awaiting_review"
     run.completed_at = clock()
+    if run.scheduled_scan_id and run.scheduled_source_id:
+        scan = db.get(ScheduledScan, run.scheduled_scan_id)
+        source = db.get(ScheduledSource, run.scheduled_source_id)
+        if scan is not None and source is not None:
+            # A program page becomes the comparison baseline only after its
+            # content has produced a valid review draft. Failed extraction is
+            # therefore retried on a later scan instead of skipped as unchanged.
+            source.last_content_hash = scan.content_hash
+            source.last_success_at = clock()
+            source.last_error_code = None
+            source.consecutive_failures = 0
+            scan.completed_at = clock()
+    if run.discovered_candidate_id:
+        candidate = db.get(DiscoveredCandidate, run.discovered_candidate_id)
+        if candidate is not None:
+            candidate.status = "awaiting_review"
     _finish_success(db, run, attempt, clock)
 
 
@@ -275,6 +368,10 @@ def _start_attempt(
         outcome="running",
         started_at=current,
     )
+    if run.scheduled_scan_id:
+        scan = db.get(ScheduledScan, run.scheduled_scan_id)
+        if scan is not None:
+            scan.outcome = "running"
     db.add(attempt)
     db.commit()
     db.refresh(attempt)
@@ -321,6 +418,7 @@ def _finish_failure(
         attempt.outcome = "failed"
         run.state = "failed"
         run.completed_at = current
+        _mark_related_failure(db, run, code, current)
     release_lease(run)
     run.updated_at = current
     db.commit()
@@ -336,6 +434,7 @@ def _fail_without_attempt(db: Session, run: IngestionRun, code: str, message: st
     run.error_retryable = False
     run.completed_at = current
     run.updated_at = current
+    _mark_related_failure(db, run, code, current)
     release_lease(run)
     db.commit()
 
@@ -347,6 +446,21 @@ def _clear_error(run: IngestionRun) -> None:
     run.error_message = None
     run.error_retryable = None
     run.next_attempt_at = None
+
+
+def _mark_related_failure(db: Session, run: IngestionRun, code: str, current: datetime) -> None:
+    """Synchronize terminal workflow failure to its scan or candidate record."""
+
+    if run.scheduled_scan_id:
+        scan = db.get(ScheduledScan, run.scheduled_scan_id)
+        if scan is not None:
+            scan.outcome = "failed"
+            scan.error_code = code
+            scan.completed_at = current
+    if run.discovered_candidate_id:
+        candidate = db.get(DiscoveredCandidate, run.discovered_candidate_id)
+        if candidate is not None:
+            candidate.status = "failed"
 
 
 def _elapsed_ms(started: datetime, completed: datetime) -> int:

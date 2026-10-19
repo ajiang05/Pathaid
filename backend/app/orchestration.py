@@ -46,6 +46,9 @@ class IngestionSubmission:
     idempotency_key: str
     source: WebSourceRequest | PastedSourceRequest
     target_program_id: str | None = None
+    scheduled_source_id: str | None = None
+    scheduled_scan_id: str | None = None
+    discovered_candidate_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -67,8 +70,18 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def create_ingestion_run(db: Session, submission: IngestionSubmission) -> IngestionRun:
-    """Persist or idempotently return one queued ingestion request."""
+def create_ingestion_run(
+    db: Session,
+    submission: IngestionSubmission,
+    *,
+    commit: bool = True,
+) -> IngestionRun:
+    """Persist or idempotently return one queued ingestion request.
+
+    Stage handlers pass ``commit=False`` when the new run must be atomic with
+    other workflow records. Public/admin submissions keep the default durable
+    commit boundary.
+    """
 
     key = submission.idempotency_key.strip()
     if not key or len(key) > 200:
@@ -87,6 +100,9 @@ def create_ingestion_run(db: Session, submission: IngestionSubmission) -> Ingest
         idempotency_key=key,
         request_fingerprint=fingerprint,
         target_program_id=submission.target_program_id,
+        scheduled_source_id=submission.scheduled_source_id,
+        scheduled_scan_id=submission.scheduled_scan_id,
+        discovered_candidate_id=submission.discovered_candidate_id,
         source_url=submission.source.source_url,
         source_method=method,
         input_source_text=source_text,
@@ -94,6 +110,11 @@ def create_ingestion_run(db: Session, submission: IngestionSubmission) -> Ingest
         validation_findings=[],
     )
     db.add(run)
+    if not commit:
+        # The caller owns the surrounding transaction. Flushing assigns the
+        # generated ID and checks constraints without exposing partial work.
+        db.flush()
+        return run
     try:
         db.commit()
     except IntegrityError:
@@ -204,7 +225,13 @@ def create_manual_retry(
     )
     retry = create_ingestion_run(
         db,
-        IngestionSubmission(idempotency_key=idempotency_key, source=source, target_program_id=failed.target_program_id),
+        IngestionSubmission(
+            idempotency_key=idempotency_key,
+            source=source,
+            target_program_id=failed.target_program_id,
+            scheduled_source_id=failed.scheduled_source_id,
+            discovered_candidate_id=failed.discovered_candidate_id,
+        ),
     )
     if retry.parent_run_id is None:
         retry.parent_run_id = failed.id

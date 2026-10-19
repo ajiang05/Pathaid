@@ -48,7 +48,7 @@ def test_readiness_requires_database_and_migration_marker(health_client):
     client, engine = health_client
     with engine.begin() as connection:
         connection.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
-        connection.execute(text("INSERT INTO alembic_version (version_num) VALUES ('0009_recommendation_latency')"))
+        connection.execute(text("INSERT INTO alembic_version (version_num) VALUES ('0010_scheduled_discovery')"))
     assert client.get("/health/ready").json() == {"status": "ready"}
 
 

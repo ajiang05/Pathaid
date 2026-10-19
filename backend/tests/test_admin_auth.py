@@ -138,6 +138,11 @@ def test_operations_summary_is_aggregate_and_admin_only(client):
         "recommendation_average_latency_ms": None,
         "oldest_source_verification": None,
         "oldest_source_verification_age_days": None,
+            "scheduled_scans": 0,
+            "scheduled_scan_failures": 0,
+            "overdue_sources": 0,
+            "discovered_candidates": 0,
+            "scheduled_review_backlog": 0,
     }
     assert "profile" not in response.text
     assert "source_text" not in response.text

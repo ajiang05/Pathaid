@@ -223,7 +223,7 @@ class IngestionRun(Base):
     __table_args__ = (
         CheckConstraint(
             "state IN ('queued', 'acquiring', 'extracting', 'validating', "
-            "'awaiting_review', 'published', 'rejected', 'failed')",
+            "'awaiting_review', 'unchanged', 'discovered', 'published', 'rejected', 'failed')",
             name="ck_ingestion_run_state",
         ),
         CheckConstraint("source_method IN ('webpage', 'pasted_text')", name="ck_ingestion_source_method"),
@@ -234,6 +234,11 @@ class IngestionRun(Base):
     request_fingerprint: Mapped[str] = mapped_column(String(64))
     parent_run_id: Mapped[str | None] = mapped_column(ForeignKey("ingestion_runs.id", ondelete="SET NULL"), nullable=True, index=True)
     target_program_id: Mapped[str | None] = mapped_column(ForeignKey("programs.id", ondelete="SET NULL"), nullable=True, index=True)
+    scheduled_source_id: Mapped[str | None] = mapped_column(ForeignKey("scheduled_sources.id", ondelete="SET NULL"), nullable=True, index=True)
+    scheduled_scan_id: Mapped[str | None] = mapped_column(ForeignKey("scheduled_scans.id", ondelete="SET NULL"), nullable=True, unique=True, index=True)
+    # Several runs may reference one candidate because a failed run can be
+    # retried while its original audit record remains intact.
+    discovered_candidate_id: Mapped[str | None] = mapped_column(ForeignKey("discovered_candidates.id", ondelete="SET NULL"), nullable=True, index=True)
     source_url: Mapped[str] = mapped_column(String(2048))
     source_method: Mapped[str] = mapped_column(String(20))
     # Pasted source text must survive a worker restart before acquisition. It
@@ -286,3 +291,75 @@ class IngestionStageAttempt(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     run: Mapped[IngestionRun] = relationship(back_populates="stage_attempts")
+
+
+class ScheduledSource(Base):
+    """Administrator-approved page that may be checked on a schedule."""
+
+    __tablename__ = "scheduled_sources"
+    __table_args__ = (
+        CheckConstraint("source_type IN ('program_page', 'discovery_page')", name="ck_scheduled_source_type"),
+        CheckConstraint("cadence_hours >= 1", name="ck_scheduled_source_cadence"),
+        CheckConstraint("discovery_link_limit >= 0 AND discovery_link_limit <= 100", name="ck_scheduled_source_link_limit"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    canonical_url: Mapped[str] = mapped_column(String(2048), unique=True, index=True)
+    source_type: Mapped[str] = mapped_column(String(24), index=True)
+    target_program_id: Mapped[str | None] = mapped_column(ForeignKey("programs.id", ondelete="SET NULL"), nullable=True, index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    cadence_hours: Mapped[int] = mapped_column(Integer, default=24)
+    allowed_hostname: Mapped[str] = mapped_column(String(253))
+    allowed_path_prefix: Mapped[str] = mapped_column(String(2048), default="/")
+    discovery_link_limit: Mapped[int] = mapped_column(Integer, default=20)
+    respect_robots: Mapped[bool] = mapped_column(Boolean, default=True)
+    next_scan_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str] = mapped_column(String(254))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ScheduledScan(Base):
+    """One durable source check for a specific scheduled window."""
+
+    __tablename__ = "scheduled_scans"
+    __table_args__ = (
+        CheckConstraint("outcome IN ('queued', 'running', 'unchanged', 'changed', 'discovered', 'failed')", name="ck_scheduled_scan_outcome"),
+        UniqueConstraint("source_id", "window_start", name="uq_scheduled_scan_source_window"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    source_id: Mapped[str] = mapped_column(ForeignKey("scheduled_sources.id", ondelete="CASCADE"), index=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    outcome: Mapped[str] = mapped_column(String(20), default="queued", index=True)
+    content_changed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    candidate_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DiscoveredCandidate(Base):
+    """Private, deduplicated program link found on an approved discovery page."""
+
+    __tablename__ = "discovered_candidates"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('queued', 'awaiting_review', 'published', 'rejected', 'failed')",
+            name="ck_discovered_candidate_status",
+        ),
+        UniqueConstraint("source_id", "canonical_url", name="uq_candidate_source_url"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    source_id: Mapped[str] = mapped_column(ForeignKey("scheduled_sources.id", ondelete="CASCADE"), index=True)
+    first_scan_id: Mapped[str] = mapped_column(ForeignKey("scheduled_scans.id", ondelete="CASCADE"), index=True)
+    canonical_url: Mapped[str] = mapped_column(String(2048), index=True)
+    status: Mapped[str] = mapped_column(String(24), default="queued", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

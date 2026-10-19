@@ -11,7 +11,7 @@ from .database import get_db
 
 
 router = APIRouter(tags=["operations"])
-EXPECTED_MIGRATION = "0009_recommendation_latency"
+EXPECTED_MIGRATION = "0010_scheduled_discovery"
 REQUIRED_TABLES = {
     "alembic_version",
     "students",
@@ -20,6 +20,9 @@ REQUIRED_TABLES = {
     "source_snapshots",
     "ingestion_runs",
     "recommendation_attempts",
+    "scheduled_sources",
+    "scheduled_scans",
+    "discovered_candidates",
 }
 
 

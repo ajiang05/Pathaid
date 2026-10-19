@@ -19,6 +19,9 @@ x-backend-environment: &backend-environment
   PATHAID_WORKER_LEASE_SECONDS: ${PATHAID_WORKER_LEASE_SECONDS:-120}
   PATHAID_INGESTION_MAX_ATTEMPTS: ${PATHAID_INGESTION_MAX_ATTEMPTS:-3}
   PATHAID_INGESTION_RETRY_BASE_SECONDS: ${PATHAID_INGESTION_RETRY_BASE_SECONDS:-5}
+  PATHAID_SCHEDULER_POLL_SECONDS: ${PATHAID_SCHEDULER_POLL_SECONDS:-60}
+  PATHAID_SCHEDULER_BATCH_SIZE: ${PATHAID_SCHEDULER_BATCH_SIZE:-25}
+  PATHAID_SCHEDULER_USER_AGENT: ${PATHAID_SCHEDULER_USER_AGENT:-PathaidBot/1.0}
 
 services:
   database:
@@ -68,6 +71,18 @@ services:
     build:
       context: backend
     command: ["python", "-m", "app.worker"]
+    environment: *backend-environment
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: backend
+    command: ["python", "-m", "app.scheduled_discovery"]
     environment: *backend-environment
     depends_on:
       database:

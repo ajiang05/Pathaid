@@ -1,6 +1,6 @@
 # Durable AI ingestion orchestration
 
-Status: durable run and attempt persistence, idempotent submission, leased stage claiming, bounded retries, restart recovery, offline worker, validation, and unpublished draft creation implemented; protected admin APIs, review/publication transitions, and deployed PostgreSQL verification remain pending. Parent specification: [plan.md](../plan.md).
+Status: manual and scheduled-run orchestration, protected APIs, review transitions, and local PostgreSQL verification implemented. Parent specification: [plan.md](../plan.md).
 
 The internal workflow intentionally stops at `awaiting_review`. Feature 09 owns administrator authentication, editing, rejection, approval, and the transitions to `published` or `rejected`.
 
@@ -17,9 +17,10 @@ Coordinate source acquisition, AI extraction, validation, retries, and review as
 - Bound source sizes, model output tokens, timeouts, and per-run resource usage. Do not implement unbounded model loops.
 - Record stages, timing, attempts, validation errors, and model/prompt/schema versions without student answers or secrets.
 - Draft edits require validation again; successful validation still requires explicit review before publication.
+- Accept deterministic scheduled-window keys, skip unchanged content before extraction, and isolate source failures.
 
 ## Interfaces and dependencies
-Protected admin APIs create, inspect, and retry ingestion runs. Coordinate [acquisition](06-source-acquisition.md), [extraction](07-ai-requirement-extraction.md), and [publication](09-admin-review-and-publication.md).
+Protected admin APIs and the [scheduler](12-scheduled-scholarship-discovery.md) create, inspect, and retry ingestion runs. Coordinate [acquisition](06-source-acquisition.md), [extraction](07-ai-requirement-extraction.md), and [publication](09-admin-review-and-publication.md).
 
 ## Acceptance criteria
 - Retries stop at the configured limit, and manual retry retains history.

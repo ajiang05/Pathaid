@@ -11,6 +11,7 @@ from .source_acquisition import (
     PastedSourceRequest,
     Resolver,
     SingleHopTransport,
+    UrlPolicy,
     WebSourceRequest,
     acquire_web_source,
     prepare_pasted_source,
@@ -26,6 +27,7 @@ def acquire_source(
     *,
     resolver: Resolver | None = None,
     transport: SingleHopTransport | None = None,
+    url_policy: UrlPolicy | None = None,
 ) -> AcquiredSource:
     """Acquire and validate one source without starting a database write."""
 
@@ -37,6 +39,7 @@ def acquire_source(
             config,
             resolver=resolver,
             transport=transport,
+            url_policy=url_policy,
         )
     else:
         raise TypeError("Unsupported source request type")

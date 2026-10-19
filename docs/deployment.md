@@ -1,8 +1,8 @@
 # Pathaid deployment and recovery
 
 This guide covers the backend deployment foundation. A public hosted demo has
-not been provisioned, and the Next.js service remains pending approved student
-and administrator wireframes.
+not been provisioned. The Next.js service remains pending approved student and
+administrator wireframes, while the daily scheduler backend is implemented; its administrator UI and controlled external-source verification remain pending.
 
 ## Local Docker setup
 
@@ -24,7 +24,7 @@ Requirements: Docker Engine with Docker Compose v2.
 
 3. Put the result in `PATHAID_ADMIN_PASSWORD_HASH` in the root `.env`, return
    to the repository root, and start the private database, migration job, API,
-   and worker:
+   worker, and scheduler:
 
    ```sh
    docker compose up --build --detach
@@ -131,6 +131,27 @@ count, recommendation attempt/failure counts and average latency for the last
 records contain aggregate token counts and latency without prompts or generated
 explanations.
 
+After Feature 12 is implemented, the operations summary must also include
+scheduled scan success/failure, overdue sources, changed sources, candidates,
+and review backlog. Logs must not contain discovered page bodies or link lists.
+
+## Daily scheduler
+
+The scheduler runs as a private service from the backend image. PostgreSQL
+will store source definitions, next due times, scheduled-window claims, hashes,
+and outcomes so a restart does not lose the schedule. It creates idempotent work
+for the existing ingestion worker and never publishes content directly.
+
+Before external scheduling is enabled:
+
+- configure each source's first morning due time, cadence, scheduler cycle interval, and link budget;
+- register only reviewed pages with explicit host/path scope;
+- validate robots behavior and source terms;
+- run a controlled scheduled window using fake or owned sources;
+- verify unchanged pages make no model call;
+- verify material changes remain private until approval; and
+- alert on overdue sources, repeated failures, and review backlog.
+
 Forward structured application output to the selected hosting platform's log
 collector only after its request capture and retention settings are reviewed.
 
@@ -140,7 +161,7 @@ collector only after its request capture and retention settings are reviewed.
 - Set `PATHAID_PUBLIC_ORIGIN` to the exact HTTPS frontend origin.
 - Route browser `/api` traffic through the same origin; the API does not enable
   broad cross-origin access.
-- Keep PostgreSQL and the worker on private networks with no public ports.
+- Keep PostgreSQL, the worker, and the planned scheduler on private networks with no public ports.
 - Store database, administrator, OpenAI, and telemetry credentials in the
   hosting provider's secret store.
 - Disable proxy request-body capture and redact cookies and authorization
@@ -154,6 +175,7 @@ collector only after its request capture and retention settings are reviewed.
 
 - Choose hosting only after checking current prices against the $25/month cap.
 - Add the Next.js and reverse-proxy services after approved wireframes exist.
+- Run a controlled external-source scheduled window and verify its operational alerts before launch.
 - Curate and manually approve 10–20 official programs before exporting seed data.
 - Verify HTTPS, private networking, PostgreSQL concurrency, telemetry redaction,
   and backup restoration in the selected deployed environment.

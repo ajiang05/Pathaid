@@ -1,6 +1,6 @@
 # Feature specifications
 
-These documents break the agreed [project plan](../plan.md) into focused implementation specifications. All features are planned, not claims of completed work. The root plan owns shared scope, stack, budget, and milestones; update it alongside any feature-scope changes.
+These documents break the agreed [project plan](../plan.md) into focused implementation specifications. Each feature records its current status. The root plan owns shared scope, stack, budget, and milestones.
 
 ## Student features
 
@@ -16,6 +16,7 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 - [AI program and scholarship requirement extraction](07-ai-requirement-extraction.md)
 - [Durable AI ingestion orchestration](08-ingestion-orchestration.md)
 - [Protected admin review and publication](09-admin-review-and-publication.md)
+- [Scheduled scholarship discovery and refresh](12-scheduled-scholarship-discovery.md)
 
 ## Quality and delivery
 
@@ -24,6 +25,6 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 
 ## Implementation order
 
-Start with student sign-up/login, the profile registry, and editable profile storage. Prototype the student screens in Google Stitch. Build the reviewed catalog and deterministic eligibility engine, then connect the personalized home page, discovery, checklists, and grounded AI recommendation explanations. Build source acquisition, extraction, orchestration, and admin review. Add relevant evaluations and observability as each feature is implemented; complete deployment after the release checks pass. Document numbers are identifiers, not a strict build sequence.
+Start with student accounts, the profile registry, catalog, and eligibility engine. Build source acquisition, extraction, orchestration, and review before scheduled discovery. Add relevant evaluations and observability as each feature is implemented; complete the frontend and deployment after release checks pass.
 
-Future agent-harness work is described as deferred in the orchestration specification. Chat, RAG, and application tracking remain outside the MVP.
+Future agent-harness work is deferred. Broad autonomous crawling, chat, RAG, application submission, and application tracking remain outside the MVP.

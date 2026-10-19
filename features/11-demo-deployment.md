@@ -15,13 +15,13 @@ Status: backend container and local PostgreSQL deployment foundation implemented
 Make the student flow and protected administration usable locally and in a small hosted portfolio demo.
 
 ## Scope and behavior
-- Provide Docker Compose services for Next.js, FastAPI, the worker, and PostgreSQL, with migrations and an explicit seed command.
+- Provide Docker Compose services for Next.js, FastAPI, the worker, scheduler, and PostgreSQL, with migrations and an explicit seed command. The scheduler service is implemented; Next.js remains pending.
 - Provide `.env.example`, secret configuration, setup, backup/restore, health/readiness, and deployment instructions.
 - Student sign-up, saved profiles, and matching work with reviewed seed data and no AI key. Recommendation explanations fall back to templates; ingestion reports missing configuration clearly.
 - Target $25/month total hosting/API usage; verify current service prices before provider selection or provisioning.
 - Serve through HTTPS, restrict allowed origins, keep database/worker private, and omit request bodies from proxy/application logs.
-- Integrate an observability tool for frontend/API errors, request latency, recommendation model latency and failures, failed ingestion runs, and source verification age. Redact traces and aggregate metrics; exclude credentials, student profile values, prompts containing student data, and source text.
-- Document catalog coverage and manual maintenance. Link reproducible evaluation evidence and a short product walkthrough.
+- Integrate an observability tool for frontend/API errors, request latency, recommendation model latency and failures, failed ingestion runs, scan outcomes, overdue sources, review backlog, and source verification age. Redact traces and aggregate metrics; exclude credentials, student profile values, prompts containing student data, and source text.
+- Document catalog coverage, automated cadence, and remaining human review. Link reproducible evaluation evidence and a short product walkthrough.
 
 ## Interfaces and dependencies
 Packages all MVP features, with release checks from [evaluations](10-quality-evaluations.md). The root [plan](../plan.md) retains the 4–6 week milestone schedule.
