@@ -1,6 +1,10 @@
 # Feature specifications
 
+<<<<<<< HEAD
 These documents break the agreed [project plan](../plan.md) into focused implementation specifications. Each feature records its current status. The root plan owns shared scope, stack, budget, and milestones.
+=======
+These documents break the agreed [project plan](../plan.md) into focused implementation specifications. Each feature records whether its foundation is implemented or still planned. The root plan owns shared scope, stack, budget, and milestones; update it alongside any feature-scope changes.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## Student features
 

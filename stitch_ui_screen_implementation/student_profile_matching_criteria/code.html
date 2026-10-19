@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "inverse-on-surface": "#dff7e6", "inverse-surface": "#21352a", "secondary-fixed": "#dce4de", "on-secondary-container": "#5c645f", "primary-fixed": "#b1f0cd", "surface-muted": "#F0F4EF", "primary-foreground": "#FFFFFF", "secondary": "#58605b", "surface-variant": "#d1e8d8", "surface-tint": "#2e694e", "primary": "#084c33", "on-secondary-fixed-variant": "#414944", "muted-foreground": "#52665A", "background": "#FAFAF7", "on-surface-variant": "#404943", "on-tertiary": "#ffffff", "on-primary-fixed": "#002113", "surface-container-lowest": "#ffffff", "primary-fixed-dim": "#96d4b2", "surface-dim": "#c8e0d0", "outline": "#707973", "on-primary-fixed-variant": "#105137", "border": "#D8E2D9", "surface-container-highest": "#d1e8d8", "on-secondary-fixed": "#161d19", "on-surface": "#0b1f16", "tertiary-container": "#4a5e52", "warning": "#895400", "on-tertiary-fixed-variant": "#384b40", "secondary-fixed-dim": "#c0c8c2", "surface-container-high": "#d6eede", "tertiary-fixed-dim": "#b6ccbd", "foreground": "#24382D", "on-secondary": "#ffffff", "ring": "#286449", "destructive": "#A92D32", "on-error-container": "#93000a", "on-tertiary-container": "#c0d6c7", "on-primary-container": "#a0debc", "tertiary-fixed": "#d2e8d9", "outline-variant": "#c0c9c1", "error": "#ba1a1a", "surface-bright": "#e8ffef", "on-primary": "#ffffff", "primary-container": "#286449", "on-tertiary-fixed": "#0c1f16", "on-background": "#0b1f16", "surface": "#FFFFFF", "surface-container": "#dcf4e3", "surface-container-low": "#e2f9e9", "on-error": "#ffffff", "inverse-primary": "#96d4b2", "success": "#246B4C", "tertiary": "#33463b", "secondary-container": "#dae2db", "error-container": "#ffdad6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-tablet": "1.5rem", "gutter": "1.5rem", "space-lg": "1.5rem", "space-xl": "2rem", "space-xs": "0.25rem", "margin-desktop": "2rem", "margin": "1rem", "space-sm": "0.5rem", "gutter-desktop": "2rem", "space-md": "1rem" }, "fontFamily": { "headline-lg-mobile": ["Inter"], "headline-sm": ["Inter"], "body-md": ["Inter"], "body-lg": ["Inter"], "display-mobile": ["Inter"], "caption": ["Inter"], "label-sm": ["Inter"], "display": ["Inter"], "headline-lg": ["Inter"], "label-md": ["Inter"], "headline-md": ["Inter"] }, "fontSize": { "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-sm": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "0", "fontWeight": "400" }], "display-mobile": ["36px", { "lineHeight": "42px", "letterSpacing": "-0.03em", "fontWeight": "600" }], "caption": ["12px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "500" }], "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "display": ["48px", { "lineHeight": "54px", "letterSpacing": "-0.035em", "fontWeight": "600" }], "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.025em", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0", "fontWeight": "500" }], "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }] } } } };</script></head><body class="bg-background font-body-md text-body-md text-foreground antialiased"><aside class="fixed left-0 top-0 h-full w-[240px] bg-surface z-50 flex flex-col justify-between border-r border-border"><div class="flex flex-col"><div class="h-16 px-space-md flex items-center gap-space-sm border-b border-border"><img alt="PathAid Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W2dVZTrCRHe5mHqdw0AF1htfGKcKgrhjRBujsrr6inh7_14u-bJy5nKe0jyiXYH5azMj-Mt98QISSNauCg5S-sD4fGZum6geJ_4iZF-nMpEyIYGWDC0-Yro4l5I74ps3vYWDgi_Xbx4I3VhfXUAlzoFg9Sm45beGYDvoypnzlt7dHGBLRfTfjudk_nFJ65dvUbtzJD_DrlqL4ql7aAdTBqxX2F3lCLpk8r2lhLVKtPW91vLlOb0DMrRm5s"/><div class="flex flex-col"><span class="font-label-md text-label-md text-foreground font-semibold leading-none">PathAid</span><span class="font-caption text-caption text-muted-foreground mt-0.5 leading-none">Scholarship Discovery</span></div></div><nav class="flex flex-col gap-space-xs px-space-sm py-space-md" data-active-classes="bg-surface-muted text-primary font-medium"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-label-md text-label-md">Overview</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="scholarships" href="#"><span class="material-symbols-outlined text-[20px]">search</span><span class="font-label-md text-label-md">Discover</span></a><a class="flex items-center justify-between px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="saved" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">bookmark</span><span class="font-label-md text-label-md">Saved</span></div><span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-muted text-primary font-semibold">4</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="applications" href="#"><span class="material-symbols-outlined text-[20px]">description</span><span class="font-label-md text-label-md">Applications</span></a><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg transition-colors bg-surface-muted text-primary font-medium" data-path="profile" href="#"><span class="material-symbols-outlined text-[20px]">person</span><span class="font-label-md text-label-md">Student Profile</span></a></nav></div><div class="px-space-sm py-space-md border-t border-border flex flex-col gap-space-xs"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><button class="w-full flex items-center justify-between px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors text-left" type="button"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">light_mode</span><span class="font-label-md text-label-md">Appearance</span></div><span class="font-caption text-caption text-muted-foreground">Light</span></button><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="help" href="#"><span class="material-symbols-outlined text-[20px]">help_outline</span><span class="font-label-md text-label-md">Help &amp; Privacy</span></a></div></aside><div class="pl-[240px]"><header class="fixed top-0 left-[240px] right-0 h-16 bg-surface/90 backdrop-blur-md border-b border-border z-40 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-3 text-muted-foreground text-[18px]">search</span><input class="w-80 h-9 pl-9 pr-3 rounded-lg border border-border bg-surface text-foreground font-body-md text-body-md placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring" placeholder="Search scholarships, providers, fields..." type="text"/></div></div><div class="flex items-center gap-space-md"><button aria-label="Notifications" class="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface"></span></button><div class="h-5 w-px bg-border"></div><div class="flex items-center gap-space-sm cursor-pointer"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEVbLl7MIwbXLSEDWZ51FBXNIexzJa88hg9qxS6y5bMLeuKph0yFiBtFzaMSrfJ_A1ciffUCgHPHFKZ9bzsBPOxgrETGLScgty4o26ztVsau8eljs-YX9i96SMxd6U2EgFOYzOenCwuAxa9pCERueOWBfQk-1isSPN2MzZ-r2gRW_LdKx6dqzxGVW-np8rOG0LcV653PhM0LcAw0hKLOgSLbEudnZpfnBgTSCaioRp0jnOoYCNPrc7lg"/><div class="flex flex-col text-left"><span class="font-label-md text-label-md text-foreground font-medium leading-none">Elena Vance</span><span class="font-caption text-caption text-muted-foreground mt-0.5 leading-none">Undergraduate</span></div></div></div></header><main class="relative pt-16 min-h-screen bg-background"><div class="max-w-[1200px] mx-auto px-space-lg py-space-lg"><div class="flex flex-col w-full">
+<!-- Top Visual Accent & Breadcrumb Context -->
+<div class="flex items-center justify-between pb-4">
+<div class="flex items-center gap-2 text-muted-foreground font-caption text-caption">
+<span>Student Portal</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Settings &amp; Persona</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-semibold">Eligibility Intake</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-muted px-3 py-1 rounded-full text-foreground">
+<span class="w-2 h-2 rounded-full bg-success"></span>
+<span class="font-caption text-caption font-medium">Profile Sync Active · Encrypted</span>
+</div>
+</div>
+<!-- Main Headline Block -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6">
+<div class="max-w-2xl">
+<h1 class="font-headline-lg text-headline-lg text-foreground tracking-tight">Student Profile &amp; Matching Criteria</h1>
+<p class="font-body-md text-body-md text-muted-foreground mt-1">
+        Manage your academic details and personal interests to refine your scholarship recommendations. Sensitive questions are strictly optional.
+      </p>
+</div>
+<div class="flex items-center gap-2 self-start md:self-auto bg-surface-container px-3.5 py-2 rounded-xl text-primary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+<span class="font-semibold">Match Accuracy: 94%</span>
+</div>
+</div>
+<!-- Profile Completion Banner -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-high p-5 mb-8 shadow-sm">
+<div class="absolute -right-8 -bottom-10 w-44 h-44 rounded-full bg-primary-fixed-dim/40 blur-2xl pointer-events-none"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
+<div class="flex items-start sm:items-center gap-4">
+<!-- SVG Progress Donut Chart -->
+<div class="relative flex-shrink-0 w-14 h-14 flex items-center justify-center">
+<svg class="w-14 h-14 transform -rotate-90" viewbox="0 0 56 56">
+<circle class="text-surface-variant/70" cx="28" cy="28" fill="transparent" r="22" stroke="currentColor" stroke-width="4"></circle>
+<circle class="text-primary" cx="28" cy="28" fill="transparent" r="22" stroke="currentColor" stroke-dasharray="138.23" stroke-dashoffset="20.73" stroke-linecap="round" stroke-width="4.5"></circle>
+</svg>
+<span class="absolute font-label-sm text-label-sm font-bold text-primary">85%</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md font-semibold text-foreground">85% Complete · 3 steps to finish</span>
+<span class="hidden sm:inline-flex bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded text-[11px] font-semibold tracking-wide uppercase">High Potential</span>
+</div>
+<p class="font-body-md text-body-md text-muted-foreground mt-0.5">
+            Adding your volunteer experience and intended career track helps surface 12+ tailored opportunities.
+          </p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm whitespace-nowrap" type="button">
+          Quick Complete
+        </button>
+<button aria-label="Dismiss completion advice" class="p-2 rounded-lg text-muted-foreground hover:bg-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- Visual micro-timeline bar -->
+<div class="w-full bg-surface-variant/80 h-1.5 rounded-full mt-4 overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-500 ease-out" style="width: 85%;"></div>
+</div>
+</div>
+<!-- Sectioned Form Layout with Asymmetric Sticky Side Navigation -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- Sticky Rail Navigation for Desktop Form Sections -->
+<aside class="lg:col-span-3 sticky top-24 hidden lg:flex flex-col gap-1 bg-surface rounded-xl p-3 shadow-sm">
+<div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Form Sections
+      </div>
+<a class="flex items-center justify-between px-3 py-2.5 rounded-lg bg-surface-muted text-primary font-label-md text-label-md font-medium transition-colors" href="#section-academic">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span>1. Academic Details</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-primary">check_circle</span>
+</a>
+<a class="flex items-center justify-between px-3 py-2.5 rounded-lg text-foreground hover:bg-surface-muted font-label-md text-label-md transition-colors" href="#section-interests">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px]">interests</span>
+<span>2. Interests &amp; Tags</span>
+</div>
+<span class="material-symbols-outlined text-[16px] text-primary">check_circle</span>
+</a>
+<a class="flex items-center justify-between px-3 py-2.5 rounded-lg text-foreground hover:bg-surface-muted font-label-md text-label-md transition-colors" href="#section-demographics">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px]">shield_person</span>
+<span>3. Grant Eligibility</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-warning"></span>
+</a>
+<a class="flex items-center justify-between px-3 py-2.5 rounded-lg text-foreground hover:bg-surface-muted font-label-md text-label-md transition-colors" href="#section-preferences">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+<span>4. Preferences</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-surface-variant"></span>
+</a>
+<!-- Quick Tips Bento Snippet -->
+<div class="mt-6 p-4 rounded-xl bg-surface-muted flex flex-col gap-2">
+<div class="flex items-center gap-2 text-primary font-label-sm text-label-sm font-semibold">
+<span class="material-symbols-outlined text-[18px]">tips_and_updates</span>
+<span>Matching Strategy</span>
+</div>
+<p class="font-caption text-caption text-muted-foreground leading-relaxed">
+          Students who add 5+ relevant extracurricular tags qualify for an average of $6,800 more institutional aid.
+        </p>
+</div>
+</aside>
+<!-- Main Dynamic Form Workspace -->
+<div class="lg:col-span-9 flex flex-col gap-6">
+<!-- SECTION 1: Academic Background -->
+<section class="bg-surface rounded-xl p-6 shadow-sm flex flex-col gap-4" id="section-academic">
+<div class="flex items-center justify-between pb-3">
+<div class="flex items-center gap-3">
+<span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold">1</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-foreground">Academic Background</h2>
+<p class="font-caption text-caption text-muted-foreground">Primary eligibility foundation for collegiate grant databases</p>
+</div>
+</div>
+<span class="font-label-sm text-label-sm text-success bg-surface-container px-2.5 py-1 rounded-md font-medium">Verified Enrollee</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+<!-- University / College -->
+<div class="flex flex-col gap-1.5 md:col-span-2">
+<label class="font-label-md text-label-md text-foreground font-medium" for="university-input">University / College</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-3 text-muted-foreground text-[18px]">account_balance</span>
+<input class="w-full h-11 pl-10 pr-4 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-surface transition-all" id="university-input" type="text" value="University of Washington"/>
+</div>
+</div>
+<!-- Current Education Level -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-foreground font-medium" for="education-level">Current Education Level</label>
+<div class="relative">
+<select class="w-full h-11 pl-3 pr-9 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-surface transition-all" id="education-level">
+<option selected="" value="undergraduate-junior">Undergraduate Junior</option>
+<option value="undergraduate-freshman">Undergraduate Freshman</option>
+<option value="undergraduate-sophomore">Undergraduate Sophomore</option>
+<option value="undergraduate-senior">Undergraduate Senior</option>
+<option value="masters">Master's / Graduate</option>
+<option value="doctorate">Doctorate / Ph.D.</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-muted-foreground text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Expected Graduation Date -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-foreground font-medium" for="grad-date">Expected Graduation Date</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-3 text-muted-foreground text-[18px]">event</span>
+<input class="w-full h-11 pl-10 pr-4 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-surface transition-all" id="grad-date" type="text" value="June 2028"/>
+</div>
+</div>
+<!-- Major / Field of Study with Badges -->
+<div class="flex flex-col gap-1.5 md:col-span-2">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-foreground font-medium" for="major-input">Major / Field of Study</label>
+<span class="font-caption text-caption text-muted-foreground">Up to 2 degrees supported</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-muted focus-within:bg-surface focus-within:ring-2 focus-within:ring-primary/40 transition-all flex flex-wrap items-center gap-2">
+<span class="inline-flex items-center gap-1.5 bg-surface text-primary px-3 py-1 rounded-md font-label-sm text-label-sm shadow-sm">
+<span>Computer Science &amp; Software Engineering</span>
+<button aria-label="Remove major" class="hover:text-destructive flex items-center" type="button">
+<span class="material-symbols-outlined text-[14px]">close</span>
+</button>
+</span>
+<input class="flex-1 min-w-[200px] h-7 bg-transparent font-body-md text-body-md text-foreground focus:outline-none placeholder:text-muted-foreground" id="major-input" placeholder="Type secondary minor or concentration..." type="text"/>
+</div>
+</div>
+<!-- Cumulative GPA -->
+<div class="flex flex-col gap-1.5 md:col-span-2">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+<label class="font-label-md text-label-md text-foreground font-medium" for="gpa-input">Cumulative GPA</label>
+<span class="font-caption text-caption text-muted-foreground">Optional — Used for minimum requirement filtering only</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative w-44">
+<input class="w-full h-11 pl-3 pr-12 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md tabular-nums font-semibold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-surface transition-all" id="gpa-input" type="text" value="3.82"/>
+<span class="absolute right-3.5 top-2.5 font-label-md text-label-md text-muted-foreground">/ 4.0</span>
+</div>
+<div class="flex items-center gap-1.5 text-success font-caption text-caption bg-surface-container px-3 py-2 rounded-lg">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+<span>Unlocks 85+ honors-tier opportunities</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 2: Areas of Interest & Extracurriculars -->
+<section class="bg-surface rounded-xl p-6 shadow-sm flex flex-col gap-4" id="section-interests">
+<div class="flex items-center gap-3 pb-2">
+<span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold">2</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-foreground">Areas of Interest &amp; Extracurriculars</h2>
+<p class="font-caption text-caption text-muted-foreground">Tailors specialized industry, mission-driven, and community-backed bursaries</p>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<label class="font-label-md text-label-md text-foreground font-medium">Selected Specializations &amp; Causes</label>
+<!-- Selected Tag Pills Grid -->
+<div class="flex flex-wrap gap-2 pt-1" id="pill-container">
+<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container text-foreground font-label-sm text-label-sm shadow-sm transition-transform hover:scale-[1.02]">
+<span class="material-symbols-outlined text-[15px] text-primary">memory</span>
+<span>Artificial Intelligence</span>
+<button aria-label="Remove Artificial Intelligence tag" class="hover:text-destructive ml-0.5" type="button"><span class="material-symbols-outlined text-[15px]">close</span></button>
+</span>
+<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container text-foreground font-label-sm text-label-sm shadow-sm transition-transform hover:scale-[1.02]">
+<span class="material-symbols-outlined text-[15px] text-primary">terminal</span>
+<span>Open Source</span>
+<button aria-label="Remove Open Source tag" class="hover:text-destructive ml-0.5" type="button"><span class="material-symbols-outlined text-[15px]">close</span></button>
+</span>
+<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container text-foreground font-label-sm text-label-sm shadow-sm transition-transform hover:scale-[1.02]">
+<span class="material-symbols-outlined text-[15px] text-primary">diversity_3</span>
+<span>Women in Tech</span>
+<button aria-label="Remove Women in Tech tag" class="hover:text-destructive ml-0.5" type="button"><span class="material-symbols-outlined text-[15px]">close</span></button>
+</span>
+<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container text-foreground font-label-sm text-label-sm shadow-sm transition-transform hover:scale-[1.02]">
+<span class="material-symbols-outlined text-[15px] text-primary">group</span>
+<span>Community Mentorship</span>
+<button aria-label="Remove Community Mentorship tag" class="hover:text-destructive ml-0.5" type="button"><span class="material-symbols-outlined text-[15px]">close</span></button>
+</span>
+<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container text-foreground font-label-sm text-label-sm shadow-sm transition-transform hover:scale-[1.02]">
+<span class="material-symbols-outlined text-[15px] text-primary">eco</span>
+<span>Environmental Sustainability</span>
+<button aria-label="Remove Environmental Sustainability tag" class="hover:text-destructive ml-0.5" type="button"><span class="material-symbols-outlined text-[15px]">close</span></button>
+</span>
+</div>
+<!-- Add Custom Tag Input -->
+<div class="mt-2 flex items-center gap-2">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3.5 top-3 text-muted-foreground text-[18px]">add_circle</span>
+<input class="w-full h-11 pl-10 pr-4 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-surface transition-all" id="custom-tag-input" placeholder="Add custom tag (e.g. Robotics, Hackathon Organizer, First Responder)..." type="text"/>
+</div>
+<button class="h-11 px-4 bg-surface-container text-primary font-label-md text-label-md font-semibold rounded-lg hover:bg-surface-variant transition-colors flex items-center gap-1.5" id="add-tag-btn" type="button">
+<span>Add Tag</span>
+</button>
+</div>
+<!-- Suggested additions -->
+<div class="flex items-center gap-2 pt-2 text-xs text-muted-foreground">
+<span>Recommended for CS:</span>
+<button class="underline hover:text-primary transition-colors" type="button">+ Cloud Architecture</button>
+<span>·</span>
+<button class="underline hover:text-primary transition-colors" type="button">+ Cyber Ethics</button>
+<span>·</span>
+<button class="underline hover:text-primary transition-colors" type="button">+ STEM Outreach</button>
+</div>
+</div>
+</section>
+<!-- SECTION 3: Criteria & Demographics (Optional) -->
+<section class="bg-surface rounded-xl p-6 shadow-sm flex flex-col gap-5" id="section-demographics">
+<div class="flex items-center gap-3">
+<span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold">3</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-foreground">Criteria &amp; Demographics <span class="font-caption text-caption text-muted-foreground font-normal">(Optional)</span></h2>
+<p class="font-caption text-caption text-muted-foreground">Enables matching with specialized regional and endowment grants</p>
+</div>
+</div>
+<!-- Privacy Reassurance Callout -->
+<div class="flex items-start gap-3.5 p-4 rounded-xl bg-surface-muted text-foreground">
+<span class="material-symbols-outlined text-[20px] text-primary mt-0.5">lock</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-md text-label-md font-semibold text-primary">Strict Privacy Guarantee</span>
+<p class="font-caption text-caption text-muted-foreground leading-relaxed">
+              PathAid uses these details solely to match targeted memorial or identity-based grants. Your data is private and never sold.
+            </p>
+</div>
+</div>
+<!-- First-Generation College Student Radios -->
+<fieldset class="flex flex-col gap-2 pt-1">
+<legend class="font-label-md text-label-md text-foreground font-medium mb-1">First-Generation College Student</legend>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<label class="flex items-center gap-3 p-3 rounded-lg bg-surface-container cursor-pointer hover:bg-surface-variant transition-colors">
+<input checked="" class="w-4 h-4 text-primary accent-primary" name="first-gen" type="radio" value="yes"/>
+<span class="font-body-md text-body-md text-foreground font-medium">Yes</span>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-lg bg-surface-muted cursor-pointer hover:bg-surface-variant transition-colors">
+<input class="w-4 h-4 text-primary accent-primary" name="first-gen" type="radio" value="no"/>
+<span class="font-body-md text-body-md text-foreground">No</span>
+</label>
+<label class="flex items-center gap-3 p-3 rounded-lg bg-surface-muted cursor-pointer hover:bg-surface-variant transition-colors">
+<input class="w-4 h-4 text-primary accent-primary" name="first-gen" type="radio" value="prefer-not-to-say"/>
+<span class="font-body-md text-body-md text-foreground">Prefer not to say</span>
+</label>
+</div>
+</fieldset>
+<!-- Financial Need Consideration Checkbox -->
+<div class="pt-2">
+<label class="flex items-start gap-3 p-4 rounded-xl bg-surface-muted cursor-pointer hover:bg-surface-container transition-colors">
+<input checked="" class="w-4 h-4 mt-1 rounded text-primary accent-primary" type="checkbox"/>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-foreground font-medium">Financial Need Consideration</span>
+<span class="font-caption text-caption text-muted-foreground mt-0.5">Match need-based grants with FAFSA criteria (Expected Family Contribution / Pell Eligibility filters applied)</span>
+</div>
+</label>
+</div>
+<!-- Geographic Eligibility: State of Residence -->
+<div class="flex flex-col gap-1.5 pt-1">
+<label class="font-label-md text-label-md text-foreground font-medium" for="state-residence">Geographic Eligibility: State of Residence</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-3 text-muted-foreground text-[18px]">location_on</span>
+<select class="w-full h-11 pl-10 pr-9 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-surface transition-all" id="state-residence">
+<option selected="" value="WA">Washington (WA) — Eligible for Washington College Grant &amp; Pacific Northwest regional trusts</option>
+<option value="OR">Oregon (OR)</option>
+<option value="CA">California (CA)</option>
+<option value="ID">Idaho (ID)</option>
+<option value="NY">New York (NY)</option>
+<option value="OTHER">Other State / U.S. Territory</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-3 text-muted-foreground text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+</section>
+<!-- SECTION 4: Application Preferences -->
+<section class="bg-surface rounded-xl p-6 shadow-sm flex flex-col gap-5" id="section-preferences">
+<div class="flex items-center gap-3">
+<span class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold">4</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-foreground">Application Preferences</h2>
+<p class="font-caption text-caption text-muted-foreground">Notification cadence and grant architecture preferences</p>
+</div>
+</div>
+<!-- Deadline Alerts Preference -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-foreground font-medium">Notification Preferences for Deadlines</label>
+<div class="p-4 rounded-xl bg-surface-muted flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[22px] text-primary">forward_to_inbox</span>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-medium text-foreground">Email me 7 days before deadlines of saved scholarships</span>
+<span class="font-caption text-caption text-muted-foreground">Includes automated prerequisite checklist reminders</span>
+</div>
+</div>
+<!-- Switch toggle -->
+<label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-secondary-fixed-dim peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<!-- Preferred Award Types -->
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-foreground font-medium" for="award-types">Preferred Award Types</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-3 text-muted-foreground text-[18px]">workspace_premium</span>
+<input class="w-full h-11 pl-10 pr-4 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-surface transition-all" id="award-types" type="text" value="Merit-based, Research grants, Conference travel stipends"/>
+</div>
+<span class="font-caption text-caption text-muted-foreground">Separated by comma. These determine prioritization weighting on your Discover tab.</span>
+</div>
+</section>
+<!-- Bottom Action Footer (Integrated Flush) -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-xl bg-surface shadow-sm">
+<div class="flex items-center gap-2 text-muted-foreground font-body-md text-body-md">
+<span class="material-symbols-outlined text-success text-[18px]">cloud_done</span>
+<span class="font-caption text-caption text-muted-foreground">All changes saved automatically to draft</span>
+</div>
+<div class="flex items-center gap-3 w-full sm:w-auto">
+<button class="w-1/2 sm:w-auto px-5 py-2.5 rounded-lg bg-surface-muted text-foreground font-label-md text-label-md hover:bg-surface-variant transition-colors text-center" type="button">
+            Cancel
+          </button>
+<button class="w-1/2 sm:w-auto px-6 py-2.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold hover:bg-primary-container transition-colors shadow-sm flex items-center justify-center gap-2" id="save-profile-btn" type="button">
+<span class="material-symbols-outlined text-[18px]">save</span>
+<span>Save Profile Changes</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Client-side Script -->
+<script>
+    (function () {
+      const addBtn = document.getElementById('add-tag-btn');
+      const tagInput = document.getElementById('custom-tag-input');
+      const pillContainer = document.getElementById('pill-container');
+      const saveBtn = document.getElementById('save-profile-btn');
+
+      if (addBtn && tagInput && pillContainer) {
+        const createTag = () => {
+          const val = tagInput.value.trim();
+          if (!val) return;
+
+          const span = document.createElement('span');
+          span.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container text-foreground font-label-sm text-label-sm shadow-sm transition-transform hover:scale-[1.02]';
+          span.innerHTML = `
+            <span class="material-symbols-outlined text-[15px] text-primary">label</span>
+            <span>${val}</span>
+            <button type="button" aria-label="Remove tag" class="hover:text-destructive ml-0.5"><span class="material-symbols-outlined text-[15px]">close</span></button>
+          `;
+          
+          span.querySelector('button').addEventListener('click', () => span.remove());
+          pillContainer.appendChild(span);
+          tagInput.value = '';
+        };
+
+        addBtn.addEventListener('click', createTag);
+        tagInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            createTag();
+          }
+        });
+
+        // Add remove listener to existing tags
+        pillContainer.querySelectorAll('button').forEach(btn => {
+          btn.addEventListener('click', function() {
+            this.closest('span').remove();
+          });
+        });
+      }
+
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+          const originalText = this.innerHTML;
+          this.disabled = true;
+          this.innerHTML = `
+            <span class="material-symbols-outlined text-[18px] animate-spin">refresh</span>
+            <span>Updating matches...</span>
+          `;
+          setTimeout(() => {
+            this.innerHTML = `
+              <span class="material-symbols-outlined text-[18px]">check</span>
+              <span>Changes Saved</span>
+            `;
+            setTimeout(() => {
+              this.disabled = false;
+              this.innerHTML = originalText;
+            }, 1800);
+          }, 600);
+        });
+      }
+    })();
+  </script>
+</div></div></main></div></body></html>

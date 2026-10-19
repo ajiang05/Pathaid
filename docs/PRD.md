@@ -84,7 +84,11 @@ External organizations that own the official application and determine final eli
 | F-07 | Quality evaluation and deployment foundation | Must | Local foundation implemented; hosted deployment pending |
 | F-08 | Student and administrator web interface | Must | Pending approved wireframes |
 | F-09 | Reviewed launch catalog | Must | Research and review pending |
+<<<<<<< HEAD
 | F-10 | Scheduled scholarship discovery and refresh | Must | Backend implemented; admin UI and controlled external-source verification pending |
+=======
+| F-10 | Scheduled scholarship discovery and refresh | Must | Planned; acquisition and ingestion foundation implemented |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## 7. User journeys
 
@@ -335,7 +339,11 @@ The web interface must implement the approved designs for student discovery and 
 ### FR-013: Scheduled scholarship discovery and refresh
 
 **Maps to:** F-10, J-03  
+<<<<<<< HEAD
 **Status:** Backend implemented; administrator UI and controlled external-source verification pending
+=======
+**Status:** Planned; underlying acquisition, extraction, orchestration, and review are implemented
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 The system must scan administrator-approved scholarship sources daily, avoid unnecessary model calls for unchanged content, and create private review work for new or materially changed scholarships.
 
@@ -344,7 +352,11 @@ The system must scan administrator-approved scholarship sources daily, avoid unn
 - Source schedules, scope, and scan state are durable in PostgreSQL.
 - A due source is enqueued once per scheduled window even if schedulers overlap.
 - Program pages are checked directly; discovery pages follow only bounded, canonical, same-scope links.
+<<<<<<< HEAD
 - Robots directives, source terms, one-source-per-host cycle limits, and acquisition security limits are honored.
+=======
+- Robots directives, source terms, per-host delays, and acquisition security limits are honored.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Identical normalized content updates freshness without extraction or a new draft.
 - Changed sources retain a snapshot and create one traceable ingestion run.
 - Fetch failure never automatically closes or removes a published opportunity.
@@ -509,7 +521,11 @@ The MVP is ready for limited student use when all of the following are true:
 | FR-008–FR-010 | Extraction, lease, retry, review, and publication tests | Backend implemented; admin UI pending |
 | FR-011 | CI, migration, Compose, and health-check verification | Local deployment verified; hosted checks pending |
 | FR-012 | Accessibility checks and end-to-end usability sessions | Pending wireframes and implementation |
+<<<<<<< HEAD
 | FR-013 | Scheduler, deduplication, change detection, scope, and failure-isolation tests | Backend implemented and tested |
+=======
+| FR-013 | Scheduler, deduplication, change detection, scope, and failure-isolation tests | Planned |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | FR-014 | Manual source audit and freshness review | Pending launch catalog |
 
 ## 15. Delivery sequence

@@ -2,7 +2,11 @@
 
 This guide covers the backend deployment foundation. A public hosted demo has
 not been provisioned. The Next.js service remains pending approved student and
+<<<<<<< HEAD
 administrator wireframes, while the daily scheduler backend is implemented; its administrator UI and controlled external-source verification remain pending.
+=======
+administrator wireframes, and the daily scheduler remains pending Feature 12.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## Local Docker setup
 
@@ -24,7 +28,11 @@ Requirements: Docker Engine with Docker Compose v2.
 
 3. Put the result in `PATHAID_ADMIN_PASSWORD_HASH` in the root `.env`, return
    to the repository root, and start the private database, migration job, API,
+<<<<<<< HEAD
    worker, and scheduler:
+=======
+   and worker. The current Compose file does not yet start the planned scheduler:
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
    ```sh
    docker compose up --build --detach
@@ -135,16 +143,26 @@ After Feature 12 is implemented, the operations summary must also include
 scheduled scan success/failure, overdue sources, changed sources, candidates,
 and review backlog. Logs must not contain discovered page bodies or link lists.
 
+<<<<<<< HEAD
 ## Daily scheduler
 
 The scheduler runs as a private service from the backend image. PostgreSQL
+=======
+## Planned daily scheduler
+
+The scheduler will run as a private service from the backend image. PostgreSQL
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 will store source definitions, next due times, scheduled-window claims, hashes,
 and outcomes so a restart does not lose the schedule. It creates idempotent work
 for the existing ingestion worker and never publishes content directly.
 
 Before external scheduling is enabled:
 
+<<<<<<< HEAD
 - configure each source's first morning due time, cadence, scheduler cycle interval, and link budget;
+=======
+- configure the morning timezone/window, jitter, per-host delay, and link budget;
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - register only reviewed pages with explicit host/path scope;
 - validate robots behavior and source terms;
 - run a controlled scheduled window using fake or owned sources;
@@ -175,7 +193,12 @@ collector only after its request capture and retention settings are reviewed.
 
 - Choose hosting only after checking current prices against the $25/month cap.
 - Add the Next.js and reverse-proxy services after approved wireframes exist.
+<<<<<<< HEAD
 - Run a controlled external-source scheduled window and verify its operational alerts before launch.
+=======
+- Implement and add the scheduler service, scheduled-source migrations, and
+  protected management API from Feature 12.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Curate and manually approve 10–20 official programs before exporting seed data.
 - Verify HTTPS, private networking, PostgreSQL concurrency, telemetry redaction,
   and backup restoration in the selected deployed environment.

@@ -16,8 +16,14 @@ Give one administrator control over the accuracy and publication of AI-generated
 - Keep published revisions immutable. Atomically change the program’s published pointer and write the review event on approval.
 - Record reviewer, timestamp, decision, notes, and revision. Rejection or failed ingestion must not replace current published data.
 - Expose revision history and ingestion diagnostics through protected APIs and UI.
+<<<<<<< HEAD
 - Expose scheduled sources, scans, private candidates, and source pause/resume controls through protected APIs.
 - Require approval for new or materially changed public content; unchanged scans update freshness automatically.
+=======
+- Prioritize daily-scan items as new candidates or material changes.
+- Let administrators manage, pause, and manually scan approved sources.
+- Update freshness automatically for unchanged scans; require approval for new or materially changed public content.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## Interfaces and dependencies
 Use [catalog](05-program-catalog.md) storage and [orchestration](08-ingestion-orchestration.md) run state. Public readers never receive drafts through admin paths.
@@ -29,4 +35,8 @@ Use [catalog](05-program-catalog.md) storage and [orchestration](08-ingestion-or
 - Concurrent or repeated approvals cannot produce inconsistent publication pointers or review events.
 
 ## Exclusions
+<<<<<<< HEAD
 Multiple admin roles, public registration, and automatic publication of new or materially changed content.
+=======
+Multiple admin roles, public registration, and automatic publication of new or materially changed scholarship content.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
