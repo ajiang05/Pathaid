@@ -6,11 +6,11 @@ Feature specifications: see [features/README.md](features/README.md) for individ
 
 ## 1. Purpose and success criteria
 
-Pathaid addresses two related problems: financial-aid opportunities are scattered across provider websites, and students often cannot tell whether they meet the requirements to apply. It automatically checks approved scholarship sources each morning, prepares new or changed opportunities for review, and turns published official program information into personalized, source-backed checklists.
+Pathaid addresses two related problems: financial-aid opportunities are scattered across provider websites, and students often cannot tell whether they meet the requirements to apply. It helps college students find scholarships, grants, and basic-needs assistance and turns reviewed official program information into personalized, source-backed checklists.
 
 The first release is a portfolio demo built over 4–6 weeks. Its technical focus is AI workflow orchestration for program ingestion and grounded scholarship recommendations, supported by a tested Python backend and deterministic eligibility engine.
 
-Success means a student can sign up, create and edit a profile, open a home page of relevant scholarships and other resources, understand why each is recommended and whether they appear eligible to apply, and follow an evidence-backed checklist to the official application page. Each morning, approved sources are scanned without manual submission; unchanged pages update freshness, while changed pages and discovered candidates enter review. An administrator manages sources, reviews AI-extracted requirements, and publishes versioned programs without changing application code. Before the portfolio release, five students complete observed usability sessions and recurring usability problems are addressed.
+Success means a student can sign up, create and edit a profile, open a home page of relevant scholarships and other resources, understand why each is recommended and whether they appear eligible to apply, and follow an evidence-backed checklist to the official application page. An administrator can ingest an official source, review AI-extracted requirements, and publish a versioned program without changing application code. Before the portfolio release, five students complete observed usability sessions and recurring usability problems are addressed.
 
 ## 2. Audience and release scope
 
@@ -22,7 +22,7 @@ Success means a student can sign up, create and edit a profile, open a home page
 - Require student sign-up and login so students can save and edit their profile and return to their personalized home page. Defer application tracking.
 - Use AI for administrator-facing ingestion and student-facing scholarship recommendation explanations grounded in published program data. Intake questions, eligibility decisions, and the candidate set remain deterministic.
 
-Out of scope for v1: conversational intake, RAG, embeddings, pgvector, PDF ingestion, student document uploads, broad autonomous crawling or search-engine scraping, automatic publication of material changes, application submission, application tracking, notifications, and international aid systems outside the US.
+Out of scope for v1: conversational intake, RAG, embeddings, pgvector, PDF ingestion, student document uploads, autonomous crawling, application submission, application tracking, and international aid systems outside the US.
 
 ## 3. Student experience
 
@@ -87,7 +87,7 @@ Do not create student-application tables.
 - `GET /api/programs` and `GET /api/programs/{id}`: published program summaries/details only.
 - `POST /api/evaluate`: authenticated student's saved profile plus validated session answers and assistance filters; returns deterministically ordered program outcomes, criterion-level reasons, missing fields, citations tied to evaluated revision IDs, application availability, verified deadline data, applicable coverage, and the ranking factors shown to the student. Persist new answers only when the student saves them to their profile.
 - Student endpoints: sign-up/login/logout, read/update/delete own profile and account, and fetch a personalized home page. Recommendation explanation requests require the student's AI opt-in and accept only server-selected published candidates.
-- Protected administrator endpoints: login/logout, manage scheduled sources, run immediate scans, inspect scan/candidate status, create and inspect ingestion runs, retry failed runs, edit drafts, approve/publish, reject, and inspect revision history.
+- Protected administrator endpoints: login/logout, create and inspect ingestion runs, retry failed runs, edit drafts, approve/publish, reject, and inspect revision history.
 
 Authenticate students with hashed passwords and server-side account ownership checks. Authenticate one administrator with credentials supplied through deployment secrets; no public administrator registration. Use expiring HttpOnly session cookies, secure cookies in production, CSRF protection on mutations, and throttling for login and sign-up. Return field-level validation errors without echoing sensitive submitted values.
 
@@ -179,7 +179,6 @@ Prefer conservative partial screening for complex benefits. Retain unresolved co
 - **Student accounts and recommendations:** sign-up/login/logout, profile ownership and edits, deletion, consent enforcement, minimal model payloads, unsupported-claim rejection, and deterministic fallback when AI is disabled or fails.
 - **Extraction:** a fixed versioned set of at least 10 source excerpts with manually labeled fields, criteria, and evidence spans. Include scholarship sources, ambiguous requirements, exceptions, and unsupported logic. Report field accuracy, criterion precision/recall, unsupported-claim rate, and evidence fidelity with explicit denominators. Do not invent performance numbers or measure retrieval precision when retrieval is absent.
 - **Workflow:** transient failures, exhausted retries, worker restart, duplicate submissions, invalid model output, refusal, missing API key, review edits, rejection, and publication of a replacement revision.
-- **Scheduled discovery:** overlapping schedulers, due-window idempotency, unchanged-content skips, host/path scope, robots decisions, link budgets, per-host throttling, source-level failure isolation, and material-change review routing.
 - **Backend:** unauthorized student/admin access, CSRF, unsafe URL/redirect handling, invalid profiles, published-only reads, atomic publication, profile deletion, and absence of value-bearing error logs.
 - **Frontend:** sign-up → short profile intake → personalized home page → progressively requested answer → ranked results → profile edit and reevaluation, sensitive questions appearing only for relevant candidates, school without campus coverage, unknown answers, empty catalog/filter results, API errors, corresponding mobile and desktop layouts, keyboard use, and accessible labels.
 - **End to end:** student screening and admin ingestion/review/publication journeys. Use a deterministic model stub in CI; live OpenAI evaluations are explicit, separately budgeted runs.
@@ -196,15 +195,14 @@ Implement student sign-up, login, the typed profile-field registry, and editable
 | Foundation          | Week 1    | Schema/migrations, student authentication/profile storage, profile registry, eligibility engine, representative reviewed resources, passing logic tests                           |
 | Student flow        | Week 2    | Stitch prototype, sign-up, editable profile, personalized home page, progressive questions, ranked cited results, checklists, privacy controls                                    |
 | AI orchestration    | Weeks 3–4 | Source acquisition, structured extraction, durable runs/retries, admin review/publication, grounded recommendation explanations with fallback                                     |
-| Scheduled discovery | Next      | Approved-source registry, daily scheduler, robots/scope policy, hash change detection, bounded discovery, and scan observability                                                   |
 | Evaluation and demo | Weeks 5–6 | 10–20 reviewed resources including at least four scholarships, 100-profile evaluation, extraction report, browser tests, five student usability sessions, observability, demo |
 
 ## 9. Deployment and operations
 
-- Provide Docker Compose for frontend, API, scheduler, worker, and PostgreSQL, plus migrations and an explicit seed command. Frontend and scheduler services remain pending implementation.
+- Provide Docker Compose for frontend, API, worker, and PostgreSQL, plus migrations and an explicit seed command.
 - Student matching must run from reviewed seed data without an OpenAI API key. Recommendation explanations fall back to templates; ingestion reports a clear configuration error when a key is absent.
 - Target a hosted public student flow and protected admin interface within **$25/month total** for hosting and API usage. Verify current provider pricing before selecting services or provisioning paid resources.
 - Keep secrets outside the repository. Provide `.env.example`, setup instructions, health/readiness endpoints, migration steps, and database backup/restore instructions.
 - Deploy behind HTTPS. Restrict CORS/origins to the frontend, keep database/worker private, and prevent request-body logging at the proxy and application layers.
-- Add an observability tool for API/frontend errors, request latency, recommendation model latency and failures, failed ingestion runs, scheduled scan success, overdue sources, review backlog, and source verification age. Use aggregate counts and redacted traces; exclude passwords, profile fields, prompts containing student data, and source text. Document catalog limitations and review requirements.
+- Add an observability tool for API/frontend errors, request latency, recommendation model latency and failures, failed ingestion runs, and source verification age. Use aggregate counts and redacted traces; exclude passwords, profile fields, prompts containing student data, and source text. Document catalog limitations and ongoing manual maintenance.
 - Do not represent deployment, live AI evaluation, or human source review as completed without the corresponding evidence.

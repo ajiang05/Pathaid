@@ -1,0 +1,1 @@
+"""Pathaid backend application package."""

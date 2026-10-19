@@ -1,6 +1,6 @@
 # AI program and scholarship requirement extraction
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: structured schema, deterministic evidence/rule validation, configurable OpenAI adapter, offline stub, and 10-case benchmark harness implemented; ingestion-run persistence, admin review integration, and a separately budgeted live-model benchmark remain pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Convert official source text into structured, evidence-backed drafts that an administrator can review.
@@ -13,7 +13,7 @@ Convert official source text into structured, evidence-backed drafts that an adm
 - Preserve ambiguous or unsupported requirements as unresolved. Schema validity and matching excerpts do not prove semantic correctness or completeness.
 - Surface refusals, invalid output, unsupported logic, and configuration errors for review or failure handling.
 - Record model, prompt, and schema versions plus token usage when available.
-- The model receives official program text, never student profiles, and has no publishing authority.
+- This extraction model receives official program text, never student profiles, and has no publishing authority. Student recommendation explanations use a separate, consent-gated model path.
 
 ## Interfaces and dependencies
 Input: saved [source snapshot](06-source-acquisition.md). Output: proposed revision plus validation findings for [admin review](09-admin-review-and-publication.md), managed by the [orchestrator](08-ingestion-orchestration.md).
@@ -24,5 +24,10 @@ Input: saved [source snapshot](06-source-acquisition.md). Output: proposed revis
 - Missing key, refusal, invalid fields, and ambiguous evidence have explicit outcomes.
 - Run the fixed extraction benchmark described in [evaluations](10-quality-evaluations.md); record actual results.
 
+## Current verification
+- The offline suite validates all 10 versioned synthetic benchmark records and their manually labeled evidence spans.
+- Adapter tests use a deterministic provider stub and exercise missing-key, refusal, invalid-output, transient-provider, and oversized-source outcomes without an API key.
+- The benchmark metric harness is tested with explicit numerators and denominators. No live-model quality result is claimed yet; that run is explicit and separately budgeted as required by Feature 10.
+
 ## Exclusions
-Student-facing model calls, RAG, and autonomous tool selection.
+Student-facing model calls from the extraction workflow, RAG, and autonomous tool selection.
