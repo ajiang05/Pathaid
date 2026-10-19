@@ -5,6 +5,7 @@ import hmac
 import os
 import re
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -32,6 +33,7 @@ from .evaluation_schemas import (
 )
 from .models import AuthAttempt, ProgramRevision, RecommendationAttempt, Student, StudentSession
 from .profile_fields import FIELDS, validate_profile_patch
+from .health import router as health_router
 from .recommendations import (
     OpenAIRecommendationAdapter,
     RecommendationError,
@@ -40,6 +42,7 @@ from .recommendations import (
     template_explanation,
 )
 from .recommendation_schemas import RecommendationRequest, RecommendationResponse
+from .telemetry import record_request_metrics
 
 
 # The FastAPI object connects route decorators below to the ASGI application.
@@ -47,6 +50,8 @@ app = FastAPI(title="Pathaid API")
 app.include_router(admin_auth_router)
 app.include_router(admin_router)
 app.include_router(admin_review_router)
+app.include_router(health_router)
+app.middleware("http")(record_request_metrics)
 COOKIE_NAME = "pathaid_session"
 SESSION_DAYS = 7
 # This is a deliberately small syntax check, not an attempt to determine
@@ -464,6 +469,7 @@ def _record_recommendation_attempt(
     outcome: str,
     model: str | None = None,
     usage=None,
+    latency_ms: int | None = None,
 ) -> None:
     """Persist only aggregate provider metadata, never a prompt or explanation."""
 
@@ -476,6 +482,7 @@ def _record_recommendation_attempt(
             input_tokens=getattr(usage, "input_tokens", None),
             output_tokens=getattr(usage, "output_tokens", None),
             total_tokens=getattr(usage, "total_tokens", None),
+            latency_ms=latency_ms,
             created_at=now(),
         )
     )
@@ -535,6 +542,7 @@ def recommendation_explanation(
         return fallback
 
     provider = getattr(app.state, "recommendation_provider", None)
+    provider_started = time.perf_counter()
     try:
         provider = provider or OpenAIRecommendationAdapter()
         generated = provider.select(model_payload(result, combined_profile))
@@ -546,6 +554,7 @@ def recommendation_explanation(
             revision_id=revision.id,
             outcome=error.code,
             model=getattr(getattr(provider, "config", None), "model", None),
+            latency_ms=round((time.perf_counter() - provider_started) * 1000),
         )
         fallback.fallback_reason = error.code
         return fallback
@@ -557,6 +566,7 @@ def recommendation_explanation(
         outcome="success",
         model=generated.model,
         usage=generated.usage,
+        latency_ms=round((time.perf_counter() - provider_started) * 1000),
     )
     return RecommendationResponse(
         program_id=program_id,

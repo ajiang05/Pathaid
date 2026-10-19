@@ -5,7 +5,12 @@
 The backend provides student accounts and profiles, a reviewed versioned catalog,
 deterministic discovery and eligibility, source-backed application results, optional
 grounded scholarship recommendation assistance, and protected ingestion and review
-workflows. The student and administrator frontends await approved wireframes.
+workflows. It also schedules approved scholarship sources, skips unchanged content,
+and creates private candidate work from bounded discovery pages. The student and
+administrator frontends await approved wireframes.
+
+Container startup, reviewed catalog transfer, backup, recovery, and production
+security instructions are in [`docs/deployment.md`](../docs/deployment.md).
 
 ## Local setup
 
@@ -39,6 +44,13 @@ Use PostgreSQL in deployed environments by setting `DATABASE_URL` to a `postgres
 - `POST /api/programs/{id}/recommendation-explanation` accepts an exact published
   `revision_id` and optional temporary `answers`. It always returns a grounded
   template and uses optional model assistance only after the student opts in.
+- `GET /health/live` reports process liveness. `GET /health/ready` checks the
+  database and required migration without returning connection details.
+- `GET /api/admin/operations/summary` returns authenticated aggregate failure,
+  latency, and source-verification signals without private request content.
+- `/api/admin/scheduled-sources*` manages approved program and discovery pages;
+  `/api/admin/scheduled-scans` and `/api/admin/discovered-candidates` expose
+  privacy-safe scan and candidate status.
 
 All profile fields remain optional. Recommendation assistance sends only saved or
 temporary fields referenced by the evaluated rule; it never sends account identity,
@@ -160,6 +172,25 @@ invalid drafts stop for administrator action.
 `PATHAID_INGESTION_MAX_ATTEMPTS` may lower the attempt limit but cannot exceed
 three. The workflow currently stops at `awaiting_review`; protected review and
 publication APIs then require the deployment-configured administrator.
+
+## Scheduled scholarship discovery
+
+Run one due scheduling batch from `backend/`:
+
+```sh
+.venv/bin/python -m app.scheduled_discovery --once
+```
+
+Without `--once`, the scheduler polls durable PostgreSQL schedules. It selects
+at most one due source per host per cycle, creates one run per source/window,
+checks safely acquired robots rules, and uses normalized content hashes to avoid
+model calls for unchanged pages. Approved discovery pages may create private
+candidate runs only for canonical links inside their configured host/path scope
+and link limit. New and changed content still requires administrator approval.
+
+Configure polling, batch size, and the identifiable robots user agent with
+`PATHAID_SCHEDULER_POLL_SECONDS`, `PATHAID_SCHEDULER_BATCH_SIZE`, and
+`PATHAID_SCHEDULER_USER_AGENT`.
 
 ## Administrator review
 

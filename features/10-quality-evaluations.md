@@ -1,6 +1,6 @@
 # Reproducible eligibility and extraction evaluations
 
-Status: backend offline evaluations implemented; live model, frontend, end-to-end, and usability evaluations remain pending. Parent specification: [plan.md](../plan.md).
+Status: backend offline evaluations and scheduled-discovery tests implemented; live model, frontend, end-to-end, and usability evaluations remain pending. Parent specification: [plan.md](../plan.md).
 
 ## Implementation status
 - A versioned dataset contains 100 explicitly labeled synthetic profiles across all rule operators, numeric boundaries, missing answers, nested AND/OR logic, incomplete coverage, unsupported conditions, possible exceptions, and GPA scale handling.
@@ -25,9 +25,13 @@ Measure correctness and demonstrate the AI and backend work with reproducible ev
 - Exercise sign-up, short profile intake, personalized home page, profile editing, progressive sensitive questions, ranked results, follow-up reevaluation, and admin ingestion/review/publication in browser tests across mobile and desktop layouts. Compare frontend screens with the Google Stitch prototype.
 - Observe five students signing up, completing and editing a profile, interpreting recommendations and eligibility results, using a checklist, and reaching an official application page. Record findings and address recurring usability problems before release.
 - Use a deterministic model stub in CI. Live AI benchmarks are separately invoked and budgeted.
+<<<<<<< HEAD
+- Test scheduled discovery with fake clocks, resolvers, transports, and model providers.
+=======
 - Test scheduled discovery with fake clocks, robots responses, resolvers,
   transports, and model providers. Cover duplicate windows, unchanged-content
   skips, scope/link limits, per-source failure isolation, and review routing.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Document actual measurements and commands; do not claim retrieval metrics or agent capabilities absent from v1.
 
 ## Interfaces and dependencies
@@ -38,9 +42,13 @@ Covers all MVP features. GitHub Actions runs backend tests, frontend type/build 
 - All 100 expected eligibility cases pass and benchmark results report denominators and dataset versions.
 - Ranking and account/privacy tests pass, sensitive questions appear only for relevant candidates, and five student usability sessions are documented with recurring issues resolved.
 - Public documentation clearly distinguishes measured results from planned targets.
+<<<<<<< HEAD
+- Scheduled tests cover window deduplication, unchanged skips, host batching, scoped link limits, robots denial, and protected source management.
+=======
 - Scheduled tests prove one run per source/window, zero extraction calls for
   unchanged content, bounded same-scope candidates, and no automatic
   publication of material changes.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## Exclusions
 Invented benchmark numbers and live paid API calls on every CI run.

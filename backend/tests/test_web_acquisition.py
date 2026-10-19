@@ -92,6 +92,23 @@ def test_each_redirect_is_resolved_and_validated():
     assert acquired.normalized_text == "Final details"
 
 
+def test_url_policy_blocks_redirect_before_second_request():
+    """Scheduled scope policy is checked before a redirected host is fetched."""
+
+    transport = FakeTransport([
+        response(302, headers={"location": "https://outside.example/final"}, body=b""),
+    ])
+    with pytest.raises(AcquisitionError) as blocked:
+        acquire_web_source(
+            WebSourceRequest("https://example.edu/start"),
+            resolver=public_resolver,
+            transport=transport,
+            url_policy=lambda url: url.hostname == "example.edu",
+        )
+    assert blocked.value.code == "source_out_of_scope"
+    assert len(transport.calls) == 1
+
+
 def test_redirect_limit_and_https_downgrade_are_rejected():
     """Redirects cannot loop indefinitely or reduce transport security."""
 
@@ -119,7 +136,7 @@ def test_redirect_limit_and_https_downgrade_are_rejected():
     [
         (response(429), "upstream_unavailable", True),
         (response(503), "upstream_unavailable", True),
-        (response(404), "upstream_rejected", False),
+        (response(404), "source_not_found", False),
         (response(headers={}), "unsupported_content_type", False),
         (response(headers={"content-type": "application/pdf"}), "unsupported_content_type", False),
         (response(headers={"content-type": "text/plain", "content-encoding": "gzip"}), "unsupported_content_encoding", False),

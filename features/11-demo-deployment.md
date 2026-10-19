@@ -1,18 +1,31 @@
 # Reproducible local setup and hosted demo
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: backend container and local PostgreSQL deployment foundation implemented; frontend container, reviewed real seed catalog, external observability integration, paid hosting, and hosted verification remain pending. Parent specification: [plan.md](../plan.md).
+
+## Implementation status
+- A non-root production backend image runs the API, worker, or migration command. Docker Compose keeps PostgreSQL and the worker private and starts the API only after a successful migration.
+- Liveness and migration-aware readiness endpoints support container and hosting checks.
+- Versioned export/import tooling transfers only current publications with preserved approval events and exact retained evidence; it never creates review events.
+- Structured API events contain route templates, status, and latency without paths, query strings, bodies, credentials, profile values, prompts, or source text. Protected aggregate operations data covers failed ingestion, recommendation outcomes/latency, and oldest publication verification.
+- Environment templates and operations documentation cover secrets, local startup, migrations, reviewed catalog transfer, PostgreSQL backup/restore, and production security requirements.
+- CI builds the production image, validates Compose, applies PostgreSQL migrations, checks model drift, runs tests, and reports offline quality measurements.
+- The Next.js service and reverse proxy await wireframes and frontend implementation. No hosting provider has been selected or provisioned, no real seed bundle has been approved, and deployed backup/telemetry checks have not been claimed.
 
 ## Goal
 Make the student flow and protected administration usable locally and in a small hosted portfolio demo.
 
 ## Scope and behavior
+<<<<<<< HEAD
+- Provide Docker Compose services for Next.js, FastAPI, the worker, scheduler, and PostgreSQL, with migrations and an explicit seed command. The scheduler service is implemented; Next.js remains pending.
+=======
 - Provide Docker Compose services for Next.js, FastAPI, the worker, scheduler, and PostgreSQL, with migrations and an explicit seed command.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Provide `.env.example`, secret configuration, setup, backup/restore, health/readiness, and deployment instructions.
 - Student sign-up, saved profiles, and matching work with reviewed seed data and no AI key. Recommendation explanations fall back to templates; ingestion reports missing configuration clearly.
 - Target $25/month total hosting/API usage; verify current service prices before provider selection or provisioning.
 - Serve through HTTPS, restrict allowed origins, keep database/worker private, and omit request bodies from proxy/application logs.
-- Integrate an observability tool for frontend/API errors, request latency, recommendation model latency and failures, failed ingestion runs, and source verification age. Redact traces and aggregate metrics; exclude credentials, student profile values, prompts containing student data, and source text.
-- Document catalog coverage and manual maintenance. Link reproducible evaluation evidence and a short product walkthrough.
+- Integrate an observability tool for frontend/API errors, request latency, recommendation model latency and failures, failed ingestion runs, scan outcomes, overdue sources, review backlog, and source verification age. Redact traces and aggregate metrics; exclude credentials, student profile values, prompts containing student data, and source text.
+- Document catalog coverage, automated cadence, and remaining human review. Link reproducible evaluation evidence and a short product walkthrough.
 
 ## Interfaces and dependencies
 Packages all MVP features, with release checks from [evaluations](10-quality-evaluations.md). The root [plan](../plan.md) retains the 4–6 week milestone schedule.

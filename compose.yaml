@@ -1,0 +1,95 @@
+name: pathaid
+
+x-backend-environment: &backend-environment
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+  PATHAID_PUBLIC_ORIGIN: ${PATHAID_PUBLIC_ORIGIN:-http://localhost:3000}
+  PATHAID_SECURE_COOKIES: ${PATHAID_SECURE_COOKIES:-false}
+  PATHAID_ADMIN_EMAIL: ${PATHAID_ADMIN_EMAIL:-}
+  PATHAID_ADMIN_PASSWORD_HASH: ${PATHAID_ADMIN_PASSWORD_HASH:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  PATHAID_EXTRACTION_MODEL: ${PATHAID_EXTRACTION_MODEL:-gpt-6-luna}
+  PATHAID_EXTRACTION_TIMEOUT_SECONDS: ${PATHAID_EXTRACTION_TIMEOUT_SECONDS:-30}
+  PATHAID_EXTRACTION_MAX_OUTPUT_TOKENS: ${PATHAID_EXTRACTION_MAX_OUTPUT_TOKENS:-4000}
+  PATHAID_EXTRACTION_MAX_SOURCE_CHARACTERS: ${PATHAID_EXTRACTION_MAX_SOURCE_CHARACTERS:-120000}
+  PATHAID_RECOMMENDATION_MODEL: ${PATHAID_RECOMMENDATION_MODEL:-gpt-6-luna}
+  PATHAID_RECOMMENDATION_TIMEOUT_SECONDS: ${PATHAID_RECOMMENDATION_TIMEOUT_SECONDS:-15}
+  PATHAID_RECOMMENDATION_MAX_OUTPUT_TOKENS: ${PATHAID_RECOMMENDATION_MAX_OUTPUT_TOKENS:-300}
+  PATHAID_RECOMMENDATION_ATTEMPTS_PER_HOUR: ${PATHAID_RECOMMENDATION_ATTEMPTS_PER_HOUR:-10}
+  PATHAID_WORKER_POLL_SECONDS: ${PATHAID_WORKER_POLL_SECONDS:-2}
+  PATHAID_WORKER_LEASE_SECONDS: ${PATHAID_WORKER_LEASE_SECONDS:-120}
+  PATHAID_INGESTION_MAX_ATTEMPTS: ${PATHAID_INGESTION_MAX_ATTEMPTS:-3}
+  PATHAID_INGESTION_RETRY_BASE_SECONDS: ${PATHAID_INGESTION_RETRY_BASE_SECONDS:-5}
+  PATHAID_SCHEDULER_POLL_SECONDS: ${PATHAID_SCHEDULER_POLL_SECONDS:-60}
+  PATHAID_SCHEDULER_BATCH_SIZE: ${PATHAID_SCHEDULER_BATCH_SIZE:-25}
+  PATHAID_SCHEDULER_USER_AGENT: ${PATHAID_SCHEDULER_USER_AGENT:-PathaidBot/1.0}
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: backend
+    command: ["alembic", "upgrade", "head"]
+    environment: *backend-environment
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: backend
+    environment: *backend-environment
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: backend
+    command: ["python", "-m", "app.worker"]
+    environment: *backend-environment
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: backend
+    command: ["python", "-m", "app.scheduled_discovery"]
+    environment: *backend-environment
+    depends_on:
+      database:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

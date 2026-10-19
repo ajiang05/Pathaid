@@ -18,7 +18,7 @@ from .admin_auth import current_admin, require_admin_csrf
 from .database import get_db
 from .extraction_schemas import ExtractedProgramDraft
 from .extraction_validation import validate_extracted_draft
-from .models import AdminSession, IngestionRun, Program, ProgramRevision, ReviewEvent, SourceSnapshot
+from .models import AdminSession, DiscoveredCandidate, IngestionRun, Program, ProgramRevision, ReviewEvent, SourceSnapshot
 from .source_acquisition import AcquisitionError, validate_source_url
 
 
@@ -340,6 +340,10 @@ def approve_revision(
     revision.verified_at = reviewed_at
     program.current_published_revision_id = revision.id
     run.state = "published"
+    if run.discovered_candidate_id:
+        candidate = db.get(DiscoveredCandidate, run.discovered_candidate_id)
+        if candidate is not None:
+            candidate.status = "published"
     run.completed_at = reviewed_at
     db.add(ReviewEvent(revision=revision, reviewer=admin.admin_email, decision="approved", notes=_clean_notes(body.notes)))
     try:
@@ -370,6 +374,10 @@ def reject_revision(
     reviewed_at = datetime.now(timezone.utc)
     revision.status = "rejected"
     run.state = "rejected"
+    if run.discovered_candidate_id:
+        candidate = db.get(DiscoveredCandidate, run.discovered_candidate_id)
+        if candidate is not None:
+            candidate.status = "rejected"
     run.completed_at = reviewed_at
     db.add(ReviewEvent(revision=revision, reviewer=admin.admin_email, decision="rejected", notes=_clean_notes(body.notes)))
     try:

@@ -71,6 +71,9 @@ class AcquiredSource:
     content_hash: str
     source_byte_count: int
     redirect_count: int
+    # Raw href values are retained in memory only so an approved discovery
+    # page can produce bounded candidates. They are never trusted as URLs.
+    discovered_links: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -96,6 +99,7 @@ class SingleHopTransport(Protocol):
 
 
 Resolver = Callable[[str, int], Iterable[str]]
+UrlPolicy = Callable[[ValidatedUrl], bool]
 
 
 class AcquisitionError(Exception):
@@ -182,10 +186,13 @@ def acquire_web_source(
     *,
     resolver: Resolver | None = None,
     transport: SingleHopTransport | None = None,
+    url_policy: UrlPolicy | None = None,
 ) -> AcquiredSource:
     """Retrieve one public text page through validated, IP-pinned hops."""
 
     original = validate_source_url(request.source_url)
+    if url_policy is not None and not url_policy(original):
+        raise AcquisitionError("source_out_of_scope", "The source URL is outside the approved scope.")
     current = original
     redirect_count = 0
     deadline = time.monotonic() + config.timeout_seconds
@@ -208,12 +215,16 @@ def acquire_web_source(
             destination = validate_source_url(urljoin(current.url, location))
             if current.scheme == "https" and destination.scheme == "http":
                 raise AcquisitionError("https_downgrade", "HTTPS sources cannot redirect to HTTP.")
+            if url_policy is not None and not url_policy(destination):
+                raise AcquisitionError("source_out_of_scope", "A source redirect left the approved scope.")
             current = destination
             redirect_count += 1
             continue
 
         if response.status == 429 or 500 <= response.status <= 599:
             raise AcquisitionError("upstream_unavailable", "The source provider is temporarily unavailable.", retryable=True)
+        if response.status in {404, 410}:
+            raise AcquisitionError("source_not_found", "The requested source was not found.")
         if not 200 <= response.status <= 299:
             raise AcquisitionError("upstream_rejected", "The source provider did not return a successful response.")
         if len(response.body) > config.max_response_bytes:
@@ -234,11 +245,8 @@ def acquire_web_source(
         except (LookupError, UnicodeDecodeError) as error:
             raise AcquisitionError("invalid_text_encoding", "The source text encoding is invalid or unsupported.") from error
 
-        normalized = (
-            normalize_html(decoded, config.max_text_characters)
-            if media_type in {"text/html", "application/xhtml+xml"}
-            else normalize_text(decoded, config.max_text_characters)
-        )
+        is_html = media_type in {"text/html", "application/xhtml+xml"}
+        normalized = normalize_html(decoded, config.max_text_characters) if is_html else normalize_text(decoded, config.max_text_characters)
         return AcquiredSource(
             original_url=original.url,
             final_url=current.url,
@@ -248,6 +256,7 @@ def acquire_web_source(
             content_hash=hash_text(normalized),
             source_byte_count=len(response.body),
             redirect_count=redirect_count,
+            discovered_links=extract_html_links(decoded) if is_html else (),
         )
 
 
@@ -434,6 +443,19 @@ def normalize_html(value: str, max_characters: int) -> str:
     return normalize_text("".join(parser.parts), max_characters)
 
 
+def extract_html_links(value: str) -> tuple[str, ...]:
+    """Return deduplicated href values for later policy validation."""
+
+    parser = _VisibleTextParser()
+    try:
+        parser.feed(value)
+        parser.close()
+    except (AssertionError, ValueError) as error:
+        raise AcquisitionError("invalid_html", "The source contains malformed HTML.") from error
+    # Preserve page order so a configured link budget is deterministic.
+    return tuple(dict.fromkeys(parser.links))
+
+
 def hash_text(value: str) -> str:
     """Return the SHA-256 hash stored with the normalized source snapshot."""
 
@@ -488,6 +510,7 @@ class _VisibleTextParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
+        self.links: list[str] = []
         self._ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs) -> None:
@@ -496,6 +519,10 @@ class _VisibleTextParser(HTMLParser):
             self._ignored_depth += 1
         elif self._ignored_depth == 0 and tag in self._block_tags:
             self._append_break()
+        if self._ignored_depth == 0 and tag == "a":
+            href = next((value for name, value in attrs if name.casefold() == "href"), None)
+            if isinstance(href, str) and href.strip():
+                self.links.append(href.strip())
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.casefold()

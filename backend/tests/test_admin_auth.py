@@ -120,3 +120,29 @@ def test_student_session_does_not_authorize_admin_routes(client):
         json={"email": "student@example.edu", "password": "strong password 123"},
     ).status_code == 201
     assert api.get("/api/admin/auth/session").status_code == 401
+    assert api.get("/api/admin/operations/summary").status_code == 401
+
+
+def test_operations_summary_is_aggregate_and_admin_only(client):
+    """Operational visibility contains counts without student or source values."""
+
+    api, _ = client
+    login(api)
+    response = api.get("/api/admin/operations/summary")
+    assert response.status_code == 200
+    assert response.json() == {
+        "window_hours": 24,
+        "failed_ingestion_runs": 0,
+        "recommendation_attempts": 0,
+        "recommendation_failures": 0,
+        "recommendation_average_latency_ms": None,
+        "oldest_source_verification": None,
+        "oldest_source_verification_age_days": None,
+            "scheduled_scans": 0,
+            "scheduled_scan_failures": 0,
+            "overdue_sources": 0,
+            "discovered_candidates": 0,
+            "scheduled_review_backlog": 0,
+    }
+    assert "profile" not in response.text
+    assert "source_text" not in response.text

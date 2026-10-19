@@ -25,7 +25,11 @@ The implemented backend is a modular Python monolith with two runtime processes:
 
 Both processes use the same SQLAlchemy models and PostgreSQL database. Alembic owns schema changes. OpenAI's Responses API is an optional external dependency for requirement extraction and consent-gated recommendation assistance. Deterministic results and template explanations continue to work without model access.
 
+<<<<<<< HEAD
+The backend now includes a third Python process: a scheduler that selects due administrator-approved sources and creates idempotent ingestion work. The administrator UI and controlled external-source verification remain pending.
+=======
 The revised MVP adds a third Python process: a scheduler that selects due administrator-approved sources each morning and creates idempotent ingestion work. It is **planned**, while the acquisition, extraction, worker, and review foundation it will call is implemented.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 The responsive Next.js frontend described by the MVP is **pending approved Google Stitch wireframes**. A public hosting provider, domain, TLS edge, external monitoring, and production backup schedule are also pending.
 
@@ -40,7 +44,11 @@ The responsive Next.js frontend described by the MVP is **pending approved Googl
 | Production database | PostgreSQL 16 | Local Compose and CI implemented; hosted instance pending |
 | Local fallback | SQLite through `DATABASE_URL` default | Implemented for direct local development |
 | Background work | Database-backed state machine with leases; no message broker | Implemented |
+<<<<<<< HEAD
+| Scheduled discovery | Database-backed daily schedules, bounded one-hop discovery, and hash change detection | Implemented |
+=======
 | Scheduled discovery | Database-backed daily schedules, bounded one-hop discovery, and hash change detection | Pending implementation |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | AI integration | OpenAI Responses API behind extraction and recommendation adapters | Implemented; live quality measurements pending |
 | Web client | Responsive Next.js application | Pending wireframes and implementation |
 | Deployment | Docker image and Docker Compose topology | Implemented locally; public deployment pending |
@@ -91,7 +99,11 @@ flowchart LR
     Admin[Catalog administrator] -->|Reviews over HTTPS| Web
     Web -->|Same-origin JSON requests| API[Pathaid API]
     API -->|Read and write| DB[(Pathaid database)]
+<<<<<<< HEAD
+    Scheduler[Pathaid scheduler] -->|Select due approved sources| DB
+=======
     Scheduler[Pathaid scheduler\nPending] -->|Select due approved sources| DB
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
     Worker[Pathaid ingestion worker] -->|Claim jobs and persist stages| DB
     Worker -->|Fetch approved public URLs| Sources[Official provider websites]
     Worker -->|Structured extraction| OpenAI[OpenAI Responses API]
@@ -128,7 +140,11 @@ flowchart TB
     Frontend[Next.js frontend\nPending]
     API[FastAPI API]
     Worker[Python ingestion worker]
+<<<<<<< HEAD
+    Scheduler[Python daily scheduler]
+=======
     Scheduler[Python daily scheduler\nPending]
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
     Migrate[Alembic migration job]
     DB[(PostgreSQL 16)]
     OpenAI[OpenAI Responses API]
@@ -154,7 +170,11 @@ flowchart TB
 | Web frontend | Student and administrator flows; same-origin API access | Next.js, exact version undecided | Pending | One service for MVP |
 | API | HTTP validation, authentication, authorization, catalog reads, evaluation, optional recommendations, review operations | Python 3.14, FastAPI, Pydantic, Uvicorn | Implemented | One instance initially; stateless except DB sessions |
 | Worker | Acquisition, extraction, validation, and draft creation | Python 3.14 process | Implemented | One process by default; DB leases permit additional workers |
+<<<<<<< HEAD
+| Scheduler | Select due sources, coordinate scoped discovery, compare freshness, enqueue runs | Python 3.14 process | Implemented | One process by default; DB claims prevent duplicate windows |
+=======
 | Scheduler | Select due sources, coordinate scoped discovery, compare freshness, enqueue runs | Python 3.14 process | Pending | One process by default; DB claims prevent duplicate windows |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | Migration job | Applies ordered schema versions before application startup | Alembic | Implemented | One-shot per release |
 | Database | System of record and durable job coordination | PostgreSQL 16, SQLAlchemy, psycopg | Implemented locally and in CI | One private instance for MVP |
 
@@ -197,8 +217,13 @@ No browser communicates directly with PostgreSQL, the worker, or OpenAI. Postgre
 | `app.orchestration` | Run creation, idempotency, leases, retries, and manual retry | SQLAlchemy models |
 | `app.orchestration_stages` | Acquisition, extraction, validation, and draft-persistence stage transitions | Domain services and orchestration |
 | `app.worker` | Poll loop and execution of one claimed stage | Orchestration and stage handlers |
+<<<<<<< HEAD
+| `app.scheduled_discovery` | Poll due approved sources and create idempotent scheduled runs | Scheduled-source service and database |
+| Scheduled-source service | Registry, cadence, scope, robots policy, hash comparison, and candidate deduplication | Acquisition and orchestration |
+=======
 | Planned `app.scheduler` | Poll due approved sources and create idempotent scheduled runs | Scheduled-source service and database |
 | Planned scheduled-source service | Registry, cadence, scope, robots policy, hash comparison, and candidate deduplication | Acquisition and orchestration |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | `app.models` | SQLAlchemy table and relationship definitions | Database base |
 | `app.database` | Engine, session factory, declarative base, request dependency | SQLAlchemy |
 | `app.health` | Liveness and migrated-database readiness | Database and SQLAlchemy inspection |
@@ -349,7 +374,11 @@ sequenceDiagram
 - Unsafe input, invalid drafts, refusals, and missing configuration stop rather than silently publishing.
 - An idempotency key plus request fingerprint prevents accidental duplicate submission with different input.
 
+<<<<<<< HEAD
+### 6.5 Scheduled discovery and refresh
+=======
 ### 6.5 Scheduled discovery and refresh (planned)
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ```mermaid
 sequenceDiagram
@@ -375,7 +404,11 @@ sequenceDiagram
 - The registry distinguishes known `program_page` targets from `discovery_page` indexes.
 - Only administrators manage registry entries. Public requests cannot add crawler targets.
 - Discovery is limited to canonical HTTP(S) links within an approved host/path scope, one hop, and a fixed link budget.
+<<<<<<< HEAD
+- Scans respect robots directives, source terms, per-host cycle limits, acquisition limits, and bounded retry policy.
+=======
 - Scans respect robots directives, source terms, per-host delays, jitter, acquisition limits, and bounded retry policy.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - A deterministic key derived from source and scheduled window prevents duplicate work across overlapping scheduler processes.
 - One source failure does not stop the daily batch. Repeated failures back off and become visible to administrators.
 - Fetch failure or page removal never closes, removes, or rewrites public content automatically.
@@ -424,7 +457,11 @@ Supporting tables record student and administrator authentication attempts and a
 | Program and revision | PostgreSQL catalog tables | Public after approval; private while draft | Published revisions are historical records |
 | Source snapshot | PostgreSQL `source_snapshots` | Operationally sensitive | Retained official source body, URL, hash, acquisition metadata |
 | Ingestion input/run | PostgreSQL ingestion tables | Operationally sensitive | May contain pasted source text, errors, model metadata, leases |
+<<<<<<< HEAD
+| Scheduled source/scan | PostgreSQL tables | Operationally sensitive | URL, approved scope, cadence, due time, hash, outcome, and failure history |
+=======
 | Scheduled source/scan | Planned PostgreSQL tables | Operationally sensitive | URL, approved scope, cadence, due time, hash, outcome, and failure history |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | Review event | PostgreSQL `review_events` | Audit data | Reviewer identity, decision, notes, time |
 | Recommendation attempt | PostgreSQL | Moderate aggregate data | Outcome, token counts, latency; no prompt or generated prose |
 | Benchmark datasets | Version-controlled JSON | Synthetic | No student records or live model output |
@@ -482,10 +519,18 @@ The deployment guide documents PostgreSQL custom-format backup and restore comma
 | Ingestion | `GET /api/admin/ingestion-runs` | Admin | List run summaries |
 | Ingestion | `GET /api/admin/ingestion-runs/{run_id}` | Admin | Inspect source, stages, errors, and draft link |
 | Ingestion | `POST /api/admin/ingestion-runs/{run_id}/retry` | Admin + CSRF | Create manual retry run |
+<<<<<<< HEAD
+| Scheduled sources | `GET/POST /api/admin/scheduled-sources` | Admin; CSRF for create | List or register approved scan targets |
+| Scheduled sources | `PATCH /api/admin/scheduled-sources/{id}` | Admin + CSRF | Edit cadence/scope or enable/pause |
+| Scheduled scans | `POST /api/admin/scheduled-sources/{id}/scan` | Admin + CSRF | Mark a source due for the scheduler |
+| Scheduled scans | `GET /api/admin/scheduled-scans` | Admin | Inspect freshness, changes, candidates, and failures |
+| Candidates | `GET /api/admin/discovered-candidates` | Admin | Inspect private links found within approved discovery scope |
+=======
 | Scheduled sources | `GET/POST /api/admin/scheduled-sources` | Admin; CSRF for create | List or register approved scan targets; planned |
 | Scheduled sources | `PATCH /api/admin/scheduled-sources/{id}` | Admin + CSRF | Edit cadence/scope or enable/pause; planned |
 | Scheduled scans | `POST /api/admin/scheduled-sources/{id}/scan` | Admin + CSRF | Request an immediate idempotent scan; planned |
 | Scheduled scans | `GET /api/admin/scheduled-scans` | Admin | Inspect freshness, changes, candidates, and failures; planned |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | Review | `GET /api/admin/revisions/{revision_id}` | Admin | Inspect draft and evidence |
 | Review | `PATCH /api/admin/revisions/{revision_id}` | Admin + CSRF | Edit and revalidate draft |
 | Review | `GET /api/admin/programs/{program_id}/revisions` | Admin | Review revision history |
@@ -525,7 +570,11 @@ The administrator identity is configured through `PATHAID_ADMIN_EMAIL` and `PATH
 | SQL injection | SQLAlchemy expressions and bound parameters | Dependency and security maintenance |
 | SSRF/DNS rebinding | Scheme/host/IP validation, public-address resolution and pinning, redirect revalidation, TLS hostname verification | Egress rules where hosting supports them |
 | Oversized or slow sources | Total timeout, content and normalized-text limits, redirect cap | Platform resource limits |
+<<<<<<< HEAD
+| Abusive or uncontrolled crawling | Administrator-only registry, robots policy, allowed host/path, one-hop/link budget, one source per host per cycle | Verify controls with approved external sources |
+=======
 | Abusive or uncontrolled crawling | Administrator-only registry, robots policy, allowed host/path, one-hop/link budget, per-host delay | Implement and test scheduler controls before external scans |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | AI hallucination | Strict extraction schema, exact-evidence validation, human review; recommendation reason selection and server rendering | Live model evaluation before claims about quality |
 | Sensitive telemetry | Route templates instead of raw paths; no body, header, cookie, prompt, explanation, or profile logging | Review platform request capture and retention |
 | Duplicate/concurrent work | Idempotency fingerprints, transactional leases, lease-token fencing | PostgreSQL concurrency verification in host environment |
@@ -573,7 +622,11 @@ The implemented `compose.yaml` defines:
 3. `api`: the backend image running Uvicorn after migration succeeds; host binding is limited to `127.0.0.1:8000`.
 4. `worker`: the same backend image running `python -m app.worker` after migration succeeds.
 
+<<<<<<< HEAD
+The `scheduler` service uses the same backend image, starts after migration, and runs `python -m app.scheduled_discovery`.
+=======
 Feature 12 will add a `scheduler` service using the same backend image after its database schema and process entry point are implemented.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 The backend image runs as a fixed unprivileged `pathaid` user. It disables Python bytecode writes and Uvicorn access logs. Docker restart policy is `unless-stopped` for the database, API, and worker.
 
@@ -626,7 +679,11 @@ Provider, region, service sizes, domain, deployment trigger, log retention, data
 - Raw paths are not used as a fallback because they can contain identifiers.
 - Uvicorn access logging is disabled in the production image.
 - Ingestion runs and stage attempts persist state, safe error codes/messages, attempt count, timing, and latency.
+<<<<<<< HEAD
+- Scheduler telemetry includes scan outcome, change detection, overdue count, candidate count, review backlog, and per-host throttling without source bodies.
+=======
 - Planned scheduler telemetry includes scan outcome, change detection, overdue count, candidate count, review backlog, and per-host throttling without source bodies.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Recommendation attempts persist aggregate outcome, model metadata, token counts, and latency without prompts or generated explanations.
 - The admin operations summary aggregates recent ingestion failures, recommendation outcomes/latency, and oldest publication verification time.
 - External uptime checks, alerts, dashboards, and log-retention rules are pending deployment.
@@ -669,7 +726,11 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 | Evidence fidelity | Extraction validation, source persistence, and result tests |
 | SSRF and acquisition bounds | Source validation and web acquisition tests with fake transports/resolvers |
 | Lease and retry correctness | Orchestration claim, stage, validation, and worker tests |
+<<<<<<< HEAD
+| Scheduled refresh safety | Fake-clock tests cover overlapping claims, hashes, robots/scope, throttling, link limits, and failure isolation |
+=======
 | Scheduled refresh safety | Pending fake-clock tests for overlapping claims, hashes, robots/scope, throttling, link limits, and failure isolation |
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | Human publication authority | Admin review/publication tests and database constraints |
 | AI fallback and minimization | Recommendation adapter and service tests |
 | Migration compatibility | PostgreSQL CI migration plus `alembic check` |
@@ -709,7 +770,11 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 - Live extraction quality, cost, and latency are not measured.
 - The frontend, accessibility validation, browser behavior, and five student usability sessions remain pending.
 - The launch catalog and its ongoing freshness cadence remain pending.
+<<<<<<< HEAD
+- Scheduled-source tables, APIs, scheduler process, robots policy, and bounded discovery are implemented; the scan UI and controlled external-source verification remain pending.
+=======
 - Scheduled-source tables, APIs, scheduler process, robots policy, bounded discovery, and scan UI are planned and not implemented.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## 18. Open architecture decisions
 
@@ -721,6 +786,10 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 6. Define student data and retained source deletion/retention periods.
 7. Decide how migrations are coordinated with traffic when more than one API instance is introduced.
 8. Establish an API compatibility/versioning policy before external clients exist.
+<<<<<<< HEAD
+9. Choose the production morning time, default cadence, scheduler cycle interval, and discovery link budget.
+=======
 9. Choose the production timezone/morning window, default cadence, per-host delay, and discovery link budget.
+>>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 10. Define measurable evidence required before considering any future automatic publication of material content.
 

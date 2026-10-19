@@ -82,3 +82,14 @@ jobs:
 
       - name: Report offline quality measurements
         run: python -m app.quality_report
+
+      - name: Build production backend image
+        run: docker build --tag pathaid-backend:test .
+
+      - name: Validate Docker Compose configuration
+        working-directory: ${{ github.workspace }}
+        env:
+          POSTGRES_DB: pathaid
+          POSTGRES_USER: pathaid
+          POSTGRES_PASSWORD: ci-only-password
+        run: docker compose config --quiet
