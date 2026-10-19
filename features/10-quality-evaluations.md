@@ -1,6 +1,6 @@
 # Reproducible eligibility and extraction evaluations
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: eligibility/extraction harness and backend CI implemented; scheduled-discovery evaluation is planned. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Measure correctness and demonstrate the AI and backend work with reproducible evidence.
@@ -14,6 +14,9 @@ Measure correctness and demonstrate the AI and backend work with reproducible ev
 - Test backend authorization, CSRF, unsafe fetches, invalid profiles, migrations, published-only reads, and profile privacy.
 - Exercise student intake/follow-up/results and admin ingestion/review/publication in browser tests.
 - Use a deterministic model stub in CI. Live AI benchmarks are separately invoked and budgeted.
+- Test scheduled discovery with fake clocks, robots responses, resolvers,
+  transports, and model providers. Cover duplicate windows, unchanged-content
+  skips, scope/link limits, per-source failure isolation, and review routing.
 - Document actual measurements and commands; do not claim retrieval metrics or agent capabilities absent from v1.
 
 ## Interfaces and dependencies
@@ -23,6 +26,9 @@ Covers all MVP features. GitHub Actions runs backend tests, frontend type/build 
 - A fresh checkout can run the documented offline checks without an API key.
 - All 100 expected eligibility cases pass and benchmark results report denominators and dataset versions.
 - Public documentation clearly distinguishes measured results from planned targets.
+- Scheduled tests prove one run per source/window, zero extraction calls for
+  unchanged content, bounded same-scope candidates, and no automatic
+  publication of material changes.
 
 ## Exclusions
 Invented benchmark numbers and live paid API calls on every CI run.

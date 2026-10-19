@@ -1,6 +1,6 @@
 # Protected admin review and publication
 
-Status: planned MVP feature; not yet implemented. Parent specification: [plan.md](../plan.md).
+Status: backend review and publication implemented; automated-scan review UI is planned. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Give one administrator control over the accuracy and publication of AI-generated program drafts.
@@ -14,6 +14,9 @@ Give one administrator control over the accuracy and publication of AI-generated
 - Keep published revisions immutable. Atomically change the program’s published pointer and write the review event on approval.
 - Record reviewer, timestamp, decision, notes, and revision. Rejection or failed ingestion must not replace current published data.
 - Expose revision history and ingestion diagnostics through protected APIs and UI.
+- Prioritize daily-scan items as new candidates or material changes.
+- Let administrators manage, pause, and manually scan approved sources.
+- Update freshness automatically for unchanged scans; require approval for new or materially changed public content.
 
 ## Interfaces and dependencies
 Use [catalog](05-program-catalog.md) storage and [orchestration](08-ingestion-orchestration.md) run state. Public readers never receive drafts through admin paths.
@@ -25,4 +28,4 @@ Use [catalog](05-program-catalog.md) storage and [orchestration](08-ingestion-or
 - Concurrent or repeated approvals cannot produce inconsistent publication pointers or review events.
 
 ## Exclusions
-Multiple admin roles, public registration, and automatic model approval.
+Multiple admin roles, public registration, and automatic publication of new or materially changed scholarship content.
