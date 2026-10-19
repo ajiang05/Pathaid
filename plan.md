@@ -62,6 +62,7 @@ Store profile fields only for authenticated students, encrypt traffic, and give 
 | Database       | PostgreSQL; student accounts/profiles, program revisions, sources, rules, runs, and review history    |
 | AI             | OpenAI extraction and grounded recommendation explanations behind configurable adapters               |
 | Orchestration  | Explicit Python workflow with persisted run states, bounded retries, validation, and human approval  |
+| Scheduler      | Python process with durable daily schedules, approved scopes, change detection, and bounded discovery |
 | Infrastructure | Docker, Docker Compose, and GitHub Actions                                                           |
 
 Use a typed profile-field registry shared through API metadata. It defines accepted field names, answer types, allowed values, question wording, sensitivity, and whether a field may appear during progressive follow-up. Add fields only when supported by a reviewed program requirement. Keep citizenship, ethnicity, income, and aid-status questions optional and program-specific; never infer status from school, name, location, or nationality.
@@ -71,6 +72,7 @@ Use a typed profile-field registry shared through API metadata. It defines accep
 - **Programs:** stable identity and a pointer to the current published revision.
 - **Program revisions:** draft/published/rejected status, descriptive fields, assistance categories, coverage, source references, checklist information, eligibility tree, completeness declaration, and review metadata. Scholarship revisions also retain the award cycle, deadline and timezone when stated, application availability (open/closed/unknown), and selection factors separately from eligibility criteria.
 - **Source snapshots:** source URL, acquisition time, content hash, retained source text, and acquisition method (webpage or pasted text).
+- **Scheduled sources and scans:** canonical URL, source type, allowed scope, cadence, due time, last content hash, outcome, failures, and configuration audit.
 - **Ingestion runs:** input source, state, attempts, model/prompt/schema versions, timing, token usage when available, structured errors, and resulting draft revision.
 - **Review events:** administrator identity, decision, notes, revision, and timestamp.
 - **Student accounts and profiles:** credential hash, account metadata, editable profile fields, consent preference, and deletion timestamps. Keep profile access scoped to the account owner; do not store model prompts or generated text containing profile values by default.
@@ -107,19 +109,29 @@ Use ordinary Python to evaluate a validated rule tree. The LLM proposes rules du
 
 Tests must use synthetic rules for edge cases rather than inventing real program requirements. All illustrative names, amounts, and eligibility claims from the original draft require official-source verification before entering the catalog.
 
-## 6. AI ingestion and orchestration
+## 6. Automated discovery, AI ingestion, and orchestration
 
-The core AI deliverable is a controlled, inspectable ingestion workflow:
+The scheduler selects due approved sources each morning. The model still handles extraction only, within this controlled workflow:
 
 ```text
-Official URL or pasted text + source URL
+Due approved source or manual admin submission
   → acquire and normalize source
+  → compare normalized content hash
+  → stop after recording freshness when unchanged
   → extract a structured draft with OpenAI
   → validate fields, rules, and evidence references
   → flag unsupported or ambiguous conditions
   → administrator reviews and edits
   → explicit approval publishes a revision
 ```
+
+### Scheduled discovery and refresh
+
+Store approved `program_page` and `discovery_page` targets in PostgreSQL. Atomically claim due targets and derive idempotency keys from the source and scheduled window. Apply jitter and per-host delays.
+
+Program pages are checked directly. Discovery pages may yield canonical HTTP(S) candidates only within configured same-host/path scope, at one-link depth and a fixed link budget. Respect robots directives and source terms. Never authenticate to, bypass controls on, or scrape search engines. Compare normalized-text SHA-256 hashes before extraction; unchanged pages make no model call. Fetch failures never close or remove public programs.
+
+New candidates and material changes to eligibility, deadlines, availability, application URLs, amount, coverage, checklist, or evidence remain private until administrator approval. Future evaluations use a newly published revision automatically; v1 does not persist background evaluations or notify every student.
 
 ### Run lifecycle and failure behavior
 
@@ -137,7 +149,7 @@ Permit at most three automatic attempts per transient acquisition or model failu
 - Request schema-constrained program fields, proposed rules, source excerpts, and unresolved conditions. For scholarships, distinguish mandatory eligibility criteria from competitive selection preferences, and extract the award cycle, application deadline, award amount, and required application materials when supported by the source. Validate semantic types and ensure cited excerpts occur in the retained source.
 - Flag omissions, ambiguous language, unsupported logic, model refusals, and invalid output. Schema validity alone does not establish factual correctness or complete rule coverage.
 - Present original text and extracted fields/rules side by side. Let the administrator edit, reject, or explicitly approve a draft and attest to source accuracy and coverage completeness.
-- The model has no publishing authority. Every new or changed program requires administrator approval.
+- The model and scheduler have no publishing authority. Every new or materially changed program requires administrator approval. An unchanged-source scan may update freshness automatically.
 
 Record stage latency, attempts, validation errors, model/prompt/schema versions, and token usage when available. Operational logs must omit student answers, admin credentials, and API keys. Keep source content in the database rather than duplicating it in logs.
 

@@ -1,6 +1,6 @@
 # Feature specifications
 
-These documents break the agreed [project plan](../plan.md) into focused implementation specifications. All features are planned, not claims of completed work. The root plan owns shared scope, stack, budget, and milestones; update it alongside any feature-scope changes.
+These documents break the agreed [project plan](../plan.md) into focused implementation specifications. Each feature records whether its foundation is implemented or still planned. The root plan owns shared scope, stack, budget, and milestones; update it alongside any feature-scope changes.
 
 ## Student features
 
@@ -16,6 +16,7 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 - [AI program and scholarship requirement extraction](07-ai-requirement-extraction.md)
 - [Durable AI ingestion orchestration](08-ingestion-orchestration.md)
 - [Protected admin review and publication](09-admin-review-and-publication.md)
+- [Scheduled scholarship discovery and refresh](12-scheduled-scholarship-discovery.md)
 
 ## Quality and delivery
 

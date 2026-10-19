@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "inverse-on-surface": "#dff7e6", "inverse-surface": "#21352a", "secondary-fixed": "#dce4de", "on-secondary-container": "#5c645f", "primary-fixed": "#b1f0cd", "surface-muted": "#F0F4EF", "primary-foreground": "#FFFFFF", "secondary": "#58605b", "surface-variant": "#d1e8d8", "surface-tint": "#2e694e", "primary": "#084c33", "on-secondary-fixed-variant": "#414944", "muted-foreground": "#52665A", "background": "#FAFAF7", "on-surface-variant": "#404943", "on-tertiary": "#ffffff", "on-primary-fixed": "#002113", "surface-container-lowest": "#ffffff", "primary-fixed-dim": "#96d4b2", "surface-dim": "#c8e0d0", "outline": "#707973", "on-primary-fixed-variant": "#105137", "border": "#D8E2D9", "surface-container-highest": "#d1e8d8", "on-secondary-fixed": "#161d19", "on-surface": "#0b1f16", "tertiary-container": "#4a5e52", "warning": "#895400", "on-tertiary-fixed-variant": "#384b40", "secondary-fixed-dim": "#c0c8c2", "surface-container-high": "#d6eede", "tertiary-fixed-dim": "#b6ccbd", "foreground": "#24382D", "on-secondary": "#ffffff", "ring": "#286449", "destructive": "#A92D32", "on-error-container": "#93000a", "on-tertiary-container": "#c0d6c7", "on-primary-container": "#a0debc", "tertiary-fixed": "#d2e8d9", "outline-variant": "#c0c9c1", "error": "#ba1a1a", "surface-bright": "#e8ffef", "on-primary": "#ffffff", "primary-container": "#286449", "on-tertiary-fixed": "#0c1f16", "on-background": "#0b1f16", "surface": "#FFFFFF", "surface-container": "#dcf4e3", "surface-container-low": "#e2f9e9", "on-error": "#ffffff", "inverse-primary": "#96d4b2", "success": "#246B4C", "tertiary": "#33463b", "secondary-container": "#dae2db", "error-container": "#ffdad6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-tablet": "1.5rem", "gutter": "1.5rem", "space-lg": "1.5rem", "space-xl": "2rem", "space-xs": "0.25rem", "margin-desktop": "2rem", "margin": "1rem", "space-sm": "0.5rem", "gutter-desktop": "2rem", "space-md": "1rem" }, "fontFamily": { "headline-lg-mobile": ["Inter"], "headline-sm": ["Inter"], "body-md": ["Inter"], "body-lg": ["Inter"], "display-mobile": ["Inter"], "caption": ["Inter"], "label-sm": ["Inter"], "display": ["Inter"], "headline-lg": ["Inter"], "label-md": ["Inter"], "headline-md": ["Inter"] }, "fontSize": { "headline-lg-mobile": ["28px", { "lineHeight": "34px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-sm": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "0", "fontWeight": "400" }], "display-mobile": ["36px", { "lineHeight": "42px", "letterSpacing": "-0.03em", "fontWeight": "600" }], "caption": ["12px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "500" }], "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "600" }], "display": ["48px", { "lineHeight": "54px", "letterSpacing": "-0.035em", "fontWeight": "600" }], "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.025em", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0", "fontWeight": "500" }], "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }] } } } };</script></head><body class="bg-background font-body-md text-body-md text-foreground antialiased"><aside class="fixed left-0 top-0 h-full w-[240px] bg-surface z-50 flex flex-col justify-between border-r border-border"><div class="flex flex-col"><div class="h-16 px-space-md flex items-center gap-space-sm border-b border-border"><img alt="PathAid Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W2dVZTrCRHe5mHqdw0AF1htfGKcKgrhjRBujsrr6inh7_14u-bJy5nKe0jyiXYH5azMj-Mt98QISSNauCg5S-sD4fGZum6geJ_4iZF-nMpEyIYGWDC0-Yro4l5I74ps3vYWDgi_Xbx4I3VhfXUAlzoFg9Sm45beGYDvoypnzlt7dHGBLRfTfjudk_nFJ65dvUbtzJD_DrlqL4ql7aAdTBqxX2F3lCLpk8r2lhLVKtPW91vLlOb0DMrRm5s"/><div class="flex flex-col"><span class="font-label-md text-label-md text-foreground font-semibold leading-none">PathAid</span><span class="font-caption text-caption text-muted-foreground mt-0.5 leading-none">Scholarship Discovery</span></div></div><nav class="flex flex-col gap-space-xs px-space-sm py-space-md" data-active-classes="bg-surface-muted text-primary font-medium"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-label-md text-label-md">Overview</span></a><a aria-current="page" class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg transition-colors bg-surface-muted text-primary font-medium" data-path="scholarships" href="#"><span class="material-symbols-outlined text-[20px]">search</span><span class="font-label-md text-label-md">Discover</span></a><a class="flex items-center justify-between px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="saved" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">bookmark</span><span class="font-label-md text-label-md">Saved</span></div><span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-muted text-primary font-semibold">4</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="applications" href="#"><span class="material-symbols-outlined text-[20px]">description</span><span class="font-label-md text-label-md">Applications</span></a><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="profile" href="#"><span class="material-symbols-outlined text-[20px]">person</span><span class="font-label-md text-label-md">Student Profile</span></a></nav></div><div class="px-space-sm py-space-md border-t border-border flex flex-col gap-space-xs"><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="settings" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><button class="w-full flex items-center justify-between px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors text-left" type="button"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[20px]">light_mode</span><span class="font-label-md text-label-md">Appearance</span></div><span class="font-caption text-caption text-muted-foreground">Light</span></button><a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" data-path="help" href="#"><span class="material-symbols-outlined text-[20px]">help_outline</span><span class="font-label-md text-label-md">Help &amp; Privacy</span></a></div></aside><div class="pl-[240px]"><header class="fixed top-0 left-[240px] right-0 h-16 bg-surface/90 backdrop-blur-md border-b border-border z-40 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-md"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-3 text-muted-foreground text-[18px]">search</span><input class="w-80 h-9 pl-9 pr-3 rounded-lg border border-border bg-surface text-foreground font-body-md text-body-md placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring" placeholder="Search scholarships, providers, fields..." type="text"/></div></div><div class="flex items-center gap-space-md"><button aria-label="Notifications" class="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-muted hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary ring-2 ring-surface"></span></button><div class="h-5 w-px bg-border"></div><div class="flex items-center gap-space-sm cursor-pointer"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEVbLl7MIwbXLSEDWZ51FBXNIexzJa88hg9qxS6y5bMLeuKph0yFiBtFzaMSrfJ_A1ciffUCgHPHFKZ9bzsBPOxgrETGLScgty4o26ztVsau8eljs-YX9i96SMxd6U2EgFOYzOenCwuAxa9pCERueOWBfQk-1isSPN2MzZ-r2gRW_LdKx6dqzxGVW-np8rOG0LcV653PhM0LcAw0hKLOgSLbEudnZpfnBgTSCaioRp0jnOoYCNPrc7lg"/><div class="flex flex-col text-left"><span class="font-label-md text-label-md text-foreground font-medium leading-none">Elena Vance</span><span class="font-caption text-caption text-muted-foreground mt-0.5 leading-none">Undergraduate</span></div></div></div></header><main class="relative pt-16 min-h-screen bg-background"><div class="max-w-[1200px] mx-auto px-space-lg py-space-lg"><div class="flex flex-col w-full">
+<!-- Top Utility Context / Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pb-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-2 mb-1.5">
+<span class="inline-flex items-center justify-center w-2 h-2 rounded-full bg-success"></span>
+<span class="font-caption text-caption text-muted-foreground uppercase tracking-wider">Catalog Synchronized Today</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Discover Scholarships</h1>
+<p class="font-body-md text-body-md text-muted-foreground mt-1 max-w-2xl">
+        Explore vetted funding opportunities that match your verified profile parameters, active majors, and background.
+      </p>
+</div>
+<!-- Active Criteria Strip & Quick Reset -->
+<div class="flex items-center gap-space-sm bg-surface-muted px-3 py-2 rounded-xl text-foreground">
+<span class="material-symbols-outlined text-[18px] text-muted-foreground">tune</span>
+<span class="font-caption text-caption text-muted-foreground">Criteria:</span>
+<span class="font-label-sm text-label-sm text-on-surface">Computer Science · Junior UG</span>
+<button class="ml-2 font-caption text-caption text-primary hover:text-on-primary-fixed-variant transition-colors underline underline-offset-2" id="reset-top-btn">
+        Reset filters
+      </button>
+</div>
+</div>
+<!-- Search & Filter Ribbon -->
+<div class="bg-surface rounded-xl p-space-md shadow-sm mb-space-lg flex flex-col gap-space-md">
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+<!-- Search Input Container -->
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[20px]">search</span>
+<input aria-label="Search scholarships" class="w-full h-11 pl-11 pr-10 rounded-lg bg-surface-muted text-foreground font-body-md text-body-md placeholder:text-muted-foreground focus:outline-none focus:bg-surface focus:ring-2 focus:ring-ring transition-all" id="search-input" placeholder="Search by keyword, provider, or field of study..." type="text"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hidden" id="clear-search">
+<span class="material-symbols-outlined text-[18px]">cancel</span>
+</button>
+</div>
+<!-- Sorting Selector -->
+<div class="flex items-center gap-space-sm shrink-0">
+<label class="font-label-sm text-label-sm text-muted-foreground whitespace-nowrap" for="sort-select">Sort by:</label>
+<div class="relative">
+<select class="h-11 pl-3 pr-9 rounded-lg bg-surface-muted text-foreground font-label-md text-label-md appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring" id="sort-select">
+<option value="approaching">Approaching Deadline</option>
+<option value="relevance">Match Relevance</option>
+<option value="highest">Highest Award</option>
+<option value="newest">Newest Added</option>
+</select>
+<span class="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[20px]">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Quick Filter Pills -->
+<div class="flex items-center gap-space-xs overflow-x-auto pb-1 text-nowrap">
+<button class="filter-pill active h-8 px-3 rounded-full font-label-sm text-label-sm transition-all bg-primary text-on-primary">
+        All Matches (38)
+      </button>
+<button class="filter-pill h-8 px-3 rounded-full font-label-sm text-label-sm transition-all bg-surface-muted text-muted-foreground hover:text-on-surface hover:bg-secondary-container">
+        Deadline: Next 30 Days
+      </button>
+<button class="filter-pill h-8 px-3 rounded-full font-label-sm text-label-sm transition-all bg-surface-muted text-muted-foreground hover:text-on-surface hover:bg-secondary-container">
+        Amount: $5,000+
+      </button>
+<button class="filter-pill h-8 px-3 rounded-full font-label-sm text-label-sm transition-all bg-surface-muted text-muted-foreground hover:text-on-surface hover:bg-secondary-container">
+        Undergraduate
+      </button>
+<button class="filter-pill h-8 px-3 rounded-full font-label-sm text-label-sm transition-all bg-surface-muted text-muted-foreground hover:text-on-surface hover:bg-secondary-container">
+        STEM
+      </button>
+<button class="filter-pill h-8 px-3 rounded-full font-label-sm text-label-sm transition-all bg-surface-muted text-muted-foreground hover:text-on-surface hover:bg-secondary-container">
+        Need-Based
+      </button>
+<button class="filter-pill h-8 px-3 rounded-full font-label-sm text-label-sm transition-all bg-surface-muted text-muted-foreground hover:text-on-surface hover:bg-secondary-container">
+        Merit-Based
+      </button>
+</div>
+</div>
+<!-- Primary Workspace: Faceted Sidebar + Results List -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Left Filter Facet Panel (280px equivalent on desktop) -->
+<aside class="lg:col-span-4 xl:col-span-3 bg-surface rounded-xl p-space-md shadow-sm flex flex-col gap-space-lg sticky top-20">
+<div class="flex items-center justify-between pb-space-sm bg-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">filter_list</span>
+<span class="font-headline-sm text-headline-sm text-foreground">Filter Criteria</span>
+</div>
+<button class="font-caption text-caption text-muted-foreground hover:text-destructive transition-colors" id="clear-all-filters">
+          Clear all
+        </button>
+</div>
+<!-- Field of Study -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-label-md text-label-md text-foreground font-semibold">Field of Study</span>
+<div class="flex flex-col gap-2">
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input checked="" class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer text-primary" type="checkbox"/>
+<span class="font-body-md text-body-md">Computer Science &amp; IT</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer text-primary" type="checkbox"/>
+<span class="font-body-md text-body-md">Engineering</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer text-primary" type="checkbox"/>
+<span class="font-body-md text-body-md">General STEM</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer text-primary" type="checkbox"/>
+<span class="font-body-md text-body-md">Arts &amp; Humanities</span>
+</label>
+</div>
+</div>
+<!-- Award Amount Range -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-foreground font-semibold">Award Amount</span>
+<span class="font-caption text-caption text-primary font-medium tabular-nums" id="amount-label">$1,000 – $20,000+</span>
+</div>
+<div class="px-1">
+<input class="w-full accent-primary h-1.5 bg-surface-muted rounded-lg appearance-none cursor-pointer" id="amount-slider" max="25000" min="1000" step="1000" type="range" value="20000"/>
+</div>
+<div class="flex justify-between font-caption text-caption text-muted-foreground px-1">
+<span>$1k</span>
+<span>$10k</span>
+<span>$20k+</span>
+</div>
+</div>
+<!-- Education Level -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-label-md text-label-md text-foreground font-semibold">Education Level</span>
+<div class="flex flex-col gap-2">
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input checked="" class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md">Undergraduate</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md">High School Senior</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md">Graduate</span>
+</label>
+</div>
+</div>
+<!-- Application Requirements -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-label-md text-label-md text-foreground font-semibold">Requirements</span>
+<div class="flex flex-col gap-2">
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md">Essay Required</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md">No Essay</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md">Letter of Recommendation</span>
+</label>
+<label class="flex items-center gap-2.5 cursor-pointer text-foreground select-none">
+<input class="w-4 h-4 rounded bg-surface-muted accent-primary cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md">Portfolio Submission</span>
+</label>
+</div>
+</div>
+<!-- Source Verification -->
+<div class="pt-2">
+<label class="flex items-start gap-2.5 cursor-pointer text-foreground select-none p-2.5 rounded-lg bg-surface-muted/60">
+<input checked="" class="w-4 h-4 rounded mt-0.5 bg-surface accent-primary cursor-pointer" type="checkbox"/>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm font-semibold">Verified Providers Only</span>
+<span class="font-caption text-caption text-muted-foreground mt-0.5">Filter out unvetted or third-party aggregators</span>
+</div>
+</label>
+</div>
+<!-- Guidance Helper Box -->
+<div class="p-3 bg-surface-container rounded-lg flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">verified_user</span>
+<p class="font-caption text-caption text-foreground">
+          PathAid guarantees all verified listings have zero application fees and active accreditation.
+        </p>
+</div>
+</aside>
+<!-- Main Results Area -->
+<div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-space-md">
+<!-- Results Subheader Stats -->
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-foreground font-semibold">Showing 38 potential matches</span>
+<span class="inline-block w-1 h-1 rounded-full bg-muted-foreground"></span>
+<span class="font-caption text-caption text-muted-foreground">12 per page</span>
+</div>
+<div class="flex items-center gap-1.5 font-caption text-caption text-muted-foreground">
+<span class="material-symbols-outlined text-[16px] text-success">check_circle</span>
+<span>Zero sponsored ranking</span>
+</div>
+</div>
+<!-- Scholarship Card 1 -->
+<article class="bg-surface rounded-xl p-space-md shadow-sm hover:shadow-md transition-shadow flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-sm">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-caption text-caption text-muted-foreground font-medium">The Ada Lovelace Foundation</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-primary font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                Verified provider source
+              </span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-foreground truncate">
+              Ada Lovelace STEM Leadership Grant
+            </h2>
+</div>
+<!-- Reward Metric -->
+<div class="sm:text-right shrink-0">
+<span class="block font-headline-md text-headline-md text-primary font-bold tabular-nums">$10,000</span>
+<span class="font-caption text-caption text-muted-foreground">Direct tuition disbursement</span>
+</div>
+</div>
+<!-- Metadata & Match Tags -->
+<div class="flex flex-wrap items-center gap-space-xs pt-1">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-primary">fact_check</span>
+            Matches selected criteria: Computer Science, GPA 3.5+
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">calendar_today</span>
+            Deadline: Dec 01, 2026
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">school</span>
+            Undergraduate Junior &amp; Senior
+          </span>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface">
+<span class="font-caption text-caption text-muted-foreground flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+            Requires: 1 Short Essay, Transcripts
+          </span>
+<div class="flex items-center gap-space-sm">
+<button aria-label="Save Ada Lovelace STEM Leadership Grant" class="bookmark-btn p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-primary transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+<button class="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center gap-1.5">
+<span>View details</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Scholarship Card 2 -->
+<article class="bg-surface rounded-xl p-space-md shadow-sm hover:shadow-md transition-shadow flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-sm">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-caption text-caption text-muted-foreground font-medium">AnitaB.org Partner Network</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-primary font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                Verified provider source
+              </span>
+<!-- Cautionary Approaching Deadline Warning -->
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-error font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+                Deadline in 24 days
+              </span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-foreground truncate">
+              Grace Hopper Student Technologist Grant
+            </h2>
+</div>
+<!-- Reward Metric -->
+<div class="sm:text-right shrink-0">
+<span class="block font-headline-md text-headline-md text-primary font-bold tabular-nums">$5,000</span>
+<span class="font-caption text-caption text-muted-foreground">Annual stipend + Mentorship</span>
+</div>
+</div>
+<!-- Metadata & Match Tags -->
+<div class="flex flex-wrap items-center gap-space-xs pt-1">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-primary">fact_check</span>
+            Matches female in computing criteria
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">calendar_today</span>
+            Deadline: Nov 15, 2026
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">terminal</span>
+            Tech / Computing Focus
+          </span>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface">
+<span class="font-caption text-caption text-muted-foreground flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">task_alt</span>
+            Requires: Project link, 1 Letter of Rec
+          </span>
+<div class="flex items-center gap-space-sm">
+<button aria-label="Save Grace Hopper Student Technologist Grant" class="bookmark-btn p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-primary transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+<button class="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center gap-1.5">
+<span>View details</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Scholarship Card 3 -->
+<article class="bg-surface rounded-xl p-space-md shadow-sm hover:shadow-md transition-shadow flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-sm">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-caption text-caption text-muted-foreground font-medium">Green Horizons Trust</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-primary font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                Verified provider source
+              </span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-foreground truncate">
+              Clean Energy &amp; Environmental Pioneers Scholarship
+            </h2>
+</div>
+<!-- Reward Metric -->
+<div class="sm:text-right shrink-0">
+<span class="block font-headline-md text-headline-md text-primary font-bold tabular-nums">$12,000</span>
+<span class="font-caption text-caption text-muted-foreground">Renewable across 2 academic yrs</span>
+</div>
+</div>
+<!-- Metadata & Match Tags -->
+<div class="flex flex-wrap items-center gap-space-xs pt-1">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-primary">fact_check</span>
+            Matches STEM interest &amp; renewable research
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">calendar_today</span>
+            Deadline: Jan 10, 2027
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">nature_people</span>
+            Environmental / Eng
+          </span>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface">
+<span class="font-caption text-caption text-muted-foreground flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">description</span>
+            Requires: Research Abstract (500 words)
+          </span>
+<div class="flex items-center gap-space-sm">
+<button aria-label="Save Clean Energy &amp; Environmental Pioneers Scholarship" class="bookmark-btn p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-primary transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+<button class="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center gap-1.5">
+<span>View details</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Scholarship Card 4 (Explicit Unknown Handling: Award Amount) -->
+<article class="bg-surface rounded-xl p-space-md shadow-sm hover:shadow-md transition-shadow flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-sm">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-caption text-caption text-muted-foreground font-medium">Horizon Media Endowment</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-primary font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                Verified provider source
+              </span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-foreground truncate">
+              National Collegiate Writing &amp; Tech Essay Award
+            </h2>
+</div>
+<!-- Explicit Unknown Award State Per Specification -->
+<div class="sm:text-right shrink-0">
+<span class="block font-headline-sm text-headline-sm text-muted-foreground font-semibold italic">Amount not listed</span>
+<span class="font-caption text-caption text-muted-foreground">Determined upon committee review</span>
+</div>
+</div>
+<!-- Metadata & Match Tags -->
+<div class="flex flex-wrap items-center gap-space-xs pt-1">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-primary">fact_check</span>
+            Open to all undergraduate majors
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">calendar_today</span>
+            Deadline: Feb 01, 2027
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">menu_book</span>
+            National Competition
+          </span>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface">
+<span class="font-caption text-caption text-muted-foreground flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">history_edu</span>
+            Requires: Technology Critique Essay (1200 words)
+          </span>
+<div class="flex items-center gap-space-sm">
+<button aria-label="Save National Collegiate Writing &amp; Tech Essay Award" class="bookmark-btn p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-primary transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+<button class="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center gap-1.5">
+<span>View details</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Scholarship Card 5 (Explicit Unknown Handling: Deadline) -->
+<article class="bg-surface rounded-xl p-space-md shadow-sm hover:shadow-md transition-shadow flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-space-sm">
+<div class="flex flex-col gap-1 min-w-0">
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-caption text-caption text-muted-foreground font-medium">Ascent Educational Foundation</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-primary font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                Verified provider source
+              </span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-foreground truncate">
+              Future Builders First-Generation Grant
+            </h2>
+</div>
+<!-- Reward Metric -->
+<div class="sm:text-right shrink-0">
+<span class="block font-headline-md text-headline-md text-primary font-bold tabular-nums">$8,000</span>
+<span class="font-caption text-caption text-muted-foreground">Disbursed per semester</span>
+</div>
+</div>
+<!-- Metadata & Match Tags with Unknown Deadline Flag -->
+<div class="flex flex-wrap items-center gap-space-xs pt-1">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-primary">fact_check</span>
+            First-generation college student
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-muted-foreground font-caption text-caption italic">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">event_busy</span>
+            Deadline not confirmed
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-muted text-foreground font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] text-muted-foreground">diversity_3</span>
+            Community Need
+          </span>
+</div>
+<div class="flex items-center justify-between pt-space-xs bg-surface">
+<span class="font-caption text-caption text-muted-foreground flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">contact_mail</span>
+            Requires: FAFSA Confirmation, 1 Reference
+          </span>
+<div class="flex items-center gap-space-sm">
+<button aria-label="Save Future Builders First-Generation Grant" class="bookmark-btn p-2 rounded-lg bg-surface-muted text-muted-foreground hover:text-primary transition-colors flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark</span>
+</button>
+<button class="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors flex items-center gap-1.5">
+<span>View details</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Accessible Pagination Bar -->
+<nav aria-label="Scholarship search results pages" class="mt-space-md p-space-md bg-surface rounded-xl flex flex-col sm:flex-row items-center justify-between gap-space-md shadow-sm">
+<span class="font-caption text-caption text-muted-foreground order-2 sm:order-1">
+          Showing <span class="font-medium text-foreground">1–5</span> of <span class="font-medium text-foreground">38</span> opportunities
+        </span>
+<div class="flex items-center gap-1.5 order-1 sm:order-2">
+<!-- Previous Button -->
+<button aria-label="Previous Page" class="h-9 px-3 rounded-lg bg-surface-muted text-muted-foreground opacity-50 cursor-not-allowed flex items-center justify-center gap-1 font-label-sm text-label-sm" disabled="" type="button">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+<span class="hidden sm:inline">Prev</span>
+</button>
+<!-- Numbered Pages -->
+<button aria-current="page" class="w-9 h-9 rounded-lg bg-primary text-on-primary font-label-sm text-label-sm font-semibold flex items-center justify-center" type="button">
+            1
+          </button>
+<button class="w-9 h-9 rounded-lg bg-surface-muted text-foreground hover:bg-secondary-container transition-colors font-label-sm text-label-sm flex items-center justify-center" type="button">
+            2
+          </button>
+<button class="w-9 h-9 rounded-lg bg-surface-muted text-foreground hover:bg-secondary-container transition-colors font-label-sm text-label-sm flex items-center justify-center" type="button">
+            3
+          </button>
+<button class="w-9 h-9 rounded-lg bg-surface-muted text-foreground hover:bg-secondary-container transition-colors font-label-sm text-label-sm flex items-center justify-center" type="button">
+            4
+          </button>
+<!-- Next Button -->
+<button aria-label="Next Page" class="h-9 px-3 rounded-lg bg-surface-muted text-foreground hover:bg-secondary-container transition-colors flex items-center justify-center gap-1 font-label-sm text-label-sm" type="button">
+<span class="hidden sm:inline">Next</span>
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</nav>
+</div>
+</div>
+</div>
+<script>
+  // Simple micro-interactions for demo discovery functionality
+  document.querySelectorAll('.filter-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-pill').forEach(b => {
+        b.classList.remove('bg-primary', 'text-on-primary', 'active');
+        b.classList.add('bg-surface-muted', 'text-muted-foreground');
+      });
+      btn.classList.add('bg-primary', 'text-on-primary', 'active');
+      btn.classList.remove('bg-surface-muted', 'text-muted-foreground');
+    });
+  });
+
+  const searchInput = document.getElementById('search-input');
+  const clearBtn = document.getElementById('clear-search');
+  if (searchInput && clearBtn) {
+    searchInput.addEventListener('input', (e) => {
+      clearBtn.style.display = e.target.value.length > 0 ? 'block' : 'none';
+    });
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      clearBtn.style.display = 'none';
+      searchInput.focus();
+    });
+  }
+
+  const slider = document.getElementById('amount-slider');
+  const amountLabel = document.getElementById('amount-label');
+  if (slider && amountLabel) {
+    slider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      amountLabel.textContent = `$1,000 – $${val.toLocaleString()}` + (val >= 25000 ? '+' : '');
+    });
+  }
+
+  document.querySelectorAll('.bookmark-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const icon = this.querySelector('.material-symbols-outlined');
+      const isSaved = icon.style.fontVariationSettings.includes("'FILL' 1");
+      if (isSaved) {
+        icon.style.fontVariationSettings = "'FILL' 0";
+        this.classList.remove('text-primary');
+        this.classList.add('text-muted-foreground');
+      } else {
+        icon.style.fontVariationSettings = "'FILL' 1";
+        this.classList.add('text-primary');
+        this.classList.remove('text-muted-foreground');
+      }
+    });
+  });
+
+  const resetFilters = () => {
+    if (slider) {
+      slider.value = 20000;
+      slider.dispatchEvent(new Event('input'));
+    }
+    if (searchInput) {
+      searchInput.value = '';
+      if (clearBtn) clearBtn.style.display = 'none';
+    }
+  };
+
+  document.getElementById('reset-top-btn')?.addEventListener('click', resetFilters);
+  document.getElementById('clear-all-filters')?.addEventListener('click', resetFilters);
+</script></div></main></div></body></html>
