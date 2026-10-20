@@ -2,10 +2,11 @@
 
 ## Automation workflow addendum
 
-The detailed visual system remains pending approved Google Stitch artifacts.
-The revised MVP adds one required administrator route and updates the ingestion
-workflow. Do not begin frontend implementation until those wireframes are
-provided.
+The Google Stitch artifacts are available under
+`stitch_ui_screen_implementation/`, including dashboard, discovery, program
+detail, and profile screens plus the PathAid design tokens. These artifacts and
+this contract govern the Next.js implementation. The revised MVP also adds one
+required administrator route and updates the ingestion workflow.
 
 - **Route:** `/admin/sources`
 - **Purpose:** Register, enable, pause, edit, and manually scan approved program

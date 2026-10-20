@@ -152,13 +152,9 @@ link → return after profile or catalog changes.
 | F-05 | Ingestion/review | Must | Acquire, extract, validate, retry, edit, approve/reject | Broad crawling and autonomous publication | Backend implemented; UI pending |
 | F-06 | Recommendation explanation | Should | Consent-gated grounded assistance with template fallback | AI eligibility or award prediction | Backend implemented; UI pending |
 | F-07 | Quality/deployment | Must | Benchmarks, PostgreSQL CI, containers, health/recovery | Invented metrics/hosting claims | Local foundation implemented |
-| F-08 | Student/admin web UI | Must | Accessible responsive Next.js flows from Stitch | Native apps and invented designs | Pending wireframes |
+| F-08 | Student/admin web UI | Must | Accessible responsive Next.js flows from Stitch | Native apps and invented designs | Wireframes supplied; implementation in progress |
 | F-09 | Launch catalog | Must | 10–20 current reviewed programs; at least four scholarships and two beyond UMass | Broad coverage claims | Pending research/review |
-<<<<<<< HEAD
 | F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Backend implemented; admin UI and controlled external-source verification pending |
-=======
-| F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Planned; ingestion foundation implemented |
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 **Scope freeze:** Scope freezes when the Stitch student and admin flows are
 approved. Additions must identify the user outcome, release tradeoff, and work
@@ -300,11 +296,7 @@ deterministic journey available.
 
 - Store an administrator-managed registry of program pages and one-hop discovery pages.
 - Enqueue each due source once per morning window using durable schedules and deterministic idempotency keys.
-<<<<<<< HEAD
 - Respect robots directives, configured host/path scope, one source per host per scheduler cycle, and acquisition limits.
-=======
-- Respect robots directives, configured host/path scope, per-host delays, and acquisition limits.
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Compare normalized content hashes and skip extraction for unchanged pages.
 - Turn changed pages and discovered candidates into private ingestion runs and review drafts.
 - Never close, remove, or materially change a public scholarship because a fetch failed.
@@ -331,8 +323,8 @@ deterministic journey available.
 **Navigation:** Landing → auth → onboarding → home → detail → provider. Admin
 login → runs → run detail → revision review → history.
 
-The approved Stitch prototype and `FRONTEND_DESIGN.md` govern visual work.
-Implementation remains pending until wireframes are supplied. All screens need
+The supplied Stitch prototype and `FRONTEND_DESIGN.md` govern visual work.
+Frontend implementation follows those artifacts. All screens need
 keyboard access, visible focus, semantic labels, meaningful loading/empty/error
 states, and equivalent mobile and desktop task completion.
 
@@ -390,11 +382,7 @@ states, and equivalent mobile and desktop task completion.
 - **Database:** PostgreSQL 16, SQLAlchemy 2, Alembic.
 - **Authentication:** Custom server-side student and single-admin sessions.
 - **AI:** OpenAI Responses API through separate adapters; deterministic CI stubs.
-<<<<<<< HEAD
 - **Scheduler:** Python process that selects due approved sources and creates idempotent runs — implemented.
-=======
-- **Scheduler:** Planned Python process that selects due approved sources and creates idempotent runs.
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - **Infrastructure:** Docker, Compose, GitHub Actions; hosting TBD after pricing.
 - **Constraints:** One developer, 4–6 weeks, $25/month, 10–20 programs, one
   worker by default.
@@ -412,11 +400,7 @@ states, and equivalent mobile and desktop task completion.
 | Evaluation | `POST /api/evaluate` | Student |
 | Explanation | `POST /api/programs/{id}/recommendation-explanation` | Student; consent for model |
 | Admin auth | `/api/admin/auth/*` | Admin session |
-<<<<<<< HEAD
 | Scheduled sources | `/api/admin/scheduled-sources*`, `/api/admin/scheduled-scans*` | Admin; CSRF mutations; implemented |
-=======
-| Scheduled sources | `/api/admin/scheduled-sources*`, `/api/admin/scheduled-scans*` | Admin; CSRF mutations; planned |
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | Ingestion/review | `/api/admin/ingestion-runs*`, `/api/admin/revisions*` | Admin; CSRF mutations |
 | Health | `GET /health/live`, `/health/ready` | Public |
 | Operations | `GET /api/admin/operations/summary` | Admin |
@@ -463,11 +447,7 @@ Frontend analytics are pending. Events must never contain profile values.
 | M0 | Scope/architecture | Aidan Jiang | Plan and feature specs | Complete |
 | M1 | Backend core | Aidan Jiang | Auth, catalog, eligibility, results, ingestion, review pass tests | Complete |
 | M2 | Evaluation/local deployment | Aidan Jiang | 100-case gate, PostgreSQL CI, Compose health, recovery docs | Complete locally |
-<<<<<<< HEAD
 | M3 | Scheduled discovery | Aidan Jiang | Daily approved-source scan, change detection, bounded discovery, admin API/status | Complete locally |
-=======
-| M3 | Scheduled discovery | Aidan Jiang | Daily approved-source scan, change detection, bounded discovery, admin status | Pending |
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 | M4 | Stitch and frontend | Aidan Jiang | Approved mobile/desktop flows implemented | Pending |
 | M5 | Reviewed catalog/beta | Aidan Jiang + reviewer | 10–20 approved programs; browser/security/accessibility pass | Pending |
 | M6 | Hosted demo/usability | Aidan Jiang | Deployment/recovery verified; five sessions; fixes complete | Pending |

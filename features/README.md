@@ -1,10 +1,6 @@
 # Feature specifications
 
-<<<<<<< HEAD
 These documents break the agreed [project plan](../plan.md) into focused implementation specifications. Each feature records its current status. The root plan owns shared scope, stack, budget, and milestones.
-=======
-These documents break the agreed [project plan](../plan.md) into focused implementation specifications. Each feature records whether its foundation is implemented or still planned. The root plan owns shared scope, stack, budget, and milestones; update it alongside any feature-scope changes.
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## Student features
 
@@ -26,9 +22,10 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 
 - [Reproducible eligibility and extraction evaluations](10-quality-evaluations.md)
 - [Reproducible local setup and hosted demo](11-demo-deployment.md)
+- [Student web interface](13-student-web-interface.md)
 
 ## Implementation order
 
-Start with student accounts, the profile registry, catalog, and eligibility engine. Build source acquisition, extraction, orchestration, and review before scheduled discovery. Add relevant evaluations and observability as each feature is implemented; complete the frontend and deployment after release checks pass.
+The backend foundation through scheduled discovery is implemented. The next active feature is the responsive student web interface, beginning with its shared shell, authentication, profile, discovery, and source-backed result flows. Add the protected administrator screens after the student flow is connected. Complete deployment after browser, accessibility, catalog, and usability checks pass.
 
 Future agent-harness work is deferred. Broad autonomous crawling, chat, RAG, application submission, and application tracking remain outside the MVP.
