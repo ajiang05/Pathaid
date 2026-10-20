@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SessionProvider } from "@/components/session-provider";
 
 export const metadata: Metadata = {
   title: { default: "PathAid", template: "%s | PathAid" },
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en" data-scroll-behavior="smooth"><body><SessionProvider>{children}</SessionProvider></body></html>;
 }

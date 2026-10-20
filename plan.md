@@ -1,6 +1,6 @@
 # Pathaid — Scholarships, Financial Aid, and Benefits Navigator
 
-Status: active implementation specification. The backend foundation through scheduled scholarship discovery is implemented locally; the student web interface is the next active feature.
+Status: active implementation specification. The backend, scheduled scholarship discovery, and responsive student/admin web interface are implemented and tested locally; catalog review and hosted beta validation are next.
 
 Feature specifications: see [features/README.md](features/README.md) for individual feature requirements, dependencies, and acceptance criteria.
 

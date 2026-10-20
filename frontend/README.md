@@ -1,6 +1,6 @@
 # PathAid frontend
 
-This directory contains the Next.js student and administrator interface. The current slice provides the responsive landing page, sign-up and login flows, session handoff page, shared PathAid design tokens, and a same-origin proxy to the FastAPI backend.
+This directory contains the complete Next.js MVP interface for students and administrators. It includes authentication, onboarding, profile and privacy controls, deterministic discovery, evidence-backed program details, scheduled source monitoring, ingestion monitoring, and human revision review.
 
 ## Run locally
 
@@ -19,6 +19,8 @@ Open `http://localhost:3000`. Set `PATHAID_API_URL` when the backend is availabl
 ```bash
 npm run lint
 npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
 The production build uses webpack because the current Tailwind worker can require a temporary local port under Turbopack in restricted build environments.

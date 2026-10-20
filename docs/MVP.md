@@ -145,16 +145,16 @@ link → return after profile or catalog changes.
 
 | ID | Feature | Priority | MVP behavior | Excluded complexity | Status |
 |---|---|---|---|---|---|
-| F-01 | Student account/profile | Must | Auth, optional typed fields, consent, edit/delete | Social login, reset, guest profile | Backend implemented; UI pending |
+| F-01 | Student account/profile | Must | Auth, optional typed fields, consent, edit/delete | Social login, reset, guest profile | Implemented locally |
 | F-02 | Reviewed catalog | Must | Current published revisions with provenance | Provider self-service, auto-publish | Backend implemented; real seed pending |
 | F-03 | Discovery/eligibility | Must | Coverage, three-valued rules, follow-ups, stable ranking | Model decisions, opaque scores | Backend implemented |
-| F-04 | Results/checklists | Must | Reasons, unknowns, evidence, materials, official links | Submission and progress tracking | Backend implemented; UI pending |
-| F-05 | Ingestion/review | Must | Acquire, extract, validate, retry, edit, approve/reject | Broad crawling and autonomous publication | Backend implemented; UI pending |
-| F-06 | Recommendation explanation | Should | Consent-gated grounded assistance with template fallback | AI eligibility or award prediction | Backend implemented; UI pending |
+| F-04 | Results/checklists | Must | Reasons, unknowns, evidence, materials, official links | Submission and progress tracking | Implemented locally |
+| F-05 | Ingestion/review | Must | Acquire, extract, validate, retry, edit, approve/reject | Broad crawling and autonomous publication | Implemented locally |
+| F-06 | Recommendation explanation | Should | Consent-gated grounded assistance with template fallback | AI eligibility or award prediction | Implemented locally |
 | F-07 | Quality/deployment | Must | Benchmarks, PostgreSQL CI, containers, health/recovery | Invented metrics/hosting claims | Local foundation implemented |
-| F-08 | Student/admin web UI | Must | Accessible responsive Next.js flows from Stitch | Native apps and invented designs | Wireframes supplied; implementation in progress |
+| F-08 | Student/admin web UI | Must | Accessible responsive Next.js flows from Stitch | Native apps and invented designs | Implemented and browser-tested locally |
 | F-09 | Launch catalog | Must | 10–20 current reviewed programs; at least four scholarships and two beyond UMass | Broad coverage claims | Pending research/review |
-| F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Backend implemented; admin UI and controlled external-source verification pending |
+| F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Backend and admin UI implemented; controlled external-source verification pending |
 
 **Scope freeze:** Scope freezes when the Stitch student and admin flows are
 approved. Additions must identify the user outcome, release tradeoff, and work
@@ -448,12 +448,11 @@ Frontend analytics are pending. Events must never contain profile values.
 | M1 | Backend core | Aidan Jiang | Auth, catalog, eligibility, results, ingestion, review pass tests | Complete |
 | M2 | Evaluation/local deployment | Aidan Jiang | 100-case gate, PostgreSQL CI, Compose health, recovery docs | Complete locally |
 | M3 | Scheduled discovery | Aidan Jiang | Daily approved-source scan, change detection, bounded discovery, admin API/status | Complete locally |
-| M4 | Stitch and frontend | Aidan Jiang | Approved mobile/desktop flows implemented | Pending |
+| M4 | Stitch and frontend | Aidan Jiang | Approved mobile/desktop flows implemented | Complete locally |
 | M5 | Reviewed catalog/beta | Aidan Jiang + reviewer | 10–20 approved programs; browser/security/accessibility pass | Pending |
 | M6 | Hosted demo/usability | Aidan Jiang | Deployment/recovery verified; five sessions; fixes complete | Pending |
 
-**Critical path:** implement scheduled discovery → approve Stitch designs → build frontend → review real catalog
-→ deploy securely → run browser/accessibility checks → conduct five sessions →
+**Critical path:** review real catalog → deploy securely → run a production accessibility check → conduct five sessions →
 resolve findings.
 
 ## 14. Risks, assumptions, and questions

@@ -28,7 +28,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         setMessage(typeof body?.detail === "string" ? body.detail : "We could not complete that request. Check your details and try again.");
         return;
       }
-      router.push("/home");
+      router.push(signup ? "/onboarding" : "/home");
       router.refresh();
     } catch {
       setMessage("PathAid cannot reach the service right now. Please try again shortly.");

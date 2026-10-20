@@ -1,6 +1,6 @@
 # Student web interface
 
-Status: implementation in progress. Parent specifications: [plan.md](../plan.md), [MVP](../docs/MVP.md), and [frontend design contract](../docs/FRONTEND_DESIGN.md).
+Status: implemented. Parent specifications: [plan.md](../plan.md), [MVP](../docs/MVP.md), and [frontend design contract](../docs/FRONTEND_DESIGN.md).
 
 ## Goal
 
