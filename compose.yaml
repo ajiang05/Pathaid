@@ -24,6 +24,18 @@ x-backend-environment: &backend-environment
   PATHAID_SCHEDULER_USER_AGENT: ${PATHAID_SCHEDULER_USER_AGENT:-PathaidBot/1.0}
 
 services:
+  frontend:
+    build:
+      context: frontend
+    environment:
+      PATHAID_API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
   database:
     image: postgres:16-alpine
     environment:

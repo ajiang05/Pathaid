@@ -15,11 +15,7 @@ Status: backend container and local PostgreSQL deployment foundation implemented
 Make the student flow and protected administration usable locally and in a small hosted portfolio demo.
 
 ## Scope and behavior
-<<<<<<< HEAD
 - Provide Docker Compose services for Next.js, FastAPI, the worker, scheduler, and PostgreSQL, with migrations and an explicit seed command. The scheduler service is implemented; Next.js remains pending.
-=======
-- Provide Docker Compose services for Next.js, FastAPI, the worker, scheduler, and PostgreSQL, with migrations and an explicit seed command.
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Provide `.env.example`, secret configuration, setup, backup/restore, health/readiness, and deployment instructions.
 - Student sign-up, saved profiles, and matching work with reviewed seed data and no AI key. Recommendation explanations fall back to templates; ingestion reports missing configuration clearly.
 - Target $25/month total hosting/API usage; verify current service prices before provider selection or provisioning.

@@ -1,10 +1,6 @@
 # Scheduled scholarship discovery and refresh
 
-<<<<<<< HEAD
 Status: backend implemented; administrator UI and controlled external-source verification pending. Parent specification: [plan.md](../plan.md).
-=======
-Status: planned MVP feature; the existing acquisition, extraction, orchestration, and review foundation is implemented. Parent specification: [plan.md](../plan.md).
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 
 ## Goal
 
@@ -35,11 +31,7 @@ Each scheduled target stores its canonical URL, source type (`program_page` or `
 - Store schedules and scan records in PostgreSQL. In-process timers are not the source of truth.
 - Claim due sources atomically so overlapping scheduler instances do not enqueue duplicate scans.
 - Derive an idempotency key from the source, scheduled window, and purpose.
-<<<<<<< HEAD
 - Process at most one source per host in each scheduler cycle so sources are not contacted simultaneously.
-=======
-- Apply randomized jitter and per-host delays so sources are not contacted simultaneously.
->>>>>>> 0aac2eb63c2ef53e9ae0503876e809002f385290
 - Reuse the existing worker for acquisition, extraction, validation, and draft creation.
 - Recover from database state after a scheduler restart.
 
