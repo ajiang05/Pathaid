@@ -8,7 +8,9 @@ WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+# Next.js does not create this optional directory when the app has no static
+# assets, but the runtime image always copies it so future assets work unchanged.
+RUN mkdir -p public && npm run build
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
