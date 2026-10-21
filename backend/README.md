@@ -85,8 +85,9 @@ the network or publishing anything:
 ```
 
 After configuring the database and optional extraction credentials, explicitly
-queue all candidates with `.venv/bin/python -m app.catalog_intake queue`. The
-command is idempotent. It creates ingestion runs only; each resulting draft still
+queue one live smoke-test candidate with `.venv/bin/python -m app.catalog_intake
+queue --entry gates-scholarship`, or queue all candidates by omitting `--entry`.
+The command is idempotent. It creates ingestion runs only; each resulting draft still
 requires source comparison and explicit administrator approval. The manifest is
 `data/catalog_intake_v1.json` and is not a reviewed seed bundle.
 

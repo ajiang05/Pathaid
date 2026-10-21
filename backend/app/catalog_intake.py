@@ -112,11 +112,21 @@ def manifest_summary(manifest: CatalogIntakeManifest) -> dict[str, object]:
     }
 
 
-def queue_manifest(db: Session, manifest: CatalogIntakeManifest) -> dict[str, int]:
-    """Idempotently queue candidates; ingestion still cannot publish them."""
+def queue_manifest(
+    db: Session,
+    manifest: CatalogIntakeManifest,
+    *,
+    entry_id: str | None = None,
+) -> dict[str, int]:
+    """Idempotently queue all candidates or one named candidate."""
 
     created = existing = 0
-    for entry in manifest.entries:
+    entries = manifest.entries
+    if entry_id is not None:
+        entries = [entry for entry in entries if entry.id == entry_id]
+        if not entries:
+            raise ValueError(f"unknown catalog intake entry: {entry_id}")
+    for entry in entries:
         key = f"catalog-intake:{manifest.version}:{entry.id}"
         before = db.query(IngestionRun).filter_by(idempotency_key=key).first()
         create_ingestion_run(db, IngestionSubmission(key, WebSourceRequest(entry.source_url)))
@@ -134,6 +144,12 @@ def main() -> None:
     for command in ("validate", "queue"):
         child = subcommands.add_parser(command)
         child.add_argument("path", type=Path, nargs="?", default=default_path)
+        if command == "queue":
+            child.add_argument(
+                "--entry",
+                dest="entry_id",
+                help="Queue only the candidate with this manifest ID.",
+            )
     arguments = parser.parse_args()
     manifest = load_manifest(arguments.path)
     if arguments.command == "validate":
@@ -141,7 +157,10 @@ def main() -> None:
         print(f"Validated {summary['candidates']} catalog candidates across {len(summary['categories'])} categories.")
         return
     with SessionLocal() as db:
-        result = queue_manifest(db, manifest)
+        try:
+            result = queue_manifest(db, manifest, entry_id=arguments.entry_id)
+        except ValueError as error:
+            parser.error(str(error))
     print(f"Queued {result['created']} candidates; found {result['existing']} existing runs.")
 
 

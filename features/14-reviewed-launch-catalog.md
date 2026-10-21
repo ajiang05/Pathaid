@@ -25,11 +25,16 @@ From `backend/`:
 
 ```bash
 .venv/bin/python -m app.catalog_intake validate
+.venv/bin/python -m app.catalog_intake queue --entry gates-scholarship
 .venv/bin/python -m app.catalog_intake queue
 .venv/bin/python -m app.worker --once
 ```
 
-Run the worker repeatedly or continuously until candidates reach review or a clear failure. A key for the configured Gemini or OpenAI provider is required for live extraction, while validation and the student experience over an already reviewed bundle do not require one.
+Use `--entry` for a one-candidate live-provider check before queuing the full
+manifest. Run the worker repeatedly or continuously until candidates reach
+review or a clear failure. A key for the configured Gemini or OpenAI provider
+is required for live extraction, while validation and the student experience
+over an already reviewed bundle do not require one.
 
 ## Acceptance criteria
 

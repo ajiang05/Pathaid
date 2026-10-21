@@ -64,3 +64,23 @@ def test_queue_is_idempotent_and_creates_no_published_programs(tmp_path):
             assert list(db.scalars(select(Program))) == []
     finally:
         engine.dispose()
+
+
+def test_queue_can_limit_first_live_run_to_one_named_candidate(tmp_path):
+    """A live-model smoke test can start one source without launching the batch."""
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'single-intake.db'}")
+    Base.metadata.create_all(engine)
+    try:
+        with Session(engine) as db:
+            manifest = load_manifest(MANIFEST_PATH)
+            result = queue_manifest(db, manifest, entry_id="gates-scholarship")
+            assert result == {"created": 1, "existing": 0}
+            runs = list(db.scalars(select(IngestionRun)))
+            assert len(runs) == 1
+            assert runs[0].idempotency_key == "catalog-intake:1.0.0:gates-scholarship"
+
+            with pytest.raises(ValueError, match="unknown catalog intake entry"):
+                queue_manifest(db, manifest, entry_id="not-in-the-manifest")
+    finally:
+        engine.dispose()
