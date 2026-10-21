@@ -17,7 +17,8 @@ export default defineConfig({
   webServer: {
     command: "npm run dev -- --hostname localhost",
     url: "http://localhost:3000",
-    reuseExistingServer: false,
+    // Local Docker already serves this port; CI still starts a clean dev server.
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 });
