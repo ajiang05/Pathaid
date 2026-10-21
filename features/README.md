@@ -23,9 +23,10 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 - [Reproducible eligibility and extraction evaluations](10-quality-evaluations.md)
 - [Reproducible local setup and hosted demo](11-demo-deployment.md)
 - [Student web interface](13-student-web-interface.md)
+- [Reviewed launch catalog](14-reviewed-launch-catalog.md)
 
 ## Implementation order
 
-The backend foundation through scheduled discovery is implemented. The next active feature is the responsive student web interface, beginning with its shared shell, authentication, profile, discovery, and source-backed result flows. Add the protected administrator screens after the student flow is connected. Complete deployment after browser, accessibility, catalog, and usability checks pass.
+The backend, scheduled discovery, and responsive student and administrator interfaces are implemented locally. The active feature is the reviewed launch catalog: validate and queue official-source candidates, complete human review, and export a reproducible approved bundle. Complete deployment after catalog, accessibility, security, and usability checks pass.
 
 Future agent-harness work is deferred. Broad autonomous crawling, chat, RAG, application submission, and application tracking remain outside the MVP.

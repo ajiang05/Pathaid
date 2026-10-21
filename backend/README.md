@@ -6,8 +6,8 @@ The backend provides student accounts and profiles, a reviewed versioned catalog
 deterministic discovery and eligibility, source-backed application results, optional
 grounded scholarship recommendation assistance, and protected ingestion and review
 workflows. It also schedules approved scholarship sources, skips unchanged content,
-and creates private candidate work from bounded discovery pages. The student and
-administrator frontends await approved wireframes.
+and creates private candidate work from bounded discovery pages. Responsive student
+and administrator interfaces consume these APIs.
 
 Container startup, reviewed catalog transfer, backup, recovery, and production
 security instructions are in [`docs/deployment.md`](../docs/deployment.md).
@@ -76,6 +76,19 @@ Run the versioned offline quality report with:
 .venv/bin/python -m app.quality_report
 ```
 
+Validate the launch catalog's official-source intake manifest without accessing
+the network or publishing anything:
+
+```sh
+.venv/bin/python -m app.catalog_intake validate
+```
+
+After configuring the database and optional extraction credentials, explicitly
+queue all candidates with `.venv/bin/python -m app.catalog_intake queue`. The
+command is idempotent. It creates ingestion runs only; each resulting draft still
+requires source comparison and explicit administrator approval. The manifest is
+`data/catalog_intake_v1.json` and is not a reviewed seed bundle.
+
 The current deterministic measurement is 100/100 expected eligibility outcomes
 on dataset version 1.0.0. The extraction dataset contains 10 cases, 28 field
 labels, and 10 claim labels. Offline CI validates the dataset and metric harness
@@ -89,8 +102,8 @@ separately budgeted run, provide a versioned JSON artifact containing
   --extraction-predictions path/to/saved-predictions.json
 ```
 
-Frontend browser checks and five student usability sessions remain pending until
-the approved wireframes and frontend implementation exist.
+Frontend browser checks pass locally. Production accessibility checks and five
+student usability sessions remain pending.
 
 Both pytest and Alembic are configured to treat `backend/` as the Python
 package root, so the commands above work without setting `PYTHONPATH`.

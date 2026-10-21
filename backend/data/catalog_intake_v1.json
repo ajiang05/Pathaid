@@ -1,0 +1,138 @@
+{
+  "version": "1.0.0",
+  "prepared_at": "2026-10-20",
+  "entries": [
+    {
+      "id": "gates-scholarship",
+      "name": "The Gates Scholarship",
+      "category": "scholarships",
+      "scope": "national",
+      "institution": null,
+      "source_url": "https://www.thegatesscholarship.org/scholarship/",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official program page; acquire the active cycle and separate basic eligibility from ideal-candidate selection factors."
+    },
+    {
+      "id": "coca-cola-scholars",
+      "name": "Coca-Cola Scholars Program Scholarship",
+      "category": "scholarships",
+      "scope": "national",
+      "institution": null,
+      "source_url": "https://www.coca-colascholarsfoundation.org/apply/",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official program page; retain the closed current cycle and annual application timing exactly as stated."
+    },
+    {
+      "id": "cooke-college-scholarship",
+      "name": "Cooke College Scholarship Program",
+      "category": "scholarships",
+      "scope": "national",
+      "institution": null,
+      "source_url": "https://www.jkcf.org/our-scholarships/college-scholarship-program/",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official foundation page; verify the active deadline and use the detailed application page for mandatory criteria."
+    },
+    {
+      "id": "western-mass-scholarships",
+      "name": "Community Foundation of Western Massachusetts Scholarship Program",
+      "category": "scholarships",
+      "scope": "state",
+      "institution": null,
+      "source_url": "https://communityfoundation.org/students/scholarships/",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official regional program page; model it as one common application and preserve the current closed status."
+    },
+    {
+      "id": "umass-amherst-scholarships",
+      "name": "UMass Amherst Undergraduate Scholarships",
+      "category": "scholarships",
+      "scope": "institutional",
+      "institution": "University of Massachusetts Amherst",
+      "source_url": "https://www.umass.edu/financialaid/undergraduate/types-aid/scholarships",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official university overview; reviewer must split only programs with independently supported requirements."
+    },
+    {
+      "id": "massachusetts-adams-scholarship",
+      "name": "John and Abigail Adams Scholarship",
+      "category": "scholarships",
+      "scope": "state",
+      "institution": null,
+      "source_url": "https://www.mass.edu/osfa/programs/adams.asp",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official state source; confirm current award use, institution coverage, and student notification process."
+    },
+    {
+      "id": "federal-pell-grant",
+      "name": "Federal Pell Grant",
+      "category": "grants",
+      "scope": "national",
+      "institution": null,
+      "source_url": "https://studentaid.gov/understand-aid/types/grants/pell",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official federal source; preserve aid-year values and conditions that require provider confirmation."
+    },
+    {
+      "id": "massgrant-plus",
+      "name": "MASSGrant Plus",
+      "category": "grants",
+      "scope": "state",
+      "institution": null,
+      "source_url": "https://www.mass.edu/osfa/programs/massgrantplus.asp",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official state program page; verify eligible institutions, residency, enrollment, and current aid year."
+    },
+    {
+      "id": "umass-amherst-grants",
+      "name": "UMass Amherst Undergraduate Grants",
+      "category": "grants",
+      "scope": "institutional",
+      "institution": "University of Massachusetts Amherst",
+      "source_url": "https://www.umass.edu/financialaid/undergraduate/types-aid/grants",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official university overview; retain unknowns where individual grant requirements are not stated."
+    },
+    {
+      "id": "massachusetts-snap",
+      "name": "Massachusetts SNAP Benefits",
+      "category": "food",
+      "scope": "state",
+      "institution": null,
+      "source_url": "https://www.mass.gov/snap-benefits-formerly-food-stamps",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official state entry point; use conservative partial screening for student-specific eligibility exceptions."
+    },
+    {
+      "id": "umass-student-emergency-resources",
+      "name": "UMass Amherst Student Emergency Resources",
+      "category": "emergency",
+      "scope": "institutional",
+      "institution": "University of Massachusetts Amherst",
+      "source_url": "https://www.umass.edu/dean_students/campus-resources/student-emergency-resources",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official campus resource page; extract distinct assistance only when the page supports separate requirements."
+    },
+    {
+      "id": "massachusetts-emergency-housing-assistance",
+      "name": "Massachusetts Emergency Housing Assistance",
+      "category": "housing",
+      "scope": "state",
+      "institution": null,
+      "source_url": "https://www.mass.gov/emergency-housing-assistance-programs",
+      "checked_at": "2026-10-20",
+      "intake_status": "candidate",
+      "review_notes": "Official state entry point; keep household and crisis conditions unresolved when student answers cannot determine them."
+    }
+  ]
+}
