@@ -51,7 +51,7 @@ For competitive scholarships, “Likely eligible” means the student appears to
 
 Separate missing student answers from conditions that require provider review. Do not keep asking students questions that cannot resolve a program’s incomplete rule coverage. For referral directories, describe access to the referral service separately from eligibility for benefits offered by listed providers.
 
-Store profile fields only for authenticated students, encrypt traffic, and give students a way to edit and delete their profile and account. Explain which fields are saved and which relevant fields may be sent to OpenAI for recommendation explanations; obtain explicit opt-in before sending any student data. Never send identity, credentials, or unnecessary sensitive fields. If a student declines, use deterministic recommendations and template explanations. Never include profile values in operational logs.
+Store profile fields only for authenticated students, encrypt traffic, and give students a way to edit and delete their profile and account. Explain which fields are saved and which relevant fields may be sent to the configured AI provider for recommendation explanations; obtain explicit opt-in before sending any student data. Never send identity, credentials, or unnecessary sensitive fields. If a student declines, use deterministic recommendations and template explanations. Never include profile values in operational logs.
 
 ## 4. Architecture and backend
 
@@ -60,7 +60,7 @@ Store profile fields only for authenticated students, encrypt traffic, and give 
 | Frontend       | Next.js, TypeScript, Tailwind; student auth/profile/home page and protected admin review UI           |
 | API            | FastAPI and Python; student auth/profile, validation, matching, eligibility, admin review, publication |
 | Database       | PostgreSQL; student accounts/profiles, program revisions, sources, rules, runs, and review history    |
-| AI             | OpenAI extraction and grounded recommendation explanations behind configurable adapters               |
+| AI             | Gemini or OpenAI extraction and grounded recommendation explanations behind configurable adapters    |
 | Orchestration  | Explicit Python workflow with persisted run states, bounded retries, validation, and human approval  |
 | Scheduler      | Python process with durable daily schedules, approved scopes, change detection, and bounded discovery |
 | Infrastructure | Docker, Docker Compose, and GitHub Actions                                                           |
@@ -118,7 +118,7 @@ Due approved source or manual admin submission
   → acquire and normalize source
   → compare normalized content hash
   → stop after recording freshness when unchanged
-  → extract a structured draft with OpenAI
+  → extract a structured draft with the configured AI provider
   → validate fields, rules, and evidence references
   → flag unsupported or ambiguous conditions
   → administrator reviews and edits
@@ -181,7 +181,7 @@ Prefer conservative partial screening for complex benefits. Retain unresolved co
 - **Workflow:** transient failures, exhausted retries, worker restart, duplicate submissions, invalid model output, refusal, missing API key, review edits, rejection, and publication of a replacement revision.
 - **Backend:** unauthorized student/admin access, CSRF, unsafe URL/redirect handling, invalid profiles, published-only reads, atomic publication, profile deletion, and absence of value-bearing error logs.
 - **Frontend:** sign-up → short profile intake → personalized home page → progressively requested answer → ranked results → profile edit and reevaluation, sensitive questions appearing only for relevant candidates, school without campus coverage, unknown answers, empty catalog/filter results, API errors, corresponding mobile and desktop layouts, keyboard use, and accessible labels.
-- **End to end:** student screening and admin ingestion/review/publication journeys. Use a deterministic model stub in CI; live OpenAI evaluations are explicit, separately budgeted runs.
+- **End to end:** student screening and admin ingestion/review/publication journeys. Use a deterministic model stub in CI; live provider evaluations are explicit, separately budgeted runs.
 - **Usability:** observe five students signing up, completing and editing a profile, interpreting recommendations and eligibility results, using a checklist, and reaching an official application page; record findings and address problems that recur across sessions before release.
 
 GitHub Actions runs backend tests, frontend type/build checks, migration checks against PostgreSQL, and representative browser tests. Record real evaluation results and reproducible commands in project documentation.
@@ -200,7 +200,7 @@ Implement student sign-up, login, the typed profile-field registry, and editable
 ## 9. Deployment and operations
 
 - Provide Docker Compose for frontend, API, worker, and PostgreSQL, plus migrations and an explicit seed command.
-- Student matching must run from reviewed seed data without an OpenAI API key. Recommendation explanations fall back to templates; ingestion reports a clear configuration error when a key is absent.
+- Student matching must run from reviewed seed data without an AI provider API key. Recommendation explanations fall back to templates; ingestion reports a clear configuration error when the selected provider's key is absent.
 - Target a hosted public student flow and protected admin interface within **$25/month total** for hosting and API usage. Verify current provider pricing before selecting services or provisioning paid resources.
 - Keep secrets outside the repository. Provide `.env.example`, setup instructions, health/readiness endpoints, migration steps, and database backup/restore instructions.
 - Deploy behind HTTPS. Restrict CORS/origins to the frontend, keep database/worker private, and prevent request-body logging at the proxy and application layers.

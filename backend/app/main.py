@@ -35,7 +35,7 @@ from .models import AuthAttempt, ProgramRevision, RecommendationAttempt, Student
 from .profile_fields import FIELDS, validate_profile_patch
 from .health import router as health_router
 from .recommendations import (
-    OpenAIRecommendationAdapter,
+    configured_recommendation_provider,
     RecommendationError,
     model_payload,
     render_model_selection,
@@ -544,7 +544,7 @@ def recommendation_explanation(
     provider = getattr(app.state, "recommendation_provider", None)
     provider_started = time.perf_counter()
     try:
-        provider = provider or OpenAIRecommendationAdapter()
+        provider = provider or configured_recommendation_provider()
         generated = provider.select(model_payload(result, combined_profile))
         explanation, criterion_ids, unresolved_ids = render_model_selection(result, generated.selection)
     except RecommendationError as error:

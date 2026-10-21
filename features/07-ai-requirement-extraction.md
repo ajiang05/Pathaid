@@ -1,12 +1,12 @@
 # AI program and scholarship requirement extraction
 
-Status: structured schema, deterministic evidence/rule validation, configurable OpenAI adapter, offline stub, and 10-case benchmark harness implemented; ingestion-run persistence, admin review integration, and a separately budgeted live-model benchmark remain pending. Parent specification: [plan.md](../plan.md).
+Status: structured schema, deterministic evidence/rule validation, configurable Gemini and OpenAI adapters, offline stub, and 10-case benchmark harness implemented; a separately budgeted live-model benchmark remains pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Convert official source text into structured, evidence-backed drafts that an administrator can review.
 
 ## Scope and behavior
-- Use OpenAI schema-constrained extraction behind a small adapter with an environment-configurable model.
+- Use Gemini or OpenAI schema-constrained extraction behind a small adapter with an environment-configurable provider and model.
 - Extract program details, proposed eligibility rules, evidence excerpts, application materials, and unresolved conditions.
 - For scholarships, extract cycle, amount, deadline/timezone, and distinguish mandatory criteria from selection preferences.
 - Validate schema, allowlisted fields/operators, operand types, and excerpt occurrence in the retained snapshot.

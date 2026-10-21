@@ -29,7 +29,7 @@ From `backend/`:
 .venv/bin/python -m app.worker --once
 ```
 
-Run the worker repeatedly or continuously until candidates reach review or a clear failure. An OpenAI API key is required for live extraction, while validation and the student experience over an already reviewed bundle do not require one.
+Run the worker repeatedly or continuously until candidates reach review or a clear failure. A key for the configured Gemini or OpenAI provider is required for live extraction, while validation and the student experience over an already reviewed bundle do not require one.
 
 ## Acceptance criteria
 
