@@ -29,9 +29,9 @@ Requirements: Docker Engine with Docker Compose v2.
    ```dotenv
    GEMINI_API_KEY=replace-with-your-gemini-key
    PATHAID_EXTRACTION_PROVIDER=gemini
-   PATHAID_EXTRACTION_MODEL=gemini-2.5-flash-lite
+   PATHAID_EXTRACTION_MODEL=gemini-3.5-flash-lite
    PATHAID_RECOMMENDATION_PROVIDER=gemini
-   PATHAID_RECOMMENDATION_MODEL=gemini-2.5-flash-lite
+   PATHAID_RECOMMENDATION_MODEL=gemini-3.5-flash-lite
    ```
 
 4. Start the private database, migration job, API, worker, and scheduler:

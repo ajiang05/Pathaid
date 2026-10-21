@@ -418,7 +418,9 @@ def normalize_text(value: str, max_characters: int) -> str:
     value = unicodedata.normalize("NFC", value).replace("\r\n", "\n").replace("\r", "\n")
     lines = []
     for line in value.split("\n"):
-        collapsed = re.sub(r"[\t\f\v ]+", " ", line).strip()
+        # HTML commonly uses non-breaking and other Unicode spaces. Collapse
+        # them to ASCII spaces so exact evidence remains practical to copy.
+        collapsed = re.sub(r"[^\S\n]+", " ", line).strip()
         if collapsed:
             lines.append(collapsed)
         elif lines and lines[-1] != "":

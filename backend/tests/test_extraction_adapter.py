@@ -181,7 +181,12 @@ def test_gemini_adapter_uses_same_schema_and_normalizes_usage():
     )
     result = adapter.extract(Snapshot())
 
-    assert models.kwargs["config"]["response_schema"] is ExtractedProgramDraft
+    schema = models.kwargs["config"]["response_json_schema"]
+    assert schema["title"] == "ExtractedProgramDraft"
+    assert "oneOf" not in str(schema)
+    assert "discriminator" not in str(schema)
+    assert "children" not in schema["$defs"]["RuleGroup"]["required"]
+    assert schema["$defs"]["ConditionRule"]["properties"]["type"]["enum"] == ["condition"]
     assert models.kwargs["config"]["response_mime_type"] == "application/json"
     assert result.draft.name == "Example Award"
     assert result.usage.total_tokens == 29
