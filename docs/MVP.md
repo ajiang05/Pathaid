@@ -254,7 +254,7 @@ deterministic journey available.
 - Show verified checklist items without evaluating their quality.
 - AI output cannot change labels or add facts because final prose is rendered
   from reviewed server-owned reasons.
-- Template fallback works without an OpenAI key.
+- Template fallback works without an AI provider key.
 
 ### F-05 — AI-assisted ingestion and review
 
@@ -381,7 +381,7 @@ states, and equivalent mobile and desktop task completion.
 - **API:** FastAPI on Python 3.14.
 - **Database:** PostgreSQL 16, SQLAlchemy 2, Alembic.
 - **Authentication:** Custom server-side student and single-admin sessions.
-- **AI:** OpenAI Responses API through separate adapters; deterministic CI stubs.
+- **AI:** Gemini or OpenAI structured-output APIs through separate adapters; deterministic CI stubs.
 - **Scheduler:** Python process that selects due approved sources and creates idempotent runs — implemented.
 - **Infrastructure:** Docker, Compose, GitHub Actions; hosting TBD after pricing.
 - **Constraints:** One developer, 4–6 weeks, $25/month, 10–20 programs, one

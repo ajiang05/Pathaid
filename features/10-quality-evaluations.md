@@ -7,7 +7,7 @@ Status: backend offline evaluations and scheduled-discovery tests implemented; l
 - CI requires all 100 expected eligibility outcomes to pass and prints the dataset version, numerator, denominator, accuracy, and failures.
 - The versioned 10-case extraction dataset validates 28 field labels, 10 claim labels, and exact evidence occurrence. Its metric harness reports field accuracy, criterion precision/recall, unsupported-claim rate, and evidence fidelity with explicit denominators when supplied a saved prediction artifact.
 - Existing offline suites cover ranking, authentication/privacy, source safety, model refusal and malformed output, bounded retries, restart recovery, duplicate ingestion, review, rejection, and atomic publication with deterministic provider stubs.
-- PostgreSQL migrations and model drift are checked in GitHub Actions without an OpenAI key.
+- PostgreSQL migrations and model drift are checked in GitHub Actions without an AI provider key.
 - Live extraction measurements have not been run. Browser tests, deployed observability checks, and five student usability sessions depend on the pending frontend and deployment.
 
 ## Goal

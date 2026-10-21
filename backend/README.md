@@ -59,8 +59,9 @@ and CSRF tokens are stored as SHA-256 hashes. The rate limit uses shared databas
 records. Behind a reverse proxy, configure a trusted peer address policy before
 public deployment.
 
-Recommendation explanations default to `gpt-6-luna`. Configure the optional path
-with `OPENAI_API_KEY`, `PATHAID_RECOMMENDATION_MODEL`,
+Recommendation explanations support OpenAI and Gemini. Select one with
+`PATHAID_RECOMMENDATION_PROVIDER`, provide its server-side `OPENAI_API_KEY` or
+`GEMINI_API_KEY`, and set `PATHAID_RECOMMENDATION_MODEL`,
 `PATHAID_RECOMMENDATION_TIMEOUT_SECONDS`,
 `PATHAID_RECOMMENDATION_MAX_OUTPUT_TOKENS`, and
 `PATHAID_RECOMMENDATION_ATTEMPTS_PER_HOUR`. The default limit is ten attempts per
@@ -111,7 +112,7 @@ package root, so the commands above work without setting `PYTHONPATH`.
 GitHub Actions runs the same backend suite against PostgreSQL on every backend
 push and pull request. It requires a single Alembic head, upgrades a fresh
 database, checks that SQLAlchemy metadata matches the migrations, and then
-runs the offline tests without an OpenAI API key.
+runs the offline tests without an AI provider API key.
 
 ## Source acquisition
 
@@ -136,17 +137,19 @@ live source URL.
 
 ## Requirement extraction
 
-`app.extraction.OpenAIExtractionAdapter` is the internal Feature 07 model
-boundary. It sends a saved source snapshot to the Responses API using the
-strict `ExtractedProgramDraft` schema. It does not accept student profiles and
-cannot publish a revision. `app.extraction_validation.validate_extracted_draft`
+`app.extraction` provides the internal Feature 07 model boundary. The selected
+OpenAI or Gemini adapter sends a saved source snapshot to its structured-output
+API using the strict `ExtractedProgramDraft` schema. It does not accept student
+profiles and cannot publish a revision. `app.extraction_validation.validate_extracted_draft`
 then checks rule fields and operand types, exact evidence occurrence, snapshot
 identity, coverage, deadlines, and application URLs before later orchestration
 can place a proposal into admin review.
 
-Set `OPENAI_API_KEY` only in the server or worker environment. The extraction
-model defaults to `gpt-6-luna` and can be changed with
-`PATHAID_EXTRACTION_MODEL`. Optional positive limits are
+Set model keys only in the server or worker environment. Extraction supports
+`PATHAID_EXTRACTION_PROVIDER=openai` and `gemini`; the matching key is
+`OPENAI_API_KEY` or `GEMINI_API_KEY`. Configure the provider's model with
+`PATHAID_EXTRACTION_MODEL`. Gemini uses the same strict schema, exact-evidence
+validation, retry limits, and human approval boundary as OpenAI. Optional positive limits are
 `PATHAID_EXTRACTION_TIMEOUT_SECONDS`,
 `PATHAID_EXTRACTION_MAX_OUTPUT_TOKENS`, and
 `PATHAID_EXTRACTION_MAX_SOURCE_CHARACTERS`. A missing key produces an explicit

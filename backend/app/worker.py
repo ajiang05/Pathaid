@@ -13,7 +13,7 @@ from typing import Callable
 from sqlalchemy.orm import sessionmaker
 
 from .database import SessionLocal
-from .extraction import ExtractionProvider, OpenAIExtractionAdapter
+from .extraction import ExtractionProvider, configured_extraction_provider
 from .models import IngestionRun
 from .orchestration import Clock, OrchestrationConfig, claim_next_run, utc_now
 from .orchestration_stages import process_acquisition_stage, process_extraction_stage, process_validation_stage
@@ -61,7 +61,7 @@ def process_next_run(
     *,
     worker_id: str | None = None,
     config: WorkerConfig = WorkerConfig(),
-    provider_factory: ProviderFactory = OpenAIExtractionAdapter,
+    provider_factory: ProviderFactory = configured_extraction_provider,
     clock: Clock = utc_now,
 ) -> bool:
     """Claim and execute one durable stage, returning whether work was found."""
@@ -73,8 +73,8 @@ def process_next_run(
         if lease is None:
             return False
         run = db.get(IngestionRun, lease.run_id)
-        # Constructing the OpenAI client is deliberately deferred until the
-        # extraction stage, so other stages and offline operation need no key.
+        # Construct the selected model client only at the extraction stage, so
+        # acquisition, validation, and offline operation need no provider key.
         if run.state == "acquiring":
             process_acquisition_stage(db, lease, policy, clock=clock)
         elif run.state == "extracting":
@@ -89,7 +89,7 @@ def run_forever(
     *,
     worker_id: str | None = None,
     config: WorkerConfig,
-    provider_factory: ProviderFactory = OpenAIExtractionAdapter,
+    provider_factory: ProviderFactory = configured_extraction_provider,
 ) -> None:
     """Poll serially, keeping default concurrency bounded to one process."""
 

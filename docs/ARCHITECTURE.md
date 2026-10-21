@@ -23,7 +23,7 @@ The implemented backend is a modular Python monolith with two runtime processes:
 - A FastAPI process serves student, catalog, evaluation, recommendation, administrator, and health endpoints.
 - A Python worker claims durable ingestion stages from the relational database.
 
-Both processes use the same SQLAlchemy models and PostgreSQL database. Alembic owns schema changes. OpenAI's Responses API is an optional external dependency for requirement extraction and consent-gated recommendation assistance. Deterministic results and template explanations continue to work without model access.
+Both processes use the same SQLAlchemy models and PostgreSQL database. Alembic owns schema changes. Gemini or OpenAI is an optional external dependency for requirement extraction and consent-gated recommendation assistance. Deterministic results and template explanations continue to work without model access.
 
 The backend now includes a third Python process: a scheduler that selects due administrator-approved sources and creates idempotent ingestion work. The administrator UI and controlled external-source verification remain pending.
 
@@ -41,7 +41,7 @@ The responsive Next.js frontend described by the MVP is **pending approved Googl
 | Local fallback | SQLite through `DATABASE_URL` default | Implemented for direct local development |
 | Background work | Database-backed state machine with leases; no message broker | Implemented |
 | Scheduled discovery | Database-backed daily schedules, bounded one-hop discovery, and hash change detection | Implemented |
-| AI integration | OpenAI Responses API behind extraction and recommendation adapters | Implemented; live quality measurements pending |
+| AI integration | Configurable Gemini or OpenAI structured-output API behind extraction and recommendation adapters | Implemented; live quality measurements pending |
 | Web client | Responsive Next.js application | Pending wireframes and implementation |
 | Deployment | Docker image and Docker Compose topology | Implemented locally; public deployment pending |
 
@@ -94,8 +94,8 @@ flowchart LR
     Scheduler[Pathaid scheduler] -->|Select due approved sources| DB
     Worker[Pathaid ingestion worker] -->|Claim jobs and persist stages| DB
     Worker -->|Fetch approved public URLs| Sources[Official provider websites]
-    Worker -->|Structured extraction| OpenAI[OpenAI Responses API]
-    API -->|Optional consent-gated explanation| OpenAI
+    Worker -->|Structured extraction| AI[Configured AI provider]
+    API -->|Optional consent-gated explanation| AI
     Student -->|Leaves Pathaid to apply| Provider[Official provider/application site]
 ```
 
@@ -106,14 +106,14 @@ flowchart LR
 | Student | Manages a private profile and evaluates published programs | Credentials, profile answers, consent, temporary answers | Browser to Pathaid |
 | Administrator | Submits sources, reviews drafts, and records publication decisions | Deployment credential, source URL/text, edits, attestations | Browser to protected admin API |
 | Official websites | Authoritative source and final application destination | Public webpage text; outbound student navigation | Pathaid to public internet |
-| OpenAI Responses API | Proposes structured extraction and selects grounded explanation reasons | Retained source text for extraction; consented relevant profile facts for recommendations | Pathaid to third party |
+| Configured AI provider | Proposes structured extraction and selects grounded explanation reasons | Retained source text for extraction; consented relevant profile facts for recommendations | Pathaid to third party |
 | Hosting and log provider | Runs containers and retains configured operational output | Structured route/status/latency events | Application to infrastructure provider |
 
 ### 3.2 Ownership boundaries
 
 **Inside Pathaid:** account/session management, profiles, catalog revision history, source snapshots, eligibility rules, ranking, evaluation responses, ingestion state, review decisions, model-call metadata, and operational aggregates.
 
-**Outside Pathaid:** official program policy, current provider availability, award decisions, application submission, provider sites, OpenAI service behavior, and the selected hosting platform.
+**Outside Pathaid:** official program policy, current provider availability, award decisions, application submission, provider sites, configured AI service behavior, and the selected hosting platform.
 
 Pathaid must never describe its application-eligibility result as an award decision. Official providers remain authoritative.
 
@@ -131,7 +131,7 @@ flowchart TB
     Scheduler[Python daily scheduler]
     Migrate[Alembic migration job]
     DB[(PostgreSQL 16)]
-    OpenAI[OpenAI Responses API]
+    AI[Configured Gemini or OpenAI API]
     Web[Official public websites]
 
     Browser --> Edge
@@ -143,8 +143,8 @@ flowchart TB
     Worker -->|SQLAlchemy / psycopg| DB
     Scheduler -->|Schedules and idempotent runs| DB
     Worker -->|Bounded HTTP(S)| Web
-    Worker -->|HTTPS| OpenAI
-    API -->|HTTPS when opted in| OpenAI
+    Worker -->|HTTPS| AI
+    API -->|HTTPS when opted in| AI
 ```
 
 ### 4.1 Container inventory
@@ -166,10 +166,10 @@ flowchart TB
 | API/worker → database | SQL via SQLAlchemy and psycopg | Database service credential | Transaction boundaries protect account, publication, and stage changes |
 | Scheduler → database | SQL via SQLAlchemy and psycopg | Database service credential | Atomic due-source claim and scheduled-window idempotency |
 | Worker → official source | HTTP(S), public text content only | None in MVP | At most five redirects; a bounded acquisition attempt is retried by orchestration when classified transient |
-| Worker → OpenAI | HTTPS Responses API | Server-side API key | Timeout and up to three orchestration stage attempts; invalid/refused/configuration results stop for review |
-| API → OpenAI | HTTPS Responses API | Server-side API key | Failure returns the deterministic template explanation |
+| Worker → AI provider | HTTPS structured-output API | Server-side API key | Timeout and up to three orchestration stage attempts; invalid/refused/configuration results stop for review |
+| API → AI provider | HTTPS structured-output API | Server-side API key | Failure returns the deterministic template explanation |
 
-No browser communicates directly with PostgreSQL, the worker, or OpenAI. PostgreSQL and the worker have no host port in the Compose deployment.
+No browser communicates directly with PostgreSQL, the worker, or an AI provider. PostgreSQL and the worker have no host port in the Compose deployment.
 
 ## 5. Backend component design
 
@@ -187,11 +187,11 @@ No browser communicates directly with PostgreSQL, the worker, or OpenAI. Postgre
 | `app.catalog` | Queries that expose current published revisions only | SQLAlchemy models |
 | `app.catalog_schemas` | Public catalog response contracts | Pydantic |
 | `app.evaluation_schemas` | Evaluation request and response contracts | Pydantic |
-| `app.recommendations` | Template explanation, minimized model payload, model adapter, output rendering | Evaluation schemas, OpenAI SDK |
+| `app.recommendations` | Template explanation, minimized model payload, provider adapters, output rendering | Evaluation schemas, provider SDKs |
 | `app.recommendation_schemas` | Strict model and API contracts for recommendations | Pydantic |
 | `app.source_acquisition` | URL validation, DNS/IP safety, bounded fetching, redirect validation, HTML normalization | Standard library networking |
 | `app.source_service` | Acquisition entry point and immutable snapshot persistence | Acquisition, SQLAlchemy models |
-| `app.extraction` | Structured-output extraction provider boundary and deterministic test stub | OpenAI SDK, extraction schemas |
+| `app.extraction` | Structured-output extraction provider boundary and deterministic test stub | Provider SDKs, extraction schemas |
 | `app.extraction_schemas` | Strict extracted-draft shape | Pydantic |
 | `app.extraction_validation` | Exact-evidence, rule, URL, deadline, and coverage validation | Eligibility and extraction schemas |
 | `app.orchestration` | Run creation, idempotency, leases, retries, and manual retry | SQLAlchemy models |
@@ -281,7 +281,7 @@ sequenceDiagram
     participant B as Browser
     participant A as FastAPI
     participant E as Eligibility engine
-    participant O as OpenAI
+    participant O as AI provider
     participant D as Database
 
     B->>A: POST recommendation request with revision ID
@@ -311,7 +311,7 @@ sequenceDiagram
     participant DB as Database
     participant W as Worker
     participant Site as Official website
-    participant AI as OpenAI
+    participant AI as AI provider
 
     Admin->>API: Submit source + idempotency key
     API->>DB: Create queued ingestion run
@@ -533,7 +533,7 @@ The administrator identity is configured through `PATHAID_ADMIN_EMAIL` and `PATH
 
 ### 9.3 Secrets and transport
 
-Local Compose reads environment variables from an uncommitted root `.env`. Production secrets must use the selected host's secret store. Required secrets include PostgreSQL credentials, the encoded administrator password hash, and optionally the OpenAI API key.
+Local Compose reads environment variables from an uncommitted root `.env`. Production secrets must use the selected host's secret store. Required secrets include PostgreSQL credentials, the encoded administrator password hash, and optionally the selected AI provider API key.
 
 The container does not terminate TLS. A managed edge or reverse proxy must terminate HTTPS, route the frontend and `/api` under the same origin, and set `PATHAID_SECURE_COOKIES=true`. Database and worker network access must remain private.
 
@@ -541,7 +541,7 @@ The container does not terminate TLS. A managed edge or reverse proxy must termi
 
 ### 10.1 Requirement extraction
 
-The worker sends one retained source snapshot to `OpenAIExtractionAdapter`, which requests the strict `ExtractedProgramDraft` schema through the Responses API. The adapter records model, prompt version, schema version, provider request ID, and token usage. It does not receive student data and cannot write a published revision.
+The worker sends one retained source snapshot to the configured `GeminiExtractionAdapter` or `OpenAIExtractionAdapter`, which requests the strict `ExtractedProgramDraft` schema. The adapter records model, prompt version, schema version, available provider request metadata, and token usage. It does not receive student data and cannot write a published revision.
 
 The deterministic validator then checks:
 
@@ -561,7 +561,7 @@ The model returns a structured selection of supplied reason identifiers rather t
 
 ### 10.3 Model configuration and evaluation
 
-Both adapters default to `gpt-6-luna` and support environment overrides. Extraction and recommendation have separate timeouts and output-token limits. The eligibility benchmark is deterministic and currently reports 100/100 expected cases. The extraction dataset and metric harness are implemented, but live extraction accuracy is unmeasured. No production model-quality claim should be made until a saved, versioned predictions artifact is evaluated.
+Extraction and recommendation select `openai` or `gemini` independently through environment variables. Each provider has a default model and supports an explicit model override. The two tasks have separate timeouts and output-token limits. The eligibility benchmark is deterministic and currently reports 100/100 expected cases. The extraction dataset and metric harness are implemented, but live extraction accuracy is unmeasured. No production model-quality claim should be made until a saved, versioned predictions artifact is evaluated.
 
 ## 11. Deployment architecture
 
@@ -654,7 +654,7 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 | Worker stops during stage | Lease eventually expires; committed prior stages remain | Another worker claims the due stage |
 | Official source timeout/transient response | Stage records safe error and schedules bounded retry | Automatic retry up to configured maximum |
 | Unsafe URL or invalid content | Run stops with non-retryable failure | Administrator corrects input and creates manual retry |
-| Missing OpenAI key during extraction | Explicit configuration failure | Configure key and use protected manual retry |
+| Missing selected provider key during extraction | Explicit configuration failure | Configure the matching key and use protected manual retry |
 | Model refusal/invalid extraction | Run fails without draft publication | Administrator reviews and retries after corrective action |
 | Recommendation model failure | Template explanation returned | No user-blocking recovery required |
 | Invalid draft edit | Validation findings returned; draft remains private | Administrator corrects draft/evidence |

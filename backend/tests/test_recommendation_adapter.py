@@ -4,7 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.recommendations import OpenAIRecommendationAdapter, RecommendationConfig, RecommendationError
+from app.recommendations import (
+    GeminiRecommendationAdapter,
+    GeminiRecommendationConfig,
+    OpenAIRecommendationAdapter,
+    RecommendationConfig,
+    RecommendationError,
+    configured_recommendation_provider,
+)
 from app.recommendation_schemas import ModelRecommendationSelection
 
 
@@ -17,6 +24,21 @@ class FakeResponses:
         self.kwargs = None
 
     def parse(self, **kwargs):
+        self.kwargs = kwargs
+        if self.error:
+            raise self.error
+        return self.response
+
+
+class FakeModels:
+    """Capture a Gemini structured generation request."""
+
+    def __init__(self, response=None, error=None):
+        self.response = response
+        self.error = error
+        self.kwargs = None
+
+    def generate_content(self, **kwargs):
         self.kwargs = kwargs
         if self.error:
             raise self.error
@@ -78,3 +100,38 @@ def test_refusal_timeout_and_invalid_output_have_stable_codes():
     with pytest.raises(RecommendationError) as invalid:
         adapter.select({})
     assert invalid.value.code == "invalid_output"
+
+
+def test_gemini_recommendation_uses_strict_ids_and_aggregate_usage():
+    """Gemini can assist wording without returning factual prose to students."""
+
+    selection = ModelRecommendationSelection(emphasis="eligibility", criterion_ids=["criterion-1"])
+    response = SimpleNamespace(
+        parsed=selection.model_dump(mode="json"),
+        usage_metadata=SimpleNamespace(prompt_token_count=10, candidates_token_count=2, total_token_count=12),
+    )
+    models = FakeModels(response)
+    adapter = GeminiRecommendationAdapter(
+        GeminiRecommendationConfig(api_key="test", model="gemini-test"),
+        client=SimpleNamespace(models=models),
+    )
+    result = adapter.select({"criteria": [{"id": "criterion-1"}]})
+    assert models.kwargs["config"]["response_schema"] is ModelRecommendationSelection
+    assert result.selection.criterion_ids == ["criterion-1"]
+    assert result.usage.total_tokens == 12
+
+
+def test_gemini_recommendation_provider_selection():
+    """Gemini is selected only when explicitly configured with its own key."""
+
+    provider = configured_recommendation_provider(
+        {
+            "PATHAID_RECOMMENDATION_PROVIDER": "gemini",
+            "GEMINI_API_KEY": "test",
+            "PATHAID_RECOMMENDATION_MODEL": "gemini-test",
+        }
+    )
+    assert isinstance(provider, GeminiRecommendationAdapter)
+    with pytest.raises(RecommendationError) as missing:
+        configured_recommendation_provider({"PATHAID_RECOMMENDATION_PROVIDER": "gemini"})
+    assert missing.value.code == "missing_api_key"

@@ -23,15 +23,25 @@ Requirements: Docker Engine with Docker Compose v2.
    ```
 
 3. Put the result in `PATHAID_ADMIN_PASSWORD_HASH` in the root `.env`, return
-   to the repository root, and start the private database, migration job, API,
-   worker, and scheduler:
+   to the repository root, and configure Gemini for extraction and optional
+   recommendation assistance. Keep the actual key only in this uncommitted file:
+
+   ```dotenv
+   GEMINI_API_KEY=replace-with-your-gemini-key
+   PATHAID_EXTRACTION_PROVIDER=gemini
+   PATHAID_EXTRACTION_MODEL=gemini-2.5-flash-lite
+   PATHAID_RECOMMENDATION_PROVIDER=gemini
+   PATHAID_RECOMMENDATION_MODEL=gemini-2.5-flash-lite
+   ```
+
+4. Start the private database, migration job, API, worker, and scheduler:
 
    ```sh
    docker compose up --build --detach
    docker compose ps
    ```
 
-4. Check the API process and migrated database:
+5. Check the API process and migrated database:
 
    ```sh
    curl --fail http://localhost:8000/health/live
@@ -40,7 +50,7 @@ Requirements: Docker Engine with Docker Compose v2.
 
 Only the API binds a host port, and it binds to loopback. PostgreSQL and the
 worker remain on the private Compose network. Student matching and template
-recommendations work without `OPENAI_API_KEY`. An ingestion run that reaches
+recommendations work without an AI provider key. An ingestion run that reaches
 extraction without a key records an explicit configuration failure for admin
 review.
 
@@ -162,7 +172,7 @@ collector only after its request capture and retention settings are reviewed.
 - Route browser `/api` traffic through the same origin; the API does not enable
   broad cross-origin access.
 - Keep PostgreSQL, the worker, and the planned scheduler on private networks with no public ports.
-- Store database, administrator, OpenAI, and telemetry credentials in the
+- Store database, administrator, AI provider, and telemetry credentials in the
   hosting provider's secret store.
 - Disable proxy request-body capture and redact cookies and authorization
   headers.

@@ -5,7 +5,15 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.extraction import DeterministicExtractionStub, ExtractionConfig, ExtractionError, OpenAIExtractionAdapter
+from app.extraction import (
+    DeterministicExtractionStub,
+    ExtractionConfig,
+    ExtractionError,
+    GeminiExtractionAdapter,
+    GeminiExtractionConfig,
+    OpenAIExtractionAdapter,
+    configured_extraction_provider,
+)
 from app.extraction_schemas import EXTRACTION_SCHEMA_VERSION, ExtractedProgramDraft
 
 
@@ -52,6 +60,21 @@ class FakeResponses:
         self.kwargs = None
 
     def parse(self, **kwargs):
+        self.kwargs = kwargs
+        if self.error:
+            raise self.error
+        return self.response
+
+
+class FakeModels:
+    """Capture a Gemini generate-content call without network access."""
+
+    def __init__(self, response=None, error=None):
+        self.response = response
+        self.error = error
+        self.kwargs = None
+
+    def generate_content(self, **kwargs):
         self.kwargs = kwargs
         if self.error:
             raise self.error
@@ -140,3 +163,68 @@ def test_deterministic_stub_returns_fixture_with_version_metadata():
     assert result.draft.name == "Example Award"
     assert result.model == "deterministic-stub"
     assert result.usage.total_tokens is None
+
+
+def test_gemini_adapter_uses_same_schema_and_normalizes_usage():
+    """Gemini proposals cross the same strict contract as OpenAI proposals."""
+
+    models = FakeModels(
+        SimpleNamespace(
+            parsed=draft().model_dump(mode="json"),
+            usage_metadata=SimpleNamespace(prompt_token_count=21, candidates_token_count=8, total_token_count=29),
+            response_id="gemini-request-1",
+        )
+    )
+    adapter = GeminiExtractionAdapter(
+        GeminiExtractionConfig(api_key="test", model="gemini-test"),
+        client=SimpleNamespace(models=models),
+    )
+    result = adapter.extract(Snapshot())
+
+    assert models.kwargs["config"]["response_schema"] is ExtractedProgramDraft
+    assert models.kwargs["config"]["response_mime_type"] == "application/json"
+    assert result.draft.name == "Example Award"
+    assert result.usage.total_tokens == 29
+    assert result.request_id == "gemini-request-1"
+
+
+def test_provider_selection_requires_matching_key_and_known_provider():
+    """Provider selection never silently sends a key to a different service."""
+
+    provider = configured_extraction_provider(
+        {
+            "PATHAID_EXTRACTION_PROVIDER": "gemini",
+            "GEMINI_API_KEY": "test",
+            "PATHAID_EXTRACTION_MODEL": "gemini-test",
+        }
+    )
+    assert isinstance(provider, GeminiExtractionAdapter)
+    with pytest.raises(ExtractionError) as missing:
+        configured_extraction_provider({"PATHAID_EXTRACTION_PROVIDER": "gemini"})
+    assert missing.value.code == "missing_api_key"
+    with pytest.raises(ExtractionError) as unknown:
+        configured_extraction_provider({"PATHAID_EXTRACTION_PROVIDER": "unknown"})
+    assert unknown.value.code == "invalid_configuration"
+
+
+def test_gemini_block_and_rate_limit_map_to_safe_failures():
+    """Gemini safety and quota outcomes preserve the existing retry contract."""
+
+    blocked = SimpleNamespace(parsed=None, prompt_feedback=SimpleNamespace(block_reason="SAFETY"), candidates=[])
+    adapter = GeminiExtractionAdapter(
+        GeminiExtractionConfig(api_key="test"),
+        client=SimpleNamespace(models=FakeModels(blocked)),
+    )
+    with pytest.raises(ExtractionError) as refused:
+        adapter.extract(Snapshot())
+    assert refused.value.code == "model_refusal"
+
+    rate_limit = type("ServerError", (Exception,), {"status_code": 429})
+    adapter = GeminiExtractionAdapter(
+        GeminiExtractionConfig(api_key="test"),
+        client=SimpleNamespace(models=FakeModels(error=rate_limit("private details"))),
+    )
+    with pytest.raises(ExtractionError) as unavailable:
+        adapter.extract(Snapshot())
+    assert unavailable.value.code == "provider_unavailable"
+    assert unavailable.value.retryable

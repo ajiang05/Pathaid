@@ -27,7 +27,7 @@ Make the student flow and protected administration usable locally and in a small
 Packages all MVP features, with release checks from [evaluations](10-quality-evaluations.md). The root [plan](../plan.md) retains the 4–6 week milestone schedule.
 
 ## Acceptance criteria
-- Documented local setup starts all required services; student authentication, profile editing, matching, and template explanations work without OpenAI access.
+- Documented local setup starts all required services; student authentication, profile editing, matching, and template explanations work without AI provider access.
 - Hosting readiness checks, database migrations, and backup/restore instructions are verified before launch.
 - No credentials are committed; public users cannot reach admin mutations without authentication.
 - Observability reports service and model failures without exposing private student data.
