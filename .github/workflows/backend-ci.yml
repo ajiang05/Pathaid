@@ -83,6 +83,9 @@ jobs:
       - name: Report offline quality measurements
         run: python -m app.quality_report
 
+      - name: Validate launch catalog intake
+        run: python -m app.catalog_intake validate
+
       - name: Build production backend image
         run: docker build --tag pathaid-backend:test .
 
