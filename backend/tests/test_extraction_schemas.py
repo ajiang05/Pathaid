@@ -106,3 +106,17 @@ def test_generated_json_schema_is_recursive_and_closed():
 
     assert schema["additionalProperties"] is False
     assert "RuleGroup" in schema["$defs"]
+
+
+@pytest.mark.parametrize(
+    ("field", "limit"),
+    [("name", 240), ("award_cycle", 120), ("deadline_timezone", 80), ("assistance_amount", 240)],
+)
+def test_schema_rejects_values_longer_than_catalog_columns(field: str, limit: int):
+    """Provider output cannot reach persistence with oversized text fields."""
+
+    proposal = valid_draft()
+    proposal[field] = "x" * (limit + 1)
+
+    with pytest.raises(ValidationError):
+        ExtractedProgramDraft.model_validate(proposal)

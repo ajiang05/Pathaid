@@ -31,6 +31,11 @@ graduate status; never invent academic_level. application_deadline must be an IS
 timestamp, or null when the source does not provide an exact deadline. deadline_timezone must be null unless the
 source names it. Every evidence excerpt must be one contiguous, verbatim substring of source_text: preserve its
 capitalization, punctuation, and spacing, and never combine, correct, summarize, or paraphrase source passages.
+Coverage states must use two-letter postal codes such as MA, never full state names. A non-null deadline_timezone
+must be an IANA name such as America/New_York; use null for labels such as Eastern that are not exact IANA names.
+Keep name at 240 characters or fewer, award_cycle at 120 or fewer, deadline_timezone at 80 or fewer, and
+assistance_amount at 240 or fewer. When an amount passage is longer, give a faithful concise summary and leave
+the complete wording in the retained source for human review; do not truncate mid-sentence or invent a value.
 """
 
 
@@ -250,7 +255,7 @@ class GeminiExtractionAdapter:
             raise ExtractionError("invalid_output", "The extraction model did not return a valid structured draft.")
         if not isinstance(parsed, ExtractedProgramDraft):
             try:
-                parsed = ExtractedProgramDraft.model_validate(parsed)
+                parsed = ExtractedProgramDraft.model_validate(_normalize_gemini_draft(parsed))
             except Exception as error:
                 raise ExtractionError("invalid_output", "The extraction model returned an invalid structured draft.") from error
 
@@ -387,6 +392,18 @@ def _gemini_json_schema(model: type[ExtractedProgramDraft]) -> dict[str, Any]:
     required = rule_group.get("required", [])
     rule_group["required"] = [name for name in required if name != "children"]
     return schema
+
+
+def _normalize_gemini_draft(value: Any) -> Any:
+    """Drop an unsafe oversized optional amount that Gemini may not constrain."""
+
+    if not isinstance(value, dict):
+        return value
+    amount = value.get("assistance_amount")
+    if isinstance(amount, str) and len(amount) > 240:
+        value = dict(value)
+        value["assistance_amount"] = None
+    return value
 
 
 def _positive_int(values: Mapping[str, str], name: str, default: int) -> int:

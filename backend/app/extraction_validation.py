@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Mapping, Protocol
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .eligibility import RuleValidationError, validate_rule_tree
 from .extraction_schemas import (
@@ -159,6 +160,17 @@ def _validate_deadline(draft: ExtractedProgramDraft, findings: list[ValidationFi
         datetime.fromisoformat(draft.application_deadline.replace("Z", "+00:00"))
     except ValueError:
         findings.append(_error("invalid_deadline", "application_deadline", "The deadline must be an ISO 8601 date or timestamp."))
+    if draft.deadline_timezone:
+        try:
+            ZoneInfo(draft.deadline_timezone)
+        except ZoneInfoNotFoundError:
+            findings.append(
+                _error(
+                    "invalid_deadline_timezone",
+                    "deadline_timezone",
+                    "The deadline timezone must be a valid IANA timezone name.",
+                )
+            )
 
 
 def _validate_application_url(draft: ExtractedProgramDraft, findings: list[ValidationFinding]) -> None:

@@ -164,3 +164,15 @@ def test_missing_named_timezone_is_visible_to_reviewers():
 
     assert result.is_valid
     assert "missing_deadline_timezone" in finding_codes(result)
+
+
+def test_non_iana_deadline_timezone_is_rejected_before_revision_creation():
+    """Provider labels such as Eastern cannot fail later during persistence."""
+
+    data = proposal()
+    data["deadline_timezone"] = "Eastern"
+
+    result = validate_extracted_draft(ExtractedProgramDraft.model_validate(data), Snapshot())
+
+    assert not result.is_valid
+    assert "invalid_deadline_timezone" in finding_codes(result)

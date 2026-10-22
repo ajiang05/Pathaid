@@ -47,12 +47,12 @@
       "review_notes": "Official regional program page; model it as one common application and preserve the current closed status."
     },
     {
-      "id": "umass-amherst-scholarships",
+      "id": "umass-undergraduate-scholarships",
       "name": "UMass Amherst Undergraduate Scholarships",
       "category": "scholarships",
       "scope": "institutional",
       "institution": "University of Massachusetts Amherst",
-      "source_url": "https://www.umass.edu/financialaid/undergraduate/types-aid/scholarships",
+      "source_url": "https://www.umass.edu/financialaid/undergraduate-scholarships",
       "checked_at": "2026-10-20",
       "intake_status": "candidate",
       "review_notes": "Official university overview; reviewer must split only programs with independently supported requirements."
@@ -91,48 +91,48 @@
       "review_notes": "Official state program page; verify eligible institutions, residency, enrollment, and current aid year."
     },
     {
-      "id": "umass-amherst-grants",
-      "name": "UMass Amherst Undergraduate Grants",
+      "id": "umass-undergraduate-aid",
+      "name": "UMass Amherst Undergraduate Financial Aid",
       "category": "grants",
       "scope": "institutional",
       "institution": "University of Massachusetts Amherst",
-      "source_url": "https://www.umass.edu/financialaid/undergraduate/types-aid/grants",
+      "source_url": "https://www.umass.edu/financialaid/types-aid-undergraduate",
       "checked_at": "2026-10-20",
       "intake_status": "candidate",
       "review_notes": "Official university overview; retain unknowns where individual grant requirements are not stated."
     },
     {
-      "id": "massachusetts-snap",
-      "name": "Massachusetts SNAP Benefits",
+      "id": "umass-food-security",
+      "name": "UMass Amherst Food Security Resources",
       "category": "food",
-      "scope": "state",
-      "institution": null,
-      "source_url": "https://www.mass.gov/snap-benefits-formerly-food-stamps",
+      "scope": "institutional",
+      "institution": "University of Massachusetts Amherst",
+      "source_url": "https://www.umass.edu/dean-students/basic-needs/food-security",
       "checked_at": "2026-10-20",
       "intake_status": "candidate",
-      "review_notes": "Official state entry point; use conservative partial screening for student-specific eligibility exceptions."
+      "review_notes": "Official university page; treat it as a resource directory and preserve referral-specific eligibility as unresolved."
     },
     {
-      "id": "umass-student-emergency-resources",
-      "name": "UMass Amherst Student Emergency Resources",
+      "id": "umass-angel-fund",
+      "name": "UMass Amherst Angel Fund Emergency Grant",
       "category": "emergency",
       "scope": "institutional",
       "institution": "University of Massachusetts Amherst",
-      "source_url": "https://www.umass.edu/dean_students/campus-resources/student-emergency-resources",
+      "source_url": "https://www.umass.edu/dean-students/basic-needs/angel-fund-emergency-grant",
       "checked_at": "2026-10-20",
       "intake_status": "candidate",
-      "review_notes": "Official campus resource page; extract distinct assistance only when the page supports separate requirements."
+      "review_notes": "Official university emergency grant page; preserve all referral and demonstrated-need conditions with exact evidence."
     },
     {
-      "id": "massachusetts-emergency-housing-assistance",
-      "name": "Massachusetts Emergency Housing Assistance",
+      "id": "mass-211-housing-shelter",
+      "name": "Massachusetts 211 Housing and Shelter Resources",
       "category": "housing",
       "scope": "state",
       "institution": null,
-      "source_url": "https://www.mass.gov/emergency-housing-assistance-programs",
+      "source_url": "https://mass211.org/housing-shelter",
       "checked_at": "2026-10-20",
       "intake_status": "candidate",
-      "review_notes": "Official state entry point; keep household and crisis conditions unresolved when student answers cannot determine them."
+      "review_notes": "Official statewide referral provider; describe access to the directory separately from eligibility for listed services."
     }
   ]
 }

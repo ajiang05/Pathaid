@@ -193,6 +193,21 @@ def test_gemini_adapter_uses_same_schema_and_normalizes_usage():
     assert result.request_id == "gemini-request-1"
 
 
+def test_gemini_adapter_discards_oversized_optional_amount():
+    """An ignored maxLength becomes unknown instead of truncated financial data."""
+
+    raw = draft().model_dump(mode="json")
+    raw["assistance_amount"] = "x" * 241
+    adapter = GeminiExtractionAdapter(
+        GeminiExtractionConfig(api_key="test", model="gemini-test"),
+        client=SimpleNamespace(models=FakeModels(SimpleNamespace(parsed=raw, usage_metadata=None))),
+    )
+
+    result = adapter.extract(Snapshot())
+
+    assert result.draft.assistance_amount is None
+
+
 def test_provider_selection_requires_matching_key_and_known_provider():
     """Provider selection never silently sends a key to a different service."""
 

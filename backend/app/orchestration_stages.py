@@ -7,6 +7,7 @@ from dataclasses import asdict
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from .extraction import ExtractionError, ExtractionProvider
@@ -233,7 +234,7 @@ def process_validation_stage(
         revision = _build_revision(program, snapshot, draft)
         db.add(revision)
         db.flush()
-    except (ValueError, ZoneInfoNotFoundError):
+    except (ValueError, ZoneInfoNotFoundError, SQLAlchemyError):
         db.rollback()
         # The rollback also removed the running attempt, so restore a concise
         # terminal outcome without persisting malformed extracted values.
