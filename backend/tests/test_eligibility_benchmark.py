@@ -61,6 +61,9 @@ def test_offline_report_distinguishes_measurements_from_pending_work():
     assert report["extraction_dataset"]["field_labels"] > 0
     assert report["extraction_dataset"]["claim_labels"] > 0
     assert report["extraction_dataset"]["model_metrics"] is None
+    assert report["frontend"]["browser_tests"] == "implemented; run separately"
+    assert report["frontend"]["command"] == "cd frontend && npm run test:e2e"
+    assert report["frontend"]["projects"] == ["desktop-chromium", "mobile-chromium"]
     assert report["frontend"]["usability_sessions_completed"] == 0
 
 
