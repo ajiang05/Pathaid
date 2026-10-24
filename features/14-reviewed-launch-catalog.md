@@ -1,10 +1,12 @@
 # Reviewed launch catalog
 
-Status: intake workflow and first official-source candidate manifest implemented; human review and publication pending. Parent specifications: [plan.md](../plan.md), [MVP](../docs/MVP.md), and [verified catalog](05-program-catalog.md).
+Status: intake, live extraction, deterministic validation, and official-source engineering audit completed for 12 intended candidates; human attestation and publication pending. Parent specifications: [plan.md](../plan.md), [MVP](../docs/MVP.md), and [verified catalog](05-program-catalog.md).
 
 ## Goal
 
 Prepare, review, and publish a useful 10–20 program launch catalog without treating automated extraction or source discovery as human approval.
+
+Current progress: 12 intended candidates have completed automated validation and an official-source engineering audit. A stronger Pell Grant source replaced the original loading-placeholder acquisition. The administrator must still complete the source attestations, reject the superseded Pell draft, and publish the selected revisions. See [the launch catalog review record](../docs/CATALOG_REVIEW.md).
 
 ## Workflow
 
