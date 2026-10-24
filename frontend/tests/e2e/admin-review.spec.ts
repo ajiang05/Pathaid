@@ -32,6 +32,14 @@ const review = {
     id: revisionId,
     status: "draft",
     validation_status: "valid",
+    validation_findings: [
+      {
+        code: "unsupported_logic",
+        path: "eligibility_tree",
+        message: "At least one mandatory condition requires human interpretation.",
+        severity: "warning",
+      },
+    ],
     provider_url: run.source_url,
     name: proposedDraft.name,
     description: proposedDraft.description,
@@ -88,6 +96,7 @@ test("administrator reviews retained evidence before publishing a draft", async 
   await page.getByRole("link", { name: "Review draft" }).click();
   await expect(page.getByRole("heading", { name: proposedDraft.name })).toBeVisible();
   await expect(page.getByText(review.sources[0].source_text)).toBeVisible();
+  await expect(page.getByText("At least one mandatory condition requires human interpretation.")).toBeVisible();
 
   const approve = page.getByRole("button", { name: "Approve and publish" });
   await expect(approve).toBeDisabled();
