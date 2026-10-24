@@ -76,9 +76,11 @@ test("authenticated student can discover and inspect a reviewed result", async (
   await mockStudentApi(page);
   await page.goto("/home");
   await expect(page.getByRole("heading", { name: "Your support search starts here" })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "Discover support" }).click();
   await expect(page.getByRole("heading", { name: "Open opportunities" })).toBeVisible();
   await expect(page.getByText(result.name)).toBeVisible();
+  await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "View details" }).click();
   await expect(page.getByRole("heading", { name: result.name })).toBeVisible();
   await expect(page.getByText("Reviewed eligibility requirements")).toBeVisible();
