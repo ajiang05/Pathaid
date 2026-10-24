@@ -51,14 +51,52 @@ Requirements: Docker Engine with Docker Compose v2.
    curl --fail http://localhost:8000/health/ready
    ```
 
-Only the API binds a host port, and it binds to loopback. PostgreSQL and the
-worker remain on the private Compose network. Student matching and template
+Only the frontend and API bind host ports, and both bind to loopback. PostgreSQL,
+the worker, and the scheduler remain on the private Compose network. Student matching and template
 recommendations work without an AI provider key. An ingestion run that reaches
 extraction without a key records an explicit configuration failure for admin
 review.
 
 Stop services without deleting the database with `docker compose down`.
 Deleting the `postgres-data` volume permanently removes local application data.
+
+## Single-server hosted topology
+
+The production Compose overlay adds Caddy 2.11.4 as the only public service.
+Caddy binds ports 80 and 443, obtains and renews the certificate for
+`PATHAID_HOSTNAME`, adds conservative browser security headers, and proxies to
+the private Next.js service. Next.js continues to proxy `/api` to FastAPI, so
+student and administrator cookies remain same-origin. Proxy access logging is
+not enabled because raw paths are unnecessary for the portfolio beta.
+
+Before starting the hosted stack:
+
+1. Point the hostname's DNS A/AAAA records to the server.
+2. Copy `.env.example` to a server-only `.env` and replace every placeholder.
+3. Set these production values, keeping the proxy CIDR equal to the Compose
+   subnet:
+
+   ```dotenv
+   PATHAID_HOSTNAME=pathaid.example.com
+   PATHAID_PUBLIC_ORIGIN=https://pathaid.example.com
+   PATHAID_SECURE_COOKIES=true
+   PATHAID_DOCKER_SUBNET=172.30.0.0/24
+   PATHAID_TRUSTED_PROXY_CIDRS=172.30.0.0/24
+   ```
+
+4. Validate and start both Compose files:
+
+   ```sh
+   docker compose --project-name pathaid-production -f compose.yaml -f compose.production.yaml config --quiet
+   docker compose --project-name pathaid-production -f compose.yaml -f compose.production.yaml up --build --detach
+   docker compose --project-name pathaid-production -f compose.yaml -f compose.production.yaml ps
+   ```
+
+The API trusts `X-Forwarded-For` only when its direct peer belongs to
+`PATHAID_TRUSTED_PROXY_CIDRS`. Direct deployments and malformed forwarding
+chains fall back to the socket peer, preventing clients from choosing their
+own authentication throttle identity. Do not use a public network in that
+setting.
 
 ## Migrations
 
@@ -170,11 +208,11 @@ collector only after its request capture and retention settings are reviewed.
 
 ## Production security checklist
 
-- Terminate TLS at a managed proxy and set `PATHAID_SECURE_COOKIES=true`.
+- Terminate TLS at Caddy (or an equivalent managed proxy) and set `PATHAID_SECURE_COOKIES=true`.
 - Set `PATHAID_PUBLIC_ORIGIN` to the exact HTTPS frontend origin.
 - Route browser `/api` traffic through the same origin; the API does not enable
   broad cross-origin access.
-- Keep PostgreSQL, the worker, and the planned scheduler on private networks with no public ports.
+- Keep PostgreSQL, the worker, scheduler, and API on private networks or loopback with no public ports.
 - Store database, administrator, AI provider, and telemetry credentials in the
   hosting provider's secret store.
 - Disable proxy request-body capture and redact cookies and authorization

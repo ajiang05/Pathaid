@@ -14,6 +14,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from .database import get_db
+from .client_address import client_address
 from .models import AdminAuthAttempt, AdminSession
 
 
@@ -65,9 +66,9 @@ def check_admin_origin(request: Request) -> None:
 
 
 def _address_key(request: Request) -> str:
-    """Use only the direct peer address because forwarding headers are untrusted."""
+    """Hash the safely resolved client address for durable throttling."""
 
-    return digest(request.client.host if request.client else "unknown")
+    return digest(client_address(request))
 
 
 def _check_rate_limit(db: Session, request: Request) -> None:
