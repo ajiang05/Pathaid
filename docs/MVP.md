@@ -485,6 +485,7 @@ resolve findings.
 ### Engineering and trust
 
 - [x] Backend auth, CSRF, privacy, and publication boundaries have tests.
+- [x] Local runtime logs passed a credential/profile canary and account-deletion check.
 - [x] Eligibility passes 100/100 versioned cases.
 - [x] PostgreSQL migration/schema checks run in CI.
 - [x] Local Docker database, migrations, API readiness, and worker were verified.

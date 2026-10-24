@@ -10,6 +10,7 @@ Status: backend offline evaluations, one live Gemini intake, and frontend end-to
 - PostgreSQL migrations and model drift are checked in GitHub Actions without an AI provider key.
 - Live Gemini-backed launch intake and a controlled official-source scheduler run have been completed. The scheduler run exposed and verified fixes for profile-vocabulary prompting, stale-cycle handling, and terminal scan outcomes. Formal aggregate live extraction metrics, deployed observability checks, and five student usability sessions remain pending.
 - Desktop and mobile Playwright journeys, route-level axe checks, frontend lint, and the production build pass locally. The five-session protocol is documented in [the usability session record](../docs/USABILITY_SESSIONS.md); no human outcomes have been recorded yet.
+- A local runtime privacy canary verified that synthetic credentials and profile values do not appear in API container logs and that account deletion removes the database record. Hosted log-collector redaction remains pending.
 
 ## Goal
 Measure correctness and demonstrate the AI and backend work with reproducible evidence.

@@ -188,6 +188,12 @@ count, recommendation attempt/failure counts and average latency for the last
 records contain aggregate token counts and latency without prompts or generated
 explanations.
 
+On October 24, 2026, a local runtime canary exercised signup, a profile update,
+and account deletion. The synthetic email, password, and profile marker were
+absent from the API container logs, and the deleted account was absent from
+PostgreSQL afterward. Repeat the canary after connecting the hosted log
+collector because provider-level request capture is outside the application.
+
 The operations summary includes scheduled scan success/failure, overdue
 sources, changed sources, candidates, and review backlog. Logs must not contain
 discovered page bodies or link lists.
