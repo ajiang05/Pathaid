@@ -9,6 +9,7 @@ Status: backend offline evaluations, one live Gemini intake, and frontend end-to
 - Existing offline suites cover ranking, authentication/privacy, source safety, model refusal and malformed output, bounded retries, restart recovery, duplicate ingestion, review, rejection, and atomic publication with deterministic provider stubs.
 - PostgreSQL migrations and model drift are checked in GitHub Actions without an AI provider key.
 - One live Gemini-backed launch intake has been run and integration failures were corrected. Formal live extraction metrics, deployed observability checks, and five student usability sessions remain pending.
+- Desktop and mobile Playwright journeys, route-level axe checks, frontend lint, and the production build pass locally. The five-session protocol is documented in [the usability session record](../docs/USABILITY_SESSIONS.md); no human outcomes have been recorded yet.
 
 ## Goal
 Measure correctness and demonstrate the AI and backend work with reproducible evidence.

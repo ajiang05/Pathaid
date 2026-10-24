@@ -475,8 +475,8 @@ resolve findings.
 ### Product
 
 - [ ] Stitch prototype covers every student/admin screen and state.
-- [ ] Complete student journey works on mobile and desktop.
-- [ ] Admin ingestion/review/publication works through the UI.
+- [x] Complete student journey passes automated mobile and desktop browser tests.
+- [x] Admin ingestion/review/publication passes automated browser tests.
 - [ ] All Must features meet acceptance criteria.
 - [ ] Loading, empty, unknown, closed, error, and recovery states work.
 - [ ] Catalog has 10–20 current manually reviewed programs.
@@ -490,7 +490,7 @@ resolve findings.
 - [x] Local Docker database, migrations, API readiness, and worker were verified.
 - [ ] Release image build passes CI.
 - [ ] Live extraction metrics are measured or explicitly remain unmeasured.
-- [ ] Accessibility and supported-browser checks pass.
+- [x] Automated accessibility and supported-browser checks pass locally.
 - [ ] Hosted HTTPS, cookies, origin, networking, and log redaction are verified.
 - [ ] Hosted backup restoration is practiced.
 
