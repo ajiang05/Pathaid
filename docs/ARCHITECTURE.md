@@ -10,7 +10,7 @@
 | Architecture version | 0.1 |
 | Last updated | 2026-10-24 |
 | Implementation baseline | `feature/reviewed-launch-catalog` at `bae9ec7` |
-| Related documents | [MVP](MVP.md), [PRD](PRD.md), [plan](../plan.md), [features](../features/README.md); deployment guide at `docs/deployment.md` in the implementation baseline |
+| Related documents | [MVP](MVP.md), [PRD](PRD.md), [architecture diagrams](ARCHITECTURE_DIAGRAM.md), [plan](../plan.md), [features](../features/README.md), and [deployment guide](deployment.md) |
 
 Statements marked **implemented** are supported by the implementation baseline above. **Pending** items describe the intended MVP architecture and must not be presented as deployed functionality.
 
