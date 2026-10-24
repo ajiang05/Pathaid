@@ -442,7 +442,7 @@ Supporting tables record student and administrator authentication attempts and a
 
 ### 7.4 Backup and retention
 
-The deployment guide documents PostgreSQL custom-format backup and restore commands. Backups include credentials, profiles, source text, and review history, so they require encryption and restricted access. A restore rehearsal and production retention schedule are pending and are release gates. Concrete RPO and RTO values have not been approved and must not be invented.
+The deployment guide documents PostgreSQL custom-format backup and restore commands. Backups include credentials, profiles, source text, and review history, so they require encryption and restricted access. A local isolated restore rehearsal passed on October 24, 2026; a hosted restore rehearsal and production retention schedule remain release gates. Concrete RPO and RTO values have not been approved and must not be invented.
 
 ## 8. API architecture
 

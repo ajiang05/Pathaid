@@ -1,6 +1,6 @@
 # Reproducible local setup and hosted demo
 
-Status: complete local Compose stack implemented; reviewed catalog, external observability integration, paid hosting, and hosted verification remain pending. Parent specification: [plan.md](../plan.md).
+Status: complete local Compose stack and isolated PostgreSQL restore rehearsal verified; reviewed catalog, external observability integration, paid hosting, and hosted verification remain pending. Parent specification: [plan.md](../plan.md).
 
 ## Implementation status
 - A non-root production backend image runs the API, worker, or migration command. Docker Compose keeps PostgreSQL and the worker private and starts the API only after a successful migration.

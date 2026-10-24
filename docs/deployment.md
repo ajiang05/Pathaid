@@ -169,6 +169,10 @@ curl --fail http://localhost:8000/health/ready
 ```
 
 Practice restore on a separate database before relying on a backup for launch.
+A local custom-format dump was restored into an isolated temporary PostgreSQL
+database and verified on October 24, 2026; the temporary database and dump were
+then removed. Repeat this rehearsal against the hosted backup destination and
+document retention before release.
 
 ## Logging and operational signals
 
