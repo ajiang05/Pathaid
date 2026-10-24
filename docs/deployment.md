@@ -1,8 +1,9 @@
 # Pathaid deployment and recovery
 
-This guide covers the backend deployment foundation. A public hosted demo has
-not been provisioned. The Next.js service remains pending approved student and
-administrator wireframes, while the daily scheduler backend is implemented; its administrator UI and controlled external-source verification remain pending.
+This guide covers the implemented local deployment and the remaining hosted
+release work. The Next.js student and administrator interface, API, worker,
+scheduler, migrations, and PostgreSQL run in Compose. A public hosted demo and
+controlled external-source verification have not yet been completed.
 
 ## Local Docker setup
 
@@ -22,11 +23,13 @@ Requirements: Docker Engine with Docker Compose v2.
    .venv/bin/python -c 'from app.main import password_hash; import getpass; print(password_hash(getpass.getpass("Admin password: ")))' 
    ```
 
-3. Put the result in `PATHAID_ADMIN_PASSWORD_HASH` in the root `.env`, return
+3. Put the result in `PATHAID_ADMIN_PASSWORD_HASH` in the root `.env`, wrapped
+   in single quotes so Compose treats the scrypt `$` separators literally, return
    to the repository root, and configure Gemini for extraction and optional
    recommendation assistance. Keep the actual key only in this uncommitted file:
 
    ```dotenv
+   PATHAID_ADMIN_PASSWORD_HASH='scrypt$16384$8$1$...'
    GEMINI_API_KEY=replace-with-your-gemini-key
    PATHAID_EXTRACTION_PROVIDER=gemini
    PATHAID_EXTRACTION_MODEL=gemini-3.5-flash-lite
@@ -184,7 +187,7 @@ collector only after its request capture and retention settings are reviewed.
 ## Pending release work
 
 - Choose hosting only after checking current prices against the $25/month cap.
-- Add the Next.js and reverse-proxy services after approved wireframes exist.
+- Select and configure the hosted same-origin TLS edge for the implemented Next.js and API services.
 - Run a controlled external-source scheduled window and verify its operational alerts before launch.
 - Curate and manually approve 10–20 official programs before exporting seed data.
 - Verify HTTPS, private networking, PostgreSQL concurrency, telemetry redaction,

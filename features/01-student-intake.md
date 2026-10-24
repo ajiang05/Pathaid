@@ -1,6 +1,6 @@
 # Student account and editable profile
 
-Status: backend account/profile API and tests implemented; frontend, PostgreSQL verification, and end-to-end flow pending. Parent specification: [plan.md](../plan.md).
+Status: backend and responsive student account/profile interface implemented; PostgreSQL, desktop/mobile browser, and accessibility checks pass locally. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Let students sign up, log in, and maintain the profile used for personalized scholarships and assistance resources.
@@ -8,7 +8,7 @@ Let students sign up, log in, and maintain the profile used for personalized sch
 ## Scope and behavior
 - Support all students at US colleges, including graduate, community college, part-time, and international students.
 - Provide student sign-up, login, logout, and account/profile deletion. Hash passwords; enforce account ownership on every profile endpoint. Use expiring HttpOnly session cookies, secure cookies in production, CSRF protection on mutations, and login/sign-up throttling.
-- Prototype sign-up, login, intake, and profile editing in Google Stitch at mobile and desktop sizes before implementing those screens.
+- Implement the approved sign-up, login, intake, and profile editing designs at mobile and desktop sizes.
 - Begin with a short intake for school, state, study level, enrollment, and selected assistance categories. Allow multiple categories.
 - Save initial answers in the authenticated student's profile; let the student review and edit them later. Show which fields are saved and allow account/profile deletion.
 - Normalize UMass Amherst aliases; retain other school names without claiming campus-specific coverage.

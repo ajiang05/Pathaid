@@ -1,6 +1,6 @@
 # Reproducible eligibility and extraction evaluations
 
-Status: backend offline evaluations and scheduled-discovery tests implemented; live model, frontend, end-to-end, and usability evaluations remain pending. Parent specification: [plan.md](../plan.md).
+Status: backend offline evaluations, one live Gemini intake, and frontend end-to-end/accessibility checks completed locally; formal live-model metrics, hosted checks, and usability sessions remain pending. Parent specification: [plan.md](../plan.md).
 
 ## Implementation status
 - A versioned dataset contains 100 explicitly labeled synthetic profiles across all rule operators, numeric boundaries, missing answers, nested AND/OR logic, incomplete coverage, unsupported conditions, possible exceptions, and GPA scale handling.
@@ -8,7 +8,7 @@ Status: backend offline evaluations and scheduled-discovery tests implemented; l
 - The versioned 10-case extraction dataset validates 28 field labels, 10 claim labels, and exact evidence occurrence. Its metric harness reports field accuracy, criterion precision/recall, unsupported-claim rate, and evidence fidelity with explicit denominators when supplied a saved prediction artifact.
 - Existing offline suites cover ranking, authentication/privacy, source safety, model refusal and malformed output, bounded retries, restart recovery, duplicate ingestion, review, rejection, and atomic publication with deterministic provider stubs.
 - PostgreSQL migrations and model drift are checked in GitHub Actions without an AI provider key.
-- Live extraction measurements have not been run. Browser tests, deployed observability checks, and five student usability sessions depend on the pending frontend and deployment.
+- One live Gemini-backed launch intake has been run and integration failures were corrected. Formal live extraction metrics, deployed observability checks, and five student usability sessions remain pending.
 
 ## Goal
 Measure correctness and demonstrate the AI and backend work with reproducible evidence.

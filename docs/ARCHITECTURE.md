@@ -8,8 +8,8 @@
 | Status | In progress |
 | Owner | Aidan Jiang |
 | Architecture version | 0.1 |
-| Last updated | 2026-10-19 |
-| Implementation baseline | `feature/deployment-foundation` at `bb31642` |
+| Last updated | 2026-10-24 |
+| Implementation baseline | `feature/reviewed-launch-catalog` at `bae9ec7` |
 | Related documents | [MVP](MVP.md), [PRD](PRD.md), [plan](../plan.md), [features](../features/README.md); deployment guide at `docs/deployment.md` in the implementation baseline |
 
 Statements marked **implemented** are supported by the implementation baseline above. **Pending** items describe the intended MVP architecture and must not be presented as deployed functionality.
@@ -18,16 +18,15 @@ Statements marked **implemented** are supported by the implementation baseline a
 
 Pathaid is a source-backed aid navigator for US college students. It stores a reusable student profile, evaluates that profile against reviewed program rules, and returns deterministic eligibility results, evidence, application checklists, and official links. A protected administrator workflow uses AI to propose catalog data from official sources, but a person must validate and publish every public revision.
 
-The implemented backend is a modular Python monolith with two runtime processes:
+The implemented backend is a modular Python monolith with three runtime processes:
 
 - A FastAPI process serves student, catalog, evaluation, recommendation, administrator, and health endpoints.
 - A Python worker claims durable ingestion stages from the relational database.
+- A Python scheduler selects due administrator-approved sources and creates idempotent ingestion work.
 
-Both processes use the same SQLAlchemy models and PostgreSQL database. Alembic owns schema changes. Gemini or OpenAI is an optional external dependency for requirement extraction and consent-gated recommendation assistance. Deterministic results and template explanations continue to work without model access.
+All three processes use the same SQLAlchemy models and PostgreSQL database. Alembic owns schema changes. Gemini or OpenAI is an optional external dependency for requirement extraction and consent-gated recommendation assistance. Deterministic results and template explanations continue to work without model access.
 
-The backend now includes a third Python process: a scheduler that selects due administrator-approved sources and creates idempotent ingestion work. The administrator UI and controlled external-source verification remain pending.
-
-The responsive Next.js frontend described by the MVP is **pending approved Google Stitch wireframes**. A public hosting provider, domain, TLS edge, external monitoring, and production backup schedule are also pending.
+The responsive Next.js frontend implements the student and administrator routes, including source scheduling, ingestion inspection, retained-source comparison, validation findings, editing, and publication controls. Automated desktop/mobile browser and accessibility checks pass locally. Controlled human source review, a public hosting provider, domain, TLS edge, external monitoring, and production backup schedule remain pending.
 
 ### 1.1 Architecture style
 
@@ -42,7 +41,7 @@ The responsive Next.js frontend described by the MVP is **pending approved Googl
 | Background work | Database-backed state machine with leases; no message broker | Implemented |
 | Scheduled discovery | Database-backed daily schedules, bounded one-hop discovery, and hash change detection | Implemented |
 | AI integration | Configurable Gemini or OpenAI structured-output API behind extraction and recommendation adapters | Implemented; live quality measurements pending |
-| Web client | Responsive Next.js application | Pending wireframes and implementation |
+| Web client | Responsive Next.js student and administrator application | Implemented and browser-tested locally |
 | Deployment | Docker image and Docker Compose topology | Implemented locally; public deployment pending |
 
 ### 1.2 Primary quality priorities
@@ -63,14 +62,14 @@ The responsive Next.js frontend described by the MVP is **pending approved Googl
 - Support FR-007 through an optional model boundary that cannot change eligibility output or introduce unsupported claims.
 - Support FR-008 through FR-010 with bounded source acquisition, schema-constrained extraction, durable stages, protected review, and atomic publication.
 - Support FR-011 with migrations, CI, containers, readiness checks, privacy-safe telemetry, and documented recovery procedures.
-- Add FR-012 as a same-origin Next.js client only after wireframes are approved.
+- Support FR-012 with a same-origin Next.js client for student and administrator workflows.
 
 ### 2.2 Constraints and assumptions
 
 - The MVP has one deployment-configured administrator; there is no admin registration or role hierarchy.
 - The launch catalog contains 10–20 manually reviewed programs, so the architecture favors correctness over large-scale search infrastructure.
 - Student profile fields remain optional. Missing information is a domain value, not a validation failure.
-- Browser mutations use cookies and CSRF protection. The future frontend should proxy `/api` through the same origin.
+- Browser mutations use cookies and CSRF protection. The frontend proxies `/api` through the same origin.
 - One worker is the default deployment. Leases protect correctness if more than one worker runs.
 - The deployed data store is PostgreSQL. SQLite exists for convenient local development and is not the target hosted database.
 - Current hosting prices and services must be evaluated when a provider is selected.
@@ -87,7 +86,7 @@ The responsive Next.js frontend described by the MVP is **pending approved Googl
 
 ```mermaid
 flowchart LR
-    Student[Student] -->|Uses over HTTPS| Web[Pathaid web client\nPending]
+    Student[Student] -->|Uses over HTTPS| Web[Pathaid web client]
     Admin[Catalog administrator] -->|Reviews over HTTPS| Web
     Web -->|Same-origin JSON requests| API[Pathaid API]
     API -->|Read and write| DB[(Pathaid database)]
@@ -125,7 +124,7 @@ In this section, a container means a separately runnable application or datastor
 flowchart TB
     Browser[Student or admin browser]
     Edge[HTTPS edge and same-origin proxy\nPending]
-    Frontend[Next.js frontend\nPending]
+    Frontend[Next.js frontend]
     API[FastAPI API]
     Worker[Python ingestion worker]
     Scheduler[Python daily scheduler]
@@ -151,7 +150,7 @@ flowchart TB
 
 | Container | Responsibility | Technology | State | Scaling approach |
 |---|---|---|---|---|
-| Web frontend | Student and administrator flows; same-origin API access | Next.js, exact version undecided | Pending | One service for MVP |
+| Web frontend | Student and administrator flows; same-origin API access | Next.js 16.4.2, React 19, TypeScript | Implemented locally | One service for MVP |
 | API | HTTP validation, authentication, authorization, catalog reads, evaluation, optional recommendations, review operations | Python 3.14, FastAPI, Pydantic, Uvicorn | Implemented | One instance initially; stateless except DB sessions |
 | Worker | Acquisition, extraction, validation, and draft creation | Python 3.14 process | Implemented | One process by default; DB leases permit additional workers |
 | Scheduler | Select due sources, coordinate scoped discovery, compare freshness, enqueue runs | Python 3.14 process | Implemented | One process by default; DB claims prevent duplicate windows |
@@ -228,9 +227,9 @@ Pathaid/
 │   └── requirements*.txt    # Runtime and development dependencies
 ├── docs/                    # Product, architecture, design, deployment docs
 ├── features/                # Feature-level behavior specifications
-├── frontend/                # Placeholder; implementation pending
-├── .github/workflows/       # PostgreSQL backend CI
-├── compose.yaml             # Local database, migration, API, and worker topology
+├── frontend/                # Next.js student and administrator application
+├── .github/workflows/       # Backend, frontend, migration, and container CI
+├── compose.yaml             # Local frontend, API, worker, scheduler, migration, and database topology
 └── plan.md                  # Delivery plan and status
 ```
 
@@ -675,7 +674,7 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 | AI fallback and minimization | Recommendation adapter and service tests |
 | Migration compatibility | PostgreSQL CI migration plus `alembic check` |
 | Container reproducibility | Image build and Compose validation in CI; local health verification |
-| Frontend accessibility/usability | Pending implementation, browser checks, and five observed sessions |
+| Frontend accessibility/usability | Desktop/mobile Playwright and automated WCAG checks pass; five observed sessions pending |
 | Hosted recovery and reliability | Pending deployment, monitoring window, and restore rehearsal |
 
 ## 16. Architecture decisions
@@ -692,7 +691,7 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 | ADR-008 | Put AI behind strict adapters and deterministic validation | Model output is untrusted and cannot own decisions | Human review and fallback paths remain required |
 | ADR-009 | Use server-side opaque sessions and CSRF tokens | Supports browser flows without exposing bearer tokens to JavaScript | Requires shared session storage and same-origin deployment discipline |
 | ADR-010 | Use PostgreSQL for deployed environments and Alembic for schema history | Publication and leases need relational constraints and transactions | Migration must complete before application readiness |
-| ADR-011 | Defer frontend code until wireframes are approved | Prevents implementation from inventing product interactions | End-to-end validation remains pending |
+| ADR-011 | Implement the approved responsive frontend as one same-origin Next.js service | Keeps student and administrator flows aligned with the API security model | Browser checks run against desktop and mobile layouts |
 | ADR-012 | Schedule only approved sources and bounded one-hop discovery | Automates scholarship collection without an uncontrolled crawler | Administrators seed source scopes and review candidates |
 | ADR-013 | Hash normalized content before extraction | Most daily scans should not spend model tokens or create noisy drafts | A successful unchanged check updates freshness only |
 | ADR-014 | Keep human approval for material changes | Deadlines and eligibility errors can directly mislead students | Daily collection is automatic; publication still has a review queue |
@@ -708,14 +707,14 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 - The strict readiness check is coupled to a single expected migration revision and requires an intentional code update with each schema migration.
 - Retained source text and pasted source input require a formal production retention policy.
 - Live extraction quality, cost, and latency are not measured.
-- The frontend, accessibility validation, browser behavior, and five student usability sessions remain pending.
+- Automated frontend accessibility and browser checks pass; five observed student usability sessions remain pending.
 - The launch catalog and its ongoing freshness cadence remain pending.
-- Scheduled-source tables, APIs, scheduler process, robots policy, and bounded discovery are implemented; the scan UI and controlled external-source verification remain pending.
+- Scheduled-source tables, APIs, scheduler process, robots policy, bounded discovery, and administration UI are implemented; controlled external-source verification remains pending.
 
 ## 18. Open architecture decisions
 
 1. Select a hosting provider and region using current pricing while keeping the expected monthly cost at or below $25.
-2. Decide whether Next.js is statically hosted, server-rendered, or run as a Node service after the approved wireframes clarify requirements.
+2. Select the hosted Node service and same-origin edge topology for the implemented Next.js standalone server.
 3. Select the same-origin routing/TLS approach and document trusted proxy behavior.
 4. Define production backup frequency, retention, RPO, RTO, and restore-test cadence.
 5. Select external uptime monitoring and structured log retention settings.

@@ -1,6 +1,6 @@
 # Personalized scholarship and assistance discovery
 
-Status: backend candidate filtering, deterministic ranking, and ranking-factor responses implemented; frontend home page and AI explanations pending. Parent specification: [plan.md](../plan.md).
+Status: backend filtering/ranking and responsive student discovery/results interface implemented; reviewed launch data and hosted verification pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 Show signed-in students a personalized home page of scholarships, grants, and basic-needs resources relevant to their saved profile.

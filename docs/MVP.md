@@ -377,7 +377,7 @@ states, and equivalent mobile and desktop task completion.
 
 ## 10. Technical boundaries
 
-- **Frontend:** Next.js, TypeScript, Tailwind — pending.
+- **Frontend:** Next.js 16.4.2, React 19, TypeScript, Tailwind — implemented locally.
 - **API:** FastAPI on Python 3.14.
 - **Database:** PostgreSQL 16, SQLAlchemy 2, Alembic.
 - **Authentication:** Custom server-side student and single-admin sessions.
@@ -386,8 +386,8 @@ states, and equivalent mobile and desktop task completion.
 - **Infrastructure:** Docker, Compose, GitHub Actions; hosting TBD after pricing.
 - **Constraints:** One developer, 4–6 weeks, $25/month, 10–20 programs, one
   worker by default.
-- **Risks:** Frontend/wireframes, real catalog, live model metrics, and deployed
-  concurrency remain unverified.
+- **Risks:** Human-reviewed catalog, formal live model metrics, hosted operations,
+  and deployed concurrency remain unverified.
 
 ### API summary
 
@@ -523,6 +523,7 @@ resolve findings.
 | 2026-10-19 | Kept frontend pending Stitch artifacts | Avoid inventing visual requirements | UI remains critical path | Aidan Jiang |
 | 2026-10-19 | Added daily approved-source discovery and refresh | Reduce manual scholarship collection while protecting publication quality | Scheduler and registry become MVP work; material changes still require review | Aidan Jiang |
 | 2026-10-19 | Marked live AI, real catalog, and hosting pending | Avoid unsupported claims | Requires evidence before launch | Aidan Jiang |
+| 2026-10-24 | Recorded responsive frontend and automated browser/accessibility completion | Keep scope status aligned with the tested implementation | Human review, hosted operations, and observed usability remain release gates | Aidan Jiang |
 
 ## 18. References
 

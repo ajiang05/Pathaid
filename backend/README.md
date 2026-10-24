@@ -237,5 +237,6 @@ Protected backend endpoints support:
 Approval requires source-accuracy attestation and an explicit completeness
 decision. A revision marked incomplete can publish only when its unsupported or
 unresolved requirements remain recorded for conservative eligibility results.
-The protected admin frontend is intentionally deferred until its source and
-draft comparison screens have a wireframe.
+The protected admin frontend provides source scheduling, ingestion inspection,
+retained-source comparison, validation findings, editing, rejection, and
+publication controls. Human review remains required for every publication.

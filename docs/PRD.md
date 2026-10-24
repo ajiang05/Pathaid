@@ -35,7 +35,7 @@ Pathaid addresses this problem by providing:
 5. Provide an actionable checklist and application destination for each published opportunity.
 6. Let an administrator ingest, review, approve, reject, and publish program revisions.
 7. Run the backend reliably in a reproducible local deployment environment.
-8. Deliver the student and administrator interfaces after the Google Stitch wireframes are approved.
+8. Deliver the approved student and administrator interfaces with responsive and accessible browser behavior.
 9. Scan approved scholarship sources each morning and automatically prepare new or changed candidates for review.
 
 ### 3.2 Non-goals for the MVP
@@ -75,16 +75,16 @@ External organizations that own the official application and determine final eli
 
 | MVP ID | Capability | Priority | Current status |
 | --- | --- | --- | --- |
-| F-01 | Student account and profile | Must | Backend implemented; interface pending |
+| F-01 | Student account and profile | Must | Backend and responsive interface implemented |
 | F-02 | Reviewed opportunity catalog | Must | Backend implemented; real launch catalog pending |
 | F-03 | Discovery and deterministic eligibility | Must | Backend implemented |
-| F-04 | Source-backed results and checklists | Must | Backend implemented; interface pending |
-| F-05 | Ingestion, review, and publication | Must | Backend implemented; admin interface pending |
-| F-06 | Grounded recommendation explanations | Should | Backend implemented; interface pending |
+| F-04 | Source-backed results and checklists | Must | Backend and responsive interface implemented |
+| F-05 | Ingestion, review, and publication | Must | Backend and administrator interface implemented |
+| F-06 | Grounded recommendation explanations | Should | Backend and student result interface implemented |
 | F-07 | Quality evaluation and deployment foundation | Must | Local foundation implemented; hosted deployment pending |
-| F-08 | Student and administrator web interface | Must | Pending approved wireframes |
-| F-09 | Reviewed launch catalog | Must | Research and review pending |
-| F-10 | Scheduled scholarship discovery and refresh | Must | Backend implemented; admin UI and controlled external-source verification pending |
+| F-08 | Student and administrator web interface | Must | Implemented and browser-tested locally |
+| F-09 | Reviewed launch catalog | Must | 12 candidates processed; human review pending |
+| F-10 | Scheduled scholarship discovery and refresh | Must | Backend and admin UI implemented; controlled external-source verification pending |
 
 ## 7. User journeys
 
@@ -143,7 +143,7 @@ External organizations that own the official application and determine final eli
 ### FR-001: Student authentication and account isolation
 
 **Maps to:** F-01, J-01, J-02  
-**Status:** Backend implemented; interface pending
+**Status:** Backend and responsive interface implemented
 
 The system must let students register, sign in, sign out, and access only their own profile and evaluation data.
 
@@ -157,7 +157,7 @@ The system must let students register, sign in, sign out, and access only their 
 ### FR-002: Progressive profile and consent
 
 **Maps to:** F-01, J-01, J-02  
-**Status:** Backend implemented; interface pending
+**Status:** Backend and responsive interface implemented
 
 The system must let students save, update, and remove profile attributes used by eligibility rules. Sensitive fields must be optional and collected only with clear context and consent.
 
@@ -217,7 +217,7 @@ The system must return a stable, reproducible ordering of published opportunitie
 ### FR-006: Source-backed results and checklists
 
 **Maps to:** F-04, J-01, J-02  
-**Status:** Backend implemented; interface pending
+**Status:** Backend and responsive interface implemented
 
 The system must explain evaluation results at the requirement level and provide practical application steps from the published revision.
 
@@ -233,7 +233,7 @@ The system must explain evaluation results at the requirement level and provide 
 
 **Maps to:** F-06, J-01  
 **Priority:** Should  
-**Status:** Backend implemented; interface pending
+**Status:** Backend and responsive interface implemented
 
 The system may use AI to summarize already computed recommendations in plain language when the explanation remains grounded in deterministic results and reviewed evidence.
 
@@ -276,7 +276,7 @@ The worker must claim ready ingestion jobs with time-limited leases, save progre
 ### FR-010: Administrative review and publication
 
 **Maps to:** F-05, J-04  
-**Status:** Backend implemented; admin interface pending
+**Status:** Backend and administrator interface implemented
 
 The system must provide authenticated administrative actions for comparing, correcting, approving, rejecting, and publishing revisions.
 
@@ -306,7 +306,7 @@ The repository must support repeatable validation, database migration, API start
 ### FR-012: Student and administrator web interface
 
 **Maps to:** F-08, J-01, J-02, J-03, J-04  
-**Status:** Pending approved Google Stitch wireframes
+**Status:** Implemented and browser-tested locally
 
 The web interface must implement the approved designs for student discovery and administrative review without changing the product rules in this document.
 
@@ -330,12 +330,12 @@ The web interface must implement the approved designs for student discovery and 
 - The admin interface supports scheduled-source management from J-03 and the review and publication flow from J-04.
 - Eligibility, availability, and award-selection language remains visually and semantically distinct.
 - Keyboard navigation, labels, focus states, and color contrast meet WCAG 2.1 AA for the implemented flows.
-- No frontend implementation begins until the wireframes are supplied and approved by the product owner.
+- The implemented routes remain consistent with the approved product design and backend rules.
 
 ### FR-013: Scheduled scholarship discovery and refresh
 
 **Maps to:** F-10, J-03  
-**Status:** Backend implemented; administrator UI and controlled external-source verification pending
+**Status:** Backend and administrator UI implemented; controlled external-source verification pending
 
 The system must scan administrator-approved scholarship sources daily, avoid unnecessary model calls for unchanged content, and create private review work for new or materially changed scholarships.
 
@@ -501,34 +501,31 @@ The MVP is ready for limited student use when all of the following are true:
 
 | Requirement | Primary validation | State |
 | --- | --- | --- |
-| FR-001–FR-002 | Authentication, authorization, profile, and consent tests | Backend coverage implemented; UI validation pending |
+| FR-001–FR-002 | Authentication, authorization, profile, and consent tests | Backend coverage complete; interface implemented with selected browser coverage |
 | FR-003 | Catalog revision and public visibility tests | Backend implemented; launch data pending |
 | FR-004–FR-005 | Unit, integration, and 100-case benchmark tests | Implemented; benchmark currently 100/100 |
-| FR-006 | API response, provenance, and checklist tests | Backend implemented; UI validation pending |
-| FR-007 | Grounding, validation, privacy, and fallback tests | Backend implemented; UI validation pending |
-| FR-008–FR-010 | Extraction, lease, retry, review, and publication tests | Backend implemented; admin UI pending |
+| FR-006 | API response, provenance, and checklist tests | Backend complete; student discovery/detail browser flow covered |
+| FR-007 | Grounding, validation, privacy, and fallback tests | Backend complete; result presentation covered with mocked API data |
+| FR-008–FR-010 | Extraction, lease, retry, review, and publication tests | Backend and admin UI implemented; guarded review flow covered |
 | FR-011 | CI, migration, Compose, and health-check verification | Local deployment verified; hosted checks pending |
-| FR-012 | Accessibility checks and end-to-end usability sessions | Pending wireframes and implementation |
+| FR-012 | Accessibility checks and end-to-end usability sessions | Selected desktop/mobile flows pass automated accessibility checks; full manual audit and five observed sessions pending |
 | FR-013 | Scheduler, deduplication, change detection, scope, and failure-isolation tests | Backend implemented and tested |
 | FR-014 | Manual source audit and freshness review | Pending launch catalog |
 
 ## 15. Delivery sequence
 
-1. Implement scheduled-source storage, daily scheduling, change detection, and bounded discovery.
-2. Obtain and approve Google Stitch wireframes, including `/admin/sources`.
-3. Implement the student and administrator web interface against the existing APIs.
-4. Select the launch audience and build the 10–20 opportunity reviewed catalog.
-5. Run end-to-end, accessibility, privacy, and usability validation.
-6. Select hosting within the $25 per month target using current provider pricing.
-7. Deploy the API, scheduler, worker, and PostgreSQL database; apply migrations.
-8. Configure monitoring, verify backup restoration, and run a limited launch.
+1. Complete human review and publish the 12-candidate launch catalog.
+2. Run the remaining privacy checks and five observed student usability sessions.
+3. Resolve recurring catalog and usability findings.
+4. Select hosting within the $25 per month target using current provider pricing.
+5. Deploy the frontend, API, scheduler, worker, and PostgreSQL database; apply migrations.
+6. Configure monitoring, verify backup restoration, and run a limited launch.
 
 ## 16. Open decisions
 
 - Which geographic area and student segment define the first catalog?
 - What timezone and morning scan window should be the production default?
 - What per-source cadence and host request delay applies to each launch source?
-- Which Google Stitch wireframes are approved as the frontend source of truth?
 - Which hosting provider meets the deployment requirements within the monthly budget?
 - What privacy-preserving analytics service, if any, will be used for the limited launch?
 - What support or correction channel should students use when program information appears outdated?
@@ -544,7 +541,7 @@ The MVP is ready for limited student use when all of the following are true:
 | Bound discovery to approved one-hop scopes | Finds new scholarships without an uncontrolled crawler |
 | Keep the eligibility engine independent of FastAPI and SQLAlchemy | Domain logic remains easy to test and reuse |
 | Use durable leased jobs for ingestion | Work can recover after worker interruption without duplicate active processing |
-| Delay frontend implementation until wireframes are approved | The product owner requested design direction before interface code |
+| Implement the approved responsive frontend as one same-origin Next.js service | Student and administrator cookies and CSRF controls stay within one origin |
 | Use PostgreSQL, SQLAlchemy, Alembic, FastAPI, and a Python worker | The stack supports relational history, migrations, API delivery, and durable background work |
 
 ## 18. Related documents

@@ -1,8 +1,8 @@
 # Protected admin review and publication
 
-Status: backend review/publication and scheduled-source management implemented; admin frontend and hosted concurrency verification remain pending. Parent specification: [plan.md](../plan.md).
+Status: backend and administrator interface implemented and tested locally; human catalog review and hosted concurrency verification remain pending. Parent specification: [plan.md](../plan.md).
 
-The backend review workflow is complete without frontend screens. A wireframe is required before implementing the source-and-draft comparison interface.
+The protected interface shows retained source text, editable structured proposals, validation findings, and explicit approval attestations. Desktop and mobile browser tests cover the guarded publication flow.
 
 ## Goal
 Give one administrator control over the accuracy and publication of AI-generated program drafts.

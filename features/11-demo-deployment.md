@@ -1,6 +1,6 @@
 # Reproducible local setup and hosted demo
 
-Status: backend container and local PostgreSQL deployment foundation implemented; frontend container, reviewed real seed catalog, external observability integration, paid hosting, and hosted verification remain pending. Parent specification: [plan.md](../plan.md).
+Status: complete local Compose stack implemented; reviewed catalog, external observability integration, paid hosting, and hosted verification remain pending. Parent specification: [plan.md](../plan.md).
 
 ## Implementation status
 - A non-root production backend image runs the API, worker, or migration command. Docker Compose keeps PostgreSQL and the worker private and starts the API only after a successful migration.
@@ -9,13 +9,13 @@ Status: backend container and local PostgreSQL deployment foundation implemented
 - Structured API events contain route templates, status, and latency without paths, query strings, bodies, credentials, profile values, prompts, or source text. Protected aggregate operations data covers failed ingestion, recommendation outcomes/latency, and oldest publication verification.
 - Environment templates and operations documentation cover secrets, local startup, migrations, reviewed catalog transfer, PostgreSQL backup/restore, and production security requirements.
 - CI builds the production image, validates Compose, applies PostgreSQL migrations, checks model drift, runs tests, and reports offline quality measurements.
-- The Next.js service and reverse proxy await wireframes and frontend implementation. No hosting provider has been selected or provisioned, no real seed bundle has been approved, and deployed backup/telemetry checks have not been claimed.
+- The Next.js service is implemented and runs in local Compose. No hosting provider has been selected or provisioned, no real seed bundle has been approved, and deployed backup/telemetry checks have not been claimed.
 
 ## Goal
 Make the student flow and protected administration usable locally and in a small hosted portfolio demo.
 
 ## Scope and behavior
-- Provide Docker Compose services for Next.js, FastAPI, the worker, scheduler, and PostgreSQL, with migrations and an explicit seed command. The scheduler service is implemented; Next.js remains pending.
+- Provide Docker Compose services for Next.js, FastAPI, the worker, scheduler, and PostgreSQL, with migrations and an explicit seed command. All local services are implemented.
 - Provide `.env.example`, secret configuration, setup, backup/restore, health/readiness, and deployment instructions.
 - Student sign-up, saved profiles, and matching work with reviewed seed data and no AI key. Recommendation explanations fall back to templates; ingestion reports missing configuration clearly.
 - Target $25/month total hosting/API usage; verify current service prices before provider selection or provisioning.
