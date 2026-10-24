@@ -1,6 +1,8 @@
 """Tests for provider-independent behavior of the OpenAI extraction adapter."""
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -24,6 +26,7 @@ class Snapshot:
     id: str = "snapshot-1"
     source_url: str = "https://example.edu/aid"
     source_text: str = "Applicants must have a 3.0 GPA."
+    acquired_at: datetime = datetime(2026, 10, 24, 15, 30, tzinfo=timezone.utc)
 
 
 def draft() -> ExtractedProgramDraft:
@@ -108,6 +111,7 @@ def test_adapter_uses_structured_output_and_records_metadata():
     assert responses.kwargs["text_format"] is ExtractedProgramDraft
     assert responses.kwargs["model"] == "test-model"
     assert "student_profile" not in responses.kwargs["input"][1]["content"]
+    assert json.loads(responses.kwargs["input"][1]["content"])["extraction_date"] == "2026-10-24"
     assert result.schema_version == EXTRACTION_SCHEMA_VERSION
     assert result.usage.total_tokens == 200
     assert result.request_id == "request-1"

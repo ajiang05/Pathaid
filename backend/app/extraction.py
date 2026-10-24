@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Mapping, Protocol
 
 from .extraction_schemas import EXTRACTION_SCHEMA_VERSION, ExtractedProgramDraft
 
 
-PROMPT_VERSION = "1.0.0"
+PROMPT_VERSION = "1.1.0"
 DEFAULT_EXTRACTION_MODEL = "gpt-6-luna"
 DEFAULT_GEMINI_EXTRACTION_MODEL = "gemini-3.5-flash-lite"
 
@@ -27,7 +28,15 @@ Condition field must be exactly one of: school, state, study_level, enrollment, 
 income_range, pell_eligible, student_aid_index, ethnicity, citizenship_status, major, class_year, gpa,
 gpa_scale. Use an unsupported node when a mandatory fact cannot use one of those fields. Operators are exactly
 eq, in, contains, gt, gte, lt, or lte. Use study_level only when the source explicitly states undergraduate or
-graduate status; never invent academic_level. application_deadline must be an ISO 8601 date or
+graduate status; never invent academic_level. Choice conditions must use only these exact stored values:
+study_level: undergraduate, graduate; enrollment: full_time, part_time; income_range: under_25k, 25k_50k,
+50k_75k, 75k_100k, over_100k; citizenship_status: us_citizen, permanent_resident, international, other;
+class_year: first, second, third, fourth, fifth_or_later; assistance_categories: scholarships, grants, food,
+emergency, housing; state: two-letter postal codes including DC. Translate an explicitly equivalent source label
+to its stored value, such as "full-time" to full_time or "US citizen" to us_citizen. Use unsupported when the
+source concept is not exactly representable: high-school senior is not a class_year value, and a complex
+immigration category must not be guessed as other. Set coverage_complete false whenever eligibility_tree contains
+an unsupported rule or unresolved_conditions is nonempty. application_deadline must be an ISO 8601 date or
 timestamp, or null when the source does not provide an exact deadline. deadline_timezone must be null unless the
 source names it. Every evidence excerpt must be one contiguous, verbatim substring of source_text: preserve its
 capitalization, punctuation, and spacing, and never combine, correct, summarize, or paraphrase source passages.
@@ -36,6 +45,9 @@ must be an IANA name such as America/New_York; use null for labels such as Easte
 Keep name at 240 characters or fewer, award_cycle at 120 or fewer, deadline_timezone at 80 or fewer, and
 assistance_amount at 240 or fewer. When an amount passage is longer, give a faithful concise summary and leave
 the complete wording in the retained source for human review; do not truncate mid-sentence or invent a value.
+The input extraction_date is the UTC date when this source was retained. Never label an opportunity open when its
+exact deadline is earlier than extraction_date. If the page also explicitly claims it is open, set availability to
+unknown and add that conflict to unresolved_conditions with a verbatim excerpt; otherwise set it to closed.
 """
 
 
@@ -163,10 +175,7 @@ class OpenAIExtractionAdapter:
 
         if len(snapshot.source_text) > self.config.max_source_characters:
             raise ExtractionError("source_too_large", "The source is too large for the extraction request.")
-        payload = json.dumps(
-            {"snapshot_id": snapshot.id, "source_url": snapshot.source_url, "source_text": snapshot.source_text},
-            ensure_ascii=False,
-        )
+        payload = _extraction_payload(snapshot)
         try:
             response = self.client.responses.parse(
                 model=self.config.model,
@@ -226,10 +235,7 @@ class GeminiExtractionAdapter:
 
         if len(snapshot.source_text) > self.config.max_source_characters:
             raise ExtractionError("source_too_large", "The source is too large for the extraction request.")
-        payload = json.dumps(
-            {"snapshot_id": snapshot.id, "source_url": snapshot.source_url, "source_text": snapshot.source_text},
-            ensure_ascii=False,
-        )
+        payload = _extraction_payload(snapshot)
         try:
             response = self.client.models.generate_content(
                 model=self.config.model,
@@ -404,6 +410,29 @@ def _normalize_gemini_draft(value: Any) -> Any:
         value = dict(value)
         value["assistance_amount"] = None
     return value
+
+
+def _extraction_payload(snapshot: SnapshotForExtraction) -> str:
+    """Serialize retained input with the acquisition date used for stale-cycle checks."""
+
+    acquired_at = getattr(snapshot, "acquired_at", None)
+    if isinstance(acquired_at, datetime):
+        if acquired_at.tzinfo is None:
+            acquired_at = acquired_at.replace(tzinfo=timezone.utc)
+        extraction_date = acquired_at.astimezone(timezone.utc).date().isoformat()
+    else:
+        # Adapter unit doubles predate acquisition metadata. Production source
+        # snapshots always use their persisted acquired_at timestamp.
+        extraction_date = datetime.now(timezone.utc).date().isoformat()
+    return json.dumps(
+        {
+            "snapshot_id": snapshot.id,
+            "source_url": snapshot.source_url,
+            "extraction_date": extraction_date,
+            "source_text": snapshot.source_text,
+        },
+        ensure_ascii=False,
+    )
 
 
 def _positive_int(values: Mapping[str, str], name: str, default: int) -> int:

@@ -258,6 +258,7 @@ def process_validation_stage(
             source.last_success_at = clock()
             source.last_error_code = None
             source.consecutive_failures = 0
+            scan.outcome = "changed"
             scan.completed_at = clock()
     if run.discovered_candidate_id:
         candidate = db.get(DiscoveredCandidate, run.discovered_candidate_id)

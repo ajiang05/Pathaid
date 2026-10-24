@@ -10,10 +10,12 @@ from fastapi.testclient import TestClient
 
 from app.database import Base
 from app.database import get_db
+from app.extraction import DeterministicExtractionStub
+from app.extraction_schemas import ExtractedProgramDraft
 from app.main import app, password_hash
 from app.models import IngestionRun, ScheduledScan, ScheduledSource, SourceSnapshot
 from app.orchestration import claim_next_run
-from app.orchestration_stages import process_acquisition_stage
+from app.orchestration_stages import process_acquisition_stage, process_extraction_stage, process_validation_stage
 from app.scheduled_discovery import allowed_candidate_urls, enqueue_due_sources, robots_allows
 from app.source_acquisition import AcquiredSource, HttpResponse, hash_text
 
@@ -215,6 +217,66 @@ def test_changed_program_hash_waits_for_validated_draft(sessions):
         assert run.state == "extracting"
         assert stored.last_content_hash is None
         assert stored.last_success_at is None
+
+
+def test_validated_scheduled_change_finishes_scan_and_sets_baseline(sessions):
+    """A reviewable changed page leaves no scan stuck in the running state."""
+
+    page = b"<html><body>Applicants must have a 3.0 GPA.</body></html>"
+    with sessions() as db:
+        db.add(source())
+        db.commit()
+        run = enqueue_due_sources(db, clock=lambda: NOW)[0]
+
+        class Transport:
+            def fetch(self, *_args, **_kwargs):
+                return HttpResponse(200, {"content-type": "text/html; charset=utf-8"}, page)
+
+        process_acquisition_stage(
+            db,
+            claim_next_run(db, "worker", clock=lambda: NOW),
+            clock=lambda: NOW,
+            resolver=lambda _host, _port: ["93.184.216.34"],
+            transport=Transport(),
+        )
+        draft = ExtractedProgramDraft.model_validate(
+            {
+                "name": "Scheduled Scholarship",
+                "description": "A scheduled scholarship source.",
+                "categories": ["scholarships"],
+                "coverage": {"national": True, "states": [], "institutions": []},
+                "checklist": [],
+                "eligibility_tree": {
+                    "type": "condition",
+                    "field": "gpa",
+                    "operator": "gte",
+                    "value": 3.0,
+                    "evidence": {"snapshot_id": run.source_snapshot_id, "excerpt": "Applicants must have a 3.0 GPA."},
+                    "exceptions_complete": True,
+                },
+                "coverage_complete": True,
+                "award_cycle": None,
+                "application_deadline": None,
+                "deadline_timezone": None,
+                "application_availability": "unknown",
+                "assistance_amount": None,
+                "selection_factors": [],
+                "application_url": None,
+                "unresolved_conditions": [],
+            }
+        )
+        provider = DeterministicExtractionStub({run.source_snapshot_id: draft})
+        process_extraction_stage(db, claim_next_run(db, "worker", clock=lambda: NOW), provider, clock=lambda: NOW)
+        process_validation_stage(db, claim_next_run(db, "worker", clock=lambda: NOW), clock=lambda: NOW)
+
+        db.refresh(run)
+        scan = db.get(ScheduledScan, run.scheduled_scan_id)
+        stored = db.get(ScheduledSource, run.scheduled_source_id)
+        assert run.state == "awaiting_review"
+        assert scan.outcome == "changed"
+        assert scan.completed_at is not None
+        assert stored.last_content_hash == scan.content_hash
+        assert stored.last_success_at is not None
 
 
 def test_robots_policy_can_block_a_scheduled_target():
