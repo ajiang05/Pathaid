@@ -154,7 +154,7 @@ link → return after profile or catalog changes.
 | F-07 | Quality/deployment | Must | Benchmarks, PostgreSQL CI, containers, health/recovery | Invented metrics/hosting claims | Local foundation implemented |
 | F-08 | Student/admin web UI | Must | Accessible responsive Next.js flows from Stitch | Native apps and invented designs | Implemented and browser-tested locally |
 | F-09 | Launch catalog | Must | 10–20 current reviewed programs; at least four scholarships and two beyond UMass | Broad coverage claims | 12 official-source candidates validated; human review pending |
-| F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Backend and admin UI implemented; controlled external-source verification pending |
+| F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Backend/admin UI and one controlled local official-source cycle verified; hosted verification pending |
 
 **Scope freeze:** Scope freezes when the Stitch student and admin flows are
 approved. Additions must identify the user outcome, release tradeoff, and work

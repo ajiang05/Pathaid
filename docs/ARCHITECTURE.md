@@ -709,7 +709,7 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 - Live extraction quality, cost, and latency are not measured.
 - Automated frontend accessibility and browser checks pass; five observed student usability sessions remain pending.
 - The launch catalog and its ongoing freshness cadence remain pending.
-- Scheduled-source tables, APIs, scheduler process, robots policy, bounded discovery, and administration UI are implemented; controlled external-source verification remains pending.
+- Scheduled-source tables, APIs, scheduler process, robots policy, bounded discovery, and administration UI are implemented. A controlled local official-source cycle verified changed-content review and unchanged-content model skipping; hosted verification remains pending.
 
 ## 18. Open architecture decisions
 

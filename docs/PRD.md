@@ -84,7 +84,7 @@ External organizations that own the official application and determine final eli
 | F-07 | Quality evaluation and deployment foundation | Must | Local foundation implemented; hosted deployment pending |
 | F-08 | Student and administrator web interface | Must | Implemented and browser-tested locally |
 | F-09 | Reviewed launch catalog | Must | 12 candidates processed; human review pending |
-| F-10 | Scheduled scholarship discovery and refresh | Must | Backend and admin UI implemented; controlled external-source verification pending |
+| F-10 | Scheduled scholarship discovery and refresh | Must | Backend/admin UI and controlled local official-source cycle verified; hosted verification pending |
 
 ## 7. User journeys
 
@@ -335,7 +335,7 @@ The web interface must implement the approved designs for student discovery and 
 ### FR-013: Scheduled scholarship discovery and refresh
 
 **Maps to:** F-10, J-03  
-**Status:** Backend and administrator UI implemented; controlled external-source verification pending
+**Status:** Backend and administrator UI implemented; controlled local official-source changed/unchanged cycle verified; hosted verification pending
 
 The system must scan administrator-approved scholarship sources daily, avoid unnecessary model calls for unchanged content, and create private review work for new or materially changed scholarships.
 

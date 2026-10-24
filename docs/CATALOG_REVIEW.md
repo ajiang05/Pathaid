@@ -6,13 +6,13 @@ This record identifies the 12 intended MVP launch candidates and the final check
 
 ## Queue note
 
-The local review queue contains 13 drafts because the original Federal Pell Grant acquisition retained only a JavaScript loading placeholder. Use revision `17a55d53-8138-430b-ab43-43a6848cce35`, which was extracted from the official Federal Student Aid article, and reject the older Pell draft after confirming the replacement. Do not publish both.
+The local review queue contains 14 drafts because two live integration checks produced stronger replacements. Use Pell revision `17a55d53-8138-430b-ab43-43a6848cce35`, which replaced a JavaScript loading placeholder, and Gates revision `0e9b57b5-48d2-4e51-8c08-4f325384049f`, which was produced by the corrected prompt during the controlled scheduler run. Reject each older draft after confirming its replacement. Publish only one revision for each program.
 
 ## Candidate audit
 
 | Candidate | Official source | Engineering audit | Final reviewer focus |
 |---|---|---|---|
-| The Gates Scholarship | [Provider page](https://www.thegatesscholarship.org/scholarship/) | Passed validation after changing the expired 2026 cycle to closed and mapping profile values to the canonical vocabulary. | Confirm the page's displayed status against its September 15, 2026 deadline; keep rule coverage incomplete because high-school standing is not a supported profile field. |
+| The Gates Scholarship | [Provider page](https://www.thegatesscholarship.org/scholarship/) | Replacement revision `0e9b57b5-48d2-4e51-8c08-4f325384049f` passed after the prompt mapped exact profile values, represented high-school standing as unsupported, and recorded the page's stale open-status conflict. | Confirm the displayed status against its September 15, 2026 deadline; keep rule coverage incomplete and reject the older Gates draft. |
 | College Scholarship Program | [Jack Kent Cooke Foundation](https://www.jkcf.org/our-scholarships/college-scholarship-program/how-to-apply/) | Passed with warnings for human-interpreted achievement/need rules and an unstated deadline timezone. | Confirm the November 11, 2026 deadline and $55,000-per-year maximum. |
 | Federal Pell Grant | [Federal Student Aid](https://studentaid.gov/articles/dont-miss-out-on-pell-grants/) | Replacement draft passed with an unsupported-logic warning; maximum 2026–27 award is recorded as $7,395. | Review the replacement revision named above and reject the loading-placeholder draft. |
 | UMass Amherst Financial Aid Overview | [UMass Amherst](https://www.umass.edu/financialaid/types-aid-undergraduate) | Passed without findings. | Confirm that this broad aid overview is useful as one catalog resource rather than a single award. |
@@ -31,7 +31,7 @@ The local review queue contains 13 drafts because the original Federal Pell Gran
 2. For each selected draft, compare every rule, checklist item, amount, deadline, link, and coverage field with its retained source.
 3. Resolve or consciously accept every warning. Set coverage complete only when no unsupported or unresolved requirement remains.
 4. Attest source accuracy and approve, or reject with a short reason. Approval creates the immutable review event and public revision pointer.
-5. Reject the superseded Pell loading-placeholder draft.
+5. Reject the superseded Pell loading-placeholder draft and older Gates draft.
 6. Confirm that exactly 12 programs appear through the public catalog API and student discovery interface.
 7. Export the reviewed bundle using `python -m app.catalog_seed export` and store it according to the deployment runbook.
 

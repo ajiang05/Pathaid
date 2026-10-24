@@ -3,7 +3,9 @@
 This guide covers the implemented local deployment and the remaining hosted
 release work. The Next.js student and administrator interface, API, worker,
 scheduler, migrations, and PostgreSQL run in Compose. A public hosted demo and
-controlled external-source verification have not yet been completed.
+hosted external-source verification have not yet been completed. A controlled
+local cycle against an official scholarship page verified changed-content
+review and unchanged-content model skipping.
 
 ## Local Docker setup
 
@@ -182,9 +184,9 @@ count, recommendation attempt/failure counts and average latency for the last
 records contain aggregate token counts and latency without prompts or generated
 explanations.
 
-After Feature 12 is implemented, the operations summary must also include
-scheduled scan success/failure, overdue sources, changed sources, candidates,
-and review backlog. Logs must not contain discovered page bodies or link lists.
+The operations summary includes scheduled scan success/failure, overdue
+sources, changed sources, candidates, and review backlog. Logs must not contain
+discovered page bodies or link lists.
 
 ## Daily scheduler
 
@@ -226,7 +228,7 @@ collector only after its request capture and retention settings are reviewed.
 
 - Choose hosting only after checking current prices against the $25/month cap.
 - Select and configure the hosted same-origin TLS edge for the implemented Next.js and API services.
-- Run a controlled external-source scheduled window and verify its operational alerts before launch.
+- Repeat the locally verified external-source scheduled window in the hosted environment and verify its alerts before launch.
 - Curate and manually approve 10–20 official programs before exporting seed data.
 - Verify HTTPS, private networking, PostgreSQL concurrency, telemetry redaction,
   and backup restoration in the selected deployed environment.

@@ -8,7 +8,7 @@ Status: backend offline evaluations, one live Gemini intake, and frontend end-to
 - The versioned 10-case extraction dataset validates 28 field labels, 10 claim labels, and exact evidence occurrence. Its metric harness reports field accuracy, criterion precision/recall, unsupported-claim rate, and evidence fidelity with explicit denominators when supplied a saved prediction artifact.
 - Existing offline suites cover ranking, authentication/privacy, source safety, model refusal and malformed output, bounded retries, restart recovery, duplicate ingestion, review, rejection, and atomic publication with deterministic provider stubs.
 - PostgreSQL migrations and model drift are checked in GitHub Actions without an AI provider key.
-- One live Gemini-backed launch intake has been run and integration failures were corrected. Formal live extraction metrics, deployed observability checks, and five student usability sessions remain pending.
+- Live Gemini-backed launch intake and a controlled official-source scheduler run have been completed. The scheduler run exposed and verified fixes for profile-vocabulary prompting, stale-cycle handling, and terminal scan outcomes. Formal aggregate live extraction metrics, deployed observability checks, and five student usability sessions remain pending.
 - Desktop and mobile Playwright journeys, route-level axe checks, frontend lint, and the production build pass locally. The five-session protocol is documented in [the usability session record](../docs/USABILITY_SESSIONS.md); no human outcomes have been recorded yet.
 
 ## Goal
