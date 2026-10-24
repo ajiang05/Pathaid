@@ -20,6 +20,19 @@ const run = {
   completed_at: "2026-10-22T12:01:00Z",
 };
 
+const failedRun = {
+  ...run,
+  id: "run-failed",
+  draft_revision_id: null,
+  scheduled_source_id: null,
+  scheduled_scan_id: null,
+  discovered_candidate_id: null,
+  source_url: "https://example.edu/failed-scholarship",
+  state: "failed",
+  error_code: "invalid_draft",
+  error_message: "The extracted draft failed validation.",
+};
+
 const proposedDraft = {
   name: "Example University Scholarship",
   description: "A reviewed scholarship for undergraduate students.",
@@ -75,7 +88,7 @@ test("administrator reviews retained evidence before publishing a draft", async 
       return route.fulfill({ json: { csrf_token: "admin-csrf", email: "reviewer@example.com" } });
     }
     if (path === "/api/admin/ingestion-runs") {
-      return route.fulfill({ json: [run] });
+      return route.fulfill({ json: [run, failedRun] });
     }
     if (path === `/api/admin/revisions/${revisionId}`) {
       return route.fulfill({ json: review });
@@ -89,8 +102,13 @@ test("administrator reviews retained evidence before publishing a draft", async 
 
   await page.goto("/admin/ingestion");
   await expect(page.getByRole("heading", { name: "Ingestion runs" })).toBeVisible();
-  await expect(page.getByText("Awaiting Review")).toBeVisible();
+  await expect(page.getByText("Awaiting Review", { exact: true })).toBeVisible();
   await expect(page.getByText("Scheduled", { exact: true })).toBeVisible();
+  await expect(page.getByText(failedRun.source_url)).toBeHidden();
+  await page.getByLabel("Show runs").selectOption("failed");
+  await expect(page.getByText(failedRun.source_url)).toBeVisible();
+  await expect(page.getByText(run.source_url)).toBeHidden();
+  await page.getByLabel("Show runs").selectOption("awaiting_review");
   await expectNoAccessibilityViolations(page);
 
   await page.getByRole("link", { name: "Review draft" }).click();
