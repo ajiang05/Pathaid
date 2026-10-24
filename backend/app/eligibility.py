@@ -162,20 +162,27 @@ def _validate_operand(field_spec: Mapping[str, Any], operator: str, operand: Any
     """Ensure a rule operand is compatible with its registry field type."""
 
     field_type = field_spec.get("type")
+    allowed_values = field_spec.get("values")
     if operator in NUMERIC_OPERATORS:
         if field_type not in {"integer", "number"} or not _is_number(operand):
             raise RuleValidationError("Numeric operators require a numeric field and operand")
     elif operator == "in":
         if not isinstance(operand, list) or not operand:
             raise RuleValidationError("The in operator requires a non-empty list")
+        if field_type == "choice" and allowed_values is not None and any(value not in allowed_values for value in operand):
+            raise RuleValidationError("Choice operands must use declared profile values")
     elif operator == "contains":
         if field_type != "multi_choice":
             raise RuleValidationError("The contains operator requires a multi-choice field")
+        if allowed_values is not None and operand not in allowed_values:
+            raise RuleValidationError("Multi-choice operands must use declared profile values")
     elif operator == "eq":
         if field_type == "boolean" and not isinstance(operand, bool):
             raise RuleValidationError("Boolean equality requires a boolean operand")
         if field_type in {"integer", "number"} and not _is_number(operand):
             raise RuleValidationError("Numeric equality requires a numeric operand")
+        if field_type == "choice" and allowed_values is not None and operand not in allowed_values:
+            raise RuleValidationError("Choice operands must use declared profile values")
 
 
 def evaluate_eligibility(

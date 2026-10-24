@@ -124,6 +124,19 @@ def test_invalid_operand_type_blocks_the_proposal():
     assert "invalid_rule" in finding_codes(result)
 
 
+def test_unknown_choice_value_blocks_the_proposal():
+    """Model-friendly labels must not bypass the profile registry vocabulary."""
+
+    payload = proposal()
+    payload["eligibility_tree"]["field"] = "state"
+    payload["eligibility_tree"]["operator"] = "eq"
+    payload["eligibility_tree"]["value"] = "Massachusetts"
+
+    result = validate_extracted_draft(ExtractedProgramDraft.model_validate(payload), Snapshot())
+
+    assert "invalid_rule" in finding_codes(result)
+
+
 def test_unsupported_logic_is_preserved_as_a_warning():
     """Ambiguous mandatory logic reaches review without becoming eligibility."""
 
