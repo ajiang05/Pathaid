@@ -41,7 +41,11 @@ export default function RevisionPage() {
   const session = useAdminSession();
   const [data, setData] = useState<Review | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
-  const [message, setMessage] = useState("");
+  const [editMessage, setEditMessage] = useState("");
+  const [editFailed, setEditFailed] = useState(false);
+  const [decisionMessage, setDecisionMessage] = useState("");
+  const [decisionFailed, setDecisionFailed] = useState(false);
+  const [decisionPending, setDecisionPending] = useState(false);
   const [draft, setDraft] = useState("");
   const [notes, setNotes] = useState("");
   const [accurate, setAccurate] = useState(false);
@@ -63,7 +67,8 @@ export default function RevisionPage() {
 
   async function edit() {
     if (!session.csrf || !data) return;
-    setMessage("");
+    setEditMessage("");
+    setEditFailed(false);
     try {
       const parsed = JSON.parse(draft) as Record<string, unknown>;
       const updated = await api<Revision>(`/api/admin/revisions/${id}`, {
@@ -78,22 +83,25 @@ export default function RevisionPage() {
           ? { ...current, revision: { ...current.revision, ...updated }, proposed_draft: parsed }
           : current,
       );
-      setMessage("Draft saved and revalidated.");
+      setEditMessage("Draft saved and revalidated.");
     } catch {
-      setMessage("The draft JSON or reviewed evidence is invalid. Changes were not published.");
+      setEditFailed(true);
+      setEditMessage("The draft JSON or reviewed evidence is invalid. Changes were not published.");
     }
   }
 
   async function decide(decision: "approve" | "reject") {
-    if (!session.csrf) return;
-    setMessage("");
+    if (!session.csrf || decisionPending) return;
+    setDecisionFailed(false);
+    setDecisionPending(true);
+    setDecisionMessage(decision === "approve" ? "Publishing revision…" : "Rejecting revision…");
     try {
       await api(`/api/admin/revisions/${id}/${decision}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrf },
         body: JSON.stringify(decision === "approve" ? { source_accurate: accurate, coverage_complete: complete, notes } : { notes }),
       });
-      setMessage(decision === "approve" ? "Revision published." : "Revision rejected.");
+      setDecisionMessage(decision === "approve" ? "Revision published." : "Revision rejected.");
       setData((current) =>
         current
           ? {
@@ -103,7 +111,10 @@ export default function RevisionPage() {
           : current,
       );
     } catch {
-      setMessage(`The revision could not be ${decision === "approve" ? "published" : "rejected"}. Check validation and attestations.`);
+      setDecisionFailed(true);
+      setDecisionMessage(`The revision could not be ${decision === "approve" ? "published" : "rejected"}. Check validation and attestations.`);
+    } finally {
+      setDecisionPending(false);
     }
   }
 
@@ -127,12 +138,6 @@ export default function RevisionPage() {
           </p>
         </div>
       </div>
-
-      {message && (
-        <div className={message.includes("published") || message.includes("saved") ? "form-success" : "form-error"} role="status">
-          {message}
-        </div>
-      )}
 
       {data.revision.validation_findings.length > 0 && (
         <section className="detail-card" aria-labelledby="validation-findings-heading">
@@ -173,11 +178,16 @@ export default function RevisionPage() {
           <button className="button button-outline" onClick={() => void edit()} disabled={data.revision.status !== "draft"}>
             Save and revalidate
           </button>
+          {editMessage && (
+            <div className={editFailed ? "form-error" : "form-success"} role={editFailed ? "alert" : "status"}>
+              {editMessage}
+            </div>
+          )}
         </section>
       </div>
 
-      <section className="review-decision">
-        <h2>Review decision</h2>
+      <section className="review-decision" aria-labelledby="review-decision-heading">
+        <h2 id="review-decision-heading">Review decision</h2>
         <label className="consent-option">
           <input type="checkbox" checked={accurate} onChange={(event) => setAccurate(event.target.checked)} />
           <span>
@@ -195,16 +205,21 @@ export default function RevisionPage() {
           Review notes
           <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={2000} />
         </label>
+        {decisionMessage && (
+          <div className={decisionFailed ? "form-error" : "form-success"} role={decisionFailed ? "alert" : "status"} aria-live="polite">
+            {decisionMessage}
+          </div>
+        )}
         <div className="row-actions">
-          <button className="button button-danger" disabled={data.revision.status !== "draft"} onClick={() => void decide("reject")}>
-            Reject draft
+          <button className="button button-danger" disabled={data.revision.status !== "draft" || decisionPending} onClick={() => void decide("reject")}>
+            {decisionPending ? "Working…" : "Reject draft"}
           </button>
           <button
             className="button button-primary"
-            disabled={data.revision.status !== "draft" || data.revision.validation_status !== "valid" || !accurate}
+            disabled={data.revision.status !== "draft" || data.revision.validation_status !== "valid" || !accurate || decisionPending}
             onClick={() => void decide("approve")}
           >
-            Approve and publish
+            {decisionPending ? "Working…" : "Approve and publish"}
           </button>
         </div>
       </section>

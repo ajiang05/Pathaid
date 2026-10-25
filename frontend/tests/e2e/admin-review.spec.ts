@@ -123,6 +123,9 @@ test("administrator reviews retained evidence before publishing a draft", async 
   await expectNoAccessibilityViolations(page);
 
   await approve.click();
-  await expect(page.getByRole("status")).toHaveText("Revision published.");
+  const decisionPanel = page.getByRole("region", { name: "Review decision" });
+  await expect(decisionPanel.getByRole("status")).toHaveText("Revision published.");
+  await expect(decisionPanel.getByRole("button", { name: "Working…" })).toHaveCount(0);
+  await expect(page.getByText("Status: Published")).toBeVisible();
   expect(approvalBody).toEqual({ source_accurate: true, coverage_complete: false, notes: "" });
 });
