@@ -7,6 +7,8 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+ARG PATHAID_API_URL=http://127.0.0.1:8000
+ENV PATHAID_API_URL=$PATHAID_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 # Next.js does not create this optional directory when the app has no static
 # assets, but the runtime image always copies it so future assets work unchanged.
