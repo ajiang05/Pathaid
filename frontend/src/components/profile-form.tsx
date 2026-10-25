@@ -7,9 +7,40 @@ import { useSession } from "@/components/session-provider";
 import type { FieldRegistry, FieldSpec, Profile, ProfileFields } from "@/types/api";
 
 const CORE=["school","state","study_level","enrollment","assistance_categories"];
+const FEATURED_SCHOOLS=[
+  "University of Massachusetts Amherst",
+  "University of Massachusetts Boston",
+  "University of Massachusetts Dartmouth",
+  "University of Massachusetts Lowell",
+];
+const OTHER_SCHOOL="__other__";
+
+function SchoolField({value,onChange}:{value:ProfileFields[string];onChange:(value:ProfileFields[string])=>void}) {
+  const school=typeof value==="string"?value:"";
+  const [otherSelected,setOtherSelected]=useState(Boolean(school&&!FEATURED_SCHOOLS.includes(school)));
+  const selection=otherSelected?OTHER_SCHOOL:FEATURED_SCHOOLS.includes(school)?school:"";
+
+  function selectSchool(next:string) {
+    if(next===OTHER_SCHOOL){setOtherSelected(true);onChange("");return;}
+    setOtherSelected(false);onChange(next||null);
+  }
+
+  return <>
+    <select id="school" value={selection} onChange={event=>selectSchool(event.target.value)}>
+      <option value="">Select your college</option>
+      {FEATURED_SCHOOLS.map(name=><option value={name} key={name}>{name}</option>)}
+      <option value={OTHER_SCHOOL}>Other</option>
+    </select>
+    {otherSelected&&<div className="school-other-field">
+      <label htmlFor="school-other">Enter your college name</label>
+      <input id="school-other" type="text" value={school} onChange={event=>onChange(event.target.value)} required maxLength={120} autoComplete="organization" />
+    </div>}
+  </>;
+}
 
 function Field({name,spec,value,onChange}:{name:string;spec:FieldSpec;value:ProfileFields[string];onChange:(value:ProfileFields[string])=>void}) {
   const described=spec.sensitive?`${name}-help`:undefined;
+  if(name==="school") return <SchoolField value={value} onChange={onChange}/>;
   if(spec.type==="choice") return <select id={name} value={typeof value==="string"?value:""} onChange={e=>onChange(e.target.value||null)} aria-describedby={described}><option value="">I don&apos;t know / prefer not to answer</option>{spec.values?.map(v=><option value={v} key={v}>{readable(v)}</option>)}</select>;
   if(spec.type==="multi_choice") { const selected=Array.isArray(value)?value:[]; return <fieldset className="choice-grid"><legend className="sr-only">{spec.question}</legend>{spec.values?.map(v=><label className="check-option" key={v}><input type="checkbox" checked={selected.includes(v)} onChange={e=>onChange(e.target.checked?[...selected,v]:selected.filter(item=>item!==v))}/><span>{readable(v)}</span></label>)}</fieldset>; }
   if(spec.type==="boolean") return <select id={name} value={typeof value==="boolean"?String(value):""} onChange={e=>onChange(e.target.value===""?null:e.target.value==="true")} aria-describedby={described}><option value="">I don&apos;t know / prefer not to answer</option><option value="true">Yes</option><option value="false">No</option></select>;

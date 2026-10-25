@@ -73,6 +73,11 @@ test("authenticated onboarding and profile routes expose accessible fields", asy
   await page.goto("/onboarding");
   await expect(page.getByRole("heading", { name: "Tell us what support fits your situation" })).toBeVisible();
   await expect(page.getByLabel("What school do you attend?")).toHaveValue(profile.fields.school);
+  await page.getByLabel("What school do you attend?").selectOption({ label: "Other" });
+  const otherSchool = page.getByLabel("Enter your college name");
+  await expect(otherSchool).toBeVisible();
+  await expect(otherSchool).toHaveAttribute("required", "");
+  await otherSchool.fill("Springfield Community College");
   await expectNoAccessibilityViolations(page);
 
   await page.goto("/profile");
