@@ -72,6 +72,43 @@ test("landing page leads to account creation", async ({ page }) => {
   await expectNoAccessibilityViolations(page);
 });
 
+test("new account enters onboarding with a refreshed session", async ({ page }) => {
+  let authenticated = false;
+  const profileFields = {
+    fields: {
+      school: { type: "string", question: "What school do you attend?" },
+      state: { type: "choice", question: "What state do you live in?", values: ["MA"] },
+      study_level: { type: "choice", question: "What is your study level?", values: ["undergraduate"] },
+      enrollment: { type: "choice", question: "What is your enrollment status?", values: ["full_time"] },
+      assistance_categories: { type: "multi_choice", question: "What support are you looking for?", values: ["scholarship"] },
+    },
+  };
+  await page.route("**/api/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/auth/session") {
+      return authenticated
+        ? route.fulfill({ json: { csrf_token: "test-csrf" } })
+        : route.fulfill({ status: 401, json: { detail: "Not authenticated" } });
+    }
+    if (path === "/api/auth/signup") {
+      authenticated = true;
+      return route.fulfill({ status: 201, json: { csrf_token: "test-csrf" } });
+    }
+    if (path === "/api/profile-fields") return route.fulfill({ json: profileFields });
+    if (path === "/api/profile") return route.fulfill({ json: { fields: {}, ai_opt_in: false } });
+    return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
+  });
+
+  await page.goto("/signup");
+  await page.getByLabel("Email address").fill("new-student@example.com");
+  await page.getByLabel("Password").fill("a-secure-test-password");
+  await page.getByRole("button", { name: "Create account" }).click();
+
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page.getByRole("heading", { name: /tell us what support fits/i })).toBeVisible();
+  await expect(page.getByText("Log in to continue.")).not.toBeVisible();
+});
+
 test("authenticated student can discover and inspect a reviewed result", async ({ page }) => {
   await mockStudentApi(page);
   await page.goto("/home");

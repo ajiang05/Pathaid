@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "@/components/session-provider";
 
 type AuthFormProps = { mode: "login" | "signup" };
 
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const session = useSession();
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const signup = mode === "signup";
@@ -28,6 +30,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         setMessage(typeof body?.detail === "string" ? body.detail : "We could not complete that request. Check your details and try again.");
         return;
       }
+
+      // The root session provider may still contain the anonymous state that it
+      // loaded before this request. Refresh it after the server sets the session
+      // cookie so protected pages do not briefly treat the new user as logged out.
+      await session.refresh();
       router.push(signup ? "/onboarding" : "/home");
       router.refresh();
     } catch {
