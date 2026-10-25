@@ -1,9 +1,68 @@
 # Pathaid architecture diagrams
 
-Last verified against `feature/reviewed-launch-catalog` on 2026-10-24. These
+Last verified against `feature/reviewed-launch-catalog` on 2026-10-25. These
 diagrams describe the implemented application and the prepared single-server
 hosted topology. Public provisioning, human catalog approval, and hosted
 verification remain release gates.
+
+## Component and code map
+
+```mermaid
+flowchart TB
+    subgraph Browser[Browser applications]
+        StudentUI[Student routes<br/>frontend/src/app]
+        AdminUI[Admin routes<br/>frontend/src/app/admin]
+        APIClient[Same-origin API client<br/>frontend/src/lib/api.ts]
+        StudentUI --> APIClient
+        AdminUI --> APIClient
+    end
+
+    subgraph FastAPI[FastAPI application]
+        Accounts[Accounts, profiles, discovery<br/>app/main.py]
+        AdminAuth[Admin authentication<br/>app/admin_auth.py]
+        AdminReview[Draft review and publication<br/>app/admin_review.py]
+        AdminOps[Sources and operations<br/>app/admin_api.py]
+        Catalog[Published catalog queries<br/>app/catalog.py]
+        Eligibility[Eligibility and ranking<br/>app/eligibility.py + discovery.py]
+        Recommendations[Grounded explanations<br/>app/recommendations.py]
+    end
+
+    subgraph Automation[Background automation]
+        SchedulerCode[Schedule and scope policy<br/>app/scheduled_discovery.py]
+        WorkerCode[Durable stage runner<br/>app/worker.py]
+        Stages[Acquire → extract → validate<br/>app/orchestration_stages.py]
+        Acquisition[Safe source acquisition<br/>app/source_acquisition.py]
+        Extraction[Gemini/OpenAI adapters<br/>app/extraction.py]
+        SchedulerCode --> WorkerCode --> Stages
+        Stages --> Acquisition
+        Stages --> Extraction
+    end
+
+    subgraph Persistence[Persistence]
+        Models[SQLAlchemy models<br/>app/models.py]
+        Migrations[Alembic migrations<br/>backend/migrations]
+        Postgres[(PostgreSQL)]
+        Models --> Postgres
+        Migrations --> Postgres
+    end
+
+    APIClient --> Accounts
+    APIClient --> AdminAuth
+    APIClient --> AdminReview
+    APIClient --> AdminOps
+    Accounts --> Catalog --> Eligibility
+    Accounts --> Recommendations
+    Accounts --> Models
+    AdminAuth --> Models
+    AdminReview --> Models
+    AdminOps --> Models
+    SchedulerCode --> Models
+    Stages --> Models
+```
+
+The API process handles HTTP requests only. Scheduled acquisition and model
+extraction run in separate processes, with PostgreSQL coordinating work and
+preserving progress across restarts.
 
 ## Runtime and trust boundaries
 
