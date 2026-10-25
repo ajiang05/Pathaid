@@ -139,15 +139,15 @@ operational telemetry.
 
 ## 5. MVP scope
 
-**Core loop:** Learn limits → create profile → choose assistance → review ranked
-results → answer relevant follow-ups → open evidence/checklist → follow official
-link → return after profile or catalog changes.
+**Core loop:** Learn limits → create profile → optionally add eligibility details →
+choose assistance → review ranked results → open evidence/checklist → follow
+official link → return after profile or catalog changes.
 
 | ID | Feature | Priority | MVP behavior | Excluded complexity | Status |
 |---|---|---|---|---|---|
 | F-01 | Student account/profile | Must | Auth, optional typed fields, consent, edit/delete | Social login, reset, guest profile | Implemented locally |
 | F-02 | Reviewed catalog | Must | Current published revisions with provenance | Provider self-service, auto-publish | Backend implemented; real seed pending |
-| F-03 | Discovery/eligibility | Must | Coverage, three-valued rules, follow-ups, stable ranking | Model decisions, opaque scores | Backend implemented |
+| F-03 | Discovery/eligibility | Must | Coverage, three-valued rules, missing-profile guidance, stable ranking | Model decisions, opaque scores | Backend implemented |
 | F-04 | Results/checklists | Must | Reasons, unknowns, evidence, materials, official links | Submission and progress tracking | Implemented locally |
 | F-05 | Ingestion/review | Must | Acquire, extract, validate, retry, edit, approve/reject | Broad crawling and autonomous publication | Implemented locally |
 | F-06 | Recommendation explanation | Should | Consent-gated grounded assistance with template fallback | AI eligibility or award prediction | Implemented locally |

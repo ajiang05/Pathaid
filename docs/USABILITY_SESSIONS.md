@@ -18,7 +18,7 @@ Use this same protocol for five students before the limited beta. Do not prefill
 2. Create an account and complete the initial profile without entering real sensitive data.
 3. Find one opportunity that appears useful and explain why it was recommended.
 4. Explain the difference between “likely eligible,” “needs more information,” and actually receiving an award.
-5. Answer one progressive follow-up question and describe what changed.
+5. Add one optional eligibility detail in the student profile and describe what changed in Discover.
 6. Open an opportunity, identify its source and last verification information, and use its checklist.
 7. Reach the official provider/application page.
 8. Edit one profile answer, return to discovery, and then delete the account.

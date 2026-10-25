@@ -57,7 +57,7 @@ The base spacing rhythm is 4px. Common spacing uses 8, 16, 24, 32, and 48px. Con
 | `/login` | Resume a student account | Pending, invalid credentials, service failure |
 | `/onboarding` | Save the five core matching fields | Registry loading, save error, redirect to discovery |
 | `/home` | See profile readiness and start discovery | Loading, incomplete profile, ready, API failure |
-| `/discover` | Review deterministic grouped results and answer temporary follow-ups | Loading, empty catalog, missing profile, API failure, open/unknown/closed availability groups |
+| `/discover` | Review deterministic results grouped into consistent opportunity cards | Loading, empty catalog, missing profile, API failure, open/unknown/closed availability groups |
 | `/programs/[id]` | Inspect criteria, evidence, checklist, unresolved conditions, and official links | Loading, absent from current results, API failure, explanation fallback |
 | `/profile` | Edit saved answers, consent, or delete the account | Loading, saved, validation error, delete confirmation |
 | `/privacy` | Understand data use and matching limits | Readable long-form content |
@@ -73,14 +73,14 @@ Student navigation is landing → authentication → onboarding → home/discove
 - Links navigate and buttons perform actions. Every control has a visible result.
 - Primary buttons use the deep green fill. Outline and quiet buttons carry secondary actions. Destructive red is reserved for account deletion and rejection.
 - Labels appear above inputs. Sensitive and optional fields explain that they may be skipped or removed. Recoverable errors retain entered values.
-- Program cards show category, name, verified amount or fallback, eligibility label, deadline, availability, missing answer count, and a detail link.
+- Program cards use a consistent grid and show category, name, verified amount or fallback, eligibility label, deadline, availability, missing-profile status, and a detail link.
 - Eligibility labels use backend wording. Unknown answers and unknown availability remain explicit and never appear as failure.
 - Loading panels reserve space. Empty and error panels name what happened and provide a next action when retry is possible.
 - Official source links open in a new tab with `noopener noreferrer`.
 
 ## Privacy and product boundaries
 
-The frontend does not make eligibility decisions, reorder API results, or expose unpublished revisions. Temporary follow-up answers are sent only with the current evaluation. Saved values are changed only through profile actions protected by CSRF. Optional AI wording requires profile consent and never changes eligibility or rank.
+The frontend does not make eligibility decisions, reorder API results, or expose unpublished revisions. Optional eligibility answers are managed in the student profile, and Discover evaluates only saved values. Saved values are changed only through profile actions protected by CSRF. Optional AI wording requires profile consent and never changes eligibility or rank.
 
 Saved scholarships, application tracking, notifications, award predictions, sponsored ranking, and provider self-service are outside the MVP.
 

@@ -24,7 +24,7 @@ Measure correctness and demonstrate the AI and backend work with reproducible ev
 - Test workflow retries/restarts, refusal, malformed output, missing key, duplicate submissions, publication, and rejection.
 - Test student sign-up/login/logout, profile ownership, editing and deletion, AI opt-in, minimum model payloads, unsupported-claim rejection, and fallback. Test admin authorization, CSRF, unsafe fetches, invalid profiles, migrations, published-only reads, and absence of profile values in logs.
 - Verify observability reports frontend/API and model failures without student profile values, credentials, prompts, or source text.
-- Exercise sign-up, short profile intake, personalized home page, profile editing, progressive sensitive questions, ranked results, follow-up reevaluation, and admin ingestion/review/publication in browser tests across mobile and desktop layouts. Compare frontend screens with the Google Stitch prototype.
+- Exercise sign-up, short profile intake, personalized home page, optional sensitive profile fields, ranked results, profile-based reevaluation, and admin ingestion/review/publication in browser tests across mobile and desktop layouts. Compare frontend screens with the Google Stitch prototype.
 - Observe five students signing up, completing and editing a profile, interpreting recommendations and eligibility results, using a checklist, and reaching an official application page. Record findings and address recurring usability problems before release.
 - Use a deterministic model stub in CI. Live AI benchmarks are separately invoked and budgeted.
 - Test scheduled discovery with fake clocks, resolvers, transports, and model providers.

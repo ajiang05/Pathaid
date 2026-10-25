@@ -12,18 +12,18 @@ Let students sign up, log in, and maintain the profile used for personalized sch
 - Begin with a short intake for school, state, study level, enrollment, and selected assistance categories. Allow multiple categories.
 - Save initial answers in the authenticated student's profile; let the student review and edit them later. Show which fields are saved and allow account/profile deletion.
 - Normalize UMass Amherst aliases; retain other school names without claiming campus-specific coverage.
-- Define answer types, allowed values, validation, question wording, sensitivity, and progressive-follow-up behavior in a typed profile-field registry exposed through `GET /api/profile-fields`.
-- Ask income, aid status, ethnicity, citizenship or immigration status, major, class year, GPA and grading scale, or other sensitive and detailed questions only when a candidate's reviewed requirements need them. Allow unknown answers; do not infer answers from school, name, location, nationality, or other profile data.
+- Define answer types, allowed values, validation, question wording, sensitivity, and optional-field behavior in a typed profile-field registry exposed through `GET /api/profile-fields`.
+- Keep optional eligibility fields in the editable student profile, including race, ethnicity, first-generation status, Pell eligibility, income range, Student Aid Index, citizenship or immigration status, major, class year, GPA, and grading scale. Allow students to skip or remove every optional answer; do not infer answers from school, name, location, nationality, or other profile data.
 - Prefer reviewed income ranges, Pell eligibility, Student Aid Index thresholds, or other aid indicators over exact household income when the program's published requirements permit them.
-- Keep unsaved follow-up answers in page memory until the student explicitly saves them. Do not log profile values. Request explicit opt-in before sending minimum relevant fields to the configured AI provider for recommendation explanations; never send identity or credentials. Declining AI leaves deterministic matching available.
+- Do not collect temporary answers on the Discover page. Reevaluate results from saved profile values after the student edits the profile. Do not log profile values. Request explicit opt-in before sending minimum relevant fields to the configured AI provider for recommendation explanations; never send identity or credentials. Declining AI leaves deterministic matching available.
 
 ## Interfaces and dependencies
-Student auth and own-profile endpoints support the frontend. `GET /api/profile-fields` exposes field metadata. `POST /api/evaluate` combines the saved profile with validated session answers and category filters; the [eligibility engine](03-eligibility-engine.md) determines relevant follow-up fields. [Discovery](02-personalized-discovery.md) uses the profile for the home page.
+Student auth and own-profile endpoints support the frontend. `GET /api/profile-fields` exposes field metadata. `POST /api/evaluate` evaluates the saved profile with validated category filters; the [eligibility engine](03-eligibility-engine.md) identifies missing fields without collecting them on Discover. [Discovery](02-personalized-discovery.md) uses the saved profile.
 
 ## Acceptance criteria
 - A student can sign up, log in, complete intake, edit saved answers, and select multiple categories using a keyboard.
 - Unknown answers remain unknown; invalid types produce accessible errors without echoing sensitive values in server responses.
-- Sensitive and detailed questions appear only when they could change a candidate program's outcome.
+- Sensitive and detailed questions are clearly optional and remain editable only in the student profile.
 - A non-UMass student can use the flow without being assigned UMass coverage.
 - A reload retains saved profile fields but clears unsaved answers. Another student cannot read or edit the profile. Deletion removes the account and profile; evaluation leaves no value-bearing logs.
 - AI opt-in is recorded and enforced; declining it does not block matching or template explanations.

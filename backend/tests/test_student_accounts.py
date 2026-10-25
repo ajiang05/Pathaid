@@ -121,5 +121,12 @@ def test_field_registry_and_origin_check(client, monkeypatch):
     registry = api.get("/api/profile-fields").json()["fields"]
     assert registry["income_range"]["sensitive"] is True
     assert registry["school"]["progressive"] is False
+    assert registry["race"]["type"] == "multi_choice"
+    assert registry["first_generation_student"]["type"] == "boolean"
+    csrf = signup(api)
+    optional_details = {"race": ["asian", "other"], "ethnicity": "Chinese American", "first_generation_student": True, "pell_eligible": False}
+    response = api.patch("/api/profile", headers={"X-CSRF-Token": csrf}, json={"fields": optional_details})
+    assert response.status_code == 200
+    assert response.json()["fields"] == optional_details
     monkeypatch.setenv("PATHAID_PUBLIC_ORIGIN", "https://pathaid.example")
     assert api.post("/api/auth/signup", headers={"Origin": "https://evil.example"}, json={"email": "x@example.edu", "password": "strong password 123"}).status_code == 403

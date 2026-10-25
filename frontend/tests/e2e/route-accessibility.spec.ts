@@ -37,6 +37,10 @@ const registry = {
       sensitive: false,
       values: ["scholarship", "grants", "food"],
     },
+    ethnicity: { type: "string", question: "How do you describe your ethnicity?", progressive: true, sensitive: true },
+    race: { type: "multi_choice", question: "How do you describe your race?", progressive: true, sensitive: true, values: ["asian", "black_or_african_american", "white", "other"] },
+    first_generation_student: { type: "boolean", question: "Are you a first-generation college student?", progressive: true, sensitive: true },
+    pell_eligible: { type: "boolean", question: "Are you eligible for a Pell Grant?", progressive: true, sensitive: true },
   },
 };
 
@@ -82,6 +86,11 @@ test("authenticated onboarding and profile routes expose accessible fields", asy
 
   await page.goto("/profile");
   await expect(page.getByRole("heading", { name: "Profile and privacy" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Additional eligibility details" })).toBeVisible();
+  await expect(page.getByLabel("How do you describe your ethnicity?")).toBeVisible();
+  await expect(page.getByRole("group", { name: "How do you describe your race?" })).toBeVisible();
+  await expect(page.getByLabel("Are you a first-generation college student?")).toBeVisible();
+  await expect(page.getByLabel("Are you eligible for a Pell Grant?")).toBeVisible();
   await expect(page.getByRole("button", { name: "Delete my account" })).toBeVisible();
   await expectNoAccessibilityViolations(page);
 });

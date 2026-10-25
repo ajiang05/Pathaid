@@ -21,7 +21,7 @@ const result = {
   label: "Likely eligible",
   truth: "true",
   criteria: [{ id: "state", field: "state", operator: "equals", truth: "true", reason: "You reported living in Massachusetts.", answerable: true, evidence: { quote: "Applicants must be Massachusetts residents.", source_url: "https://example.edu/grant" } }],
-  missing_fields: [],
+  missing_fields: [{ field: "pell_eligible", question: "Are you eligible for a Pell Grant?", answer_type: "boolean", sensitive: true }],
   unresolved_conditions: [],
   application_availability: "verified_open",
   application_deadline: "2027-03-15",
@@ -117,6 +117,7 @@ test("authenticated student can discover and inspect a reviewed result", async (
   await page.getByRole("link", { name: "Discover support" }).click();
   await expect(page.getByRole("heading", { name: "Open opportunities" })).toBeVisible();
   await expect(page.getByText(result.name)).toBeVisible();
+  await expect(page.getByText("Optional follow-up")).not.toBeVisible();
   await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "View details" }).click();
   await expect(page.getByRole("heading", { name: result.name })).toBeVisible();

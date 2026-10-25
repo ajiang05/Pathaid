@@ -37,7 +37,7 @@ Out of scope for v1: conversational intake, RAG, embeddings, pgvector, PDF inges
 
 Use an LLM to generate a concise, optional “why this scholarship fits” explanation from the student's relevant profile fields, the deterministic result, and reviewed source excerpts. Validate the output against the supplied program revision; display source-backed reasons and unresolved requirements separately. The model cannot invent eligibility, change ranking, or claim an award is likely. If generation fails or is unavailable, show a template explanation so the home page still works.
 
-Prototype the student flow in Google Stitch before frontend implementation. Cover the landing page, sign-up/login, profile creation and editing, follow-up questions, personalized home page, ranked results, and program details with corresponding mobile and desktop designs. Give both screen sizes equal design priority and use a calm, clear, trustworthy visual and writing style.
+Prototype the student flow in Google Stitch before frontend implementation. Cover the landing page, sign-up/login, core and optional profile editing, personalized home page, ranked results, and program details with corresponding mobile and desktop designs. Give both screen sizes equal design priority and use a calm, clear, trustworthy visual and writing style.
 
 Use three eligibility labels:
 
@@ -65,7 +65,7 @@ Store profile fields only for authenticated students, encrypt traffic, and give 
 | Scheduler      | Python process with durable daily schedules, approved scopes, change detection, and bounded discovery |
 | Infrastructure | Docker, Docker Compose, and GitHub Actions                                                           |
 
-Use a typed profile-field registry shared through API metadata. It defines accepted field names, answer types, allowed values, question wording, sensitivity, and whether a field may appear during progressive follow-up. Add fields only when supported by a reviewed program requirement. Keep citizenship, ethnicity, income, and aid-status questions optional and program-specific; never infer status from school, name, location, or nationality.
+Use a typed profile-field registry shared through API metadata. It defines accepted field names, answer types, allowed values, question wording, sensitivity, and whether a field is optional. Keep race, ethnicity, first-generation status, citizenship, income, Pell eligibility, and other aid-status questions in the student profile and clearly optional; never infer status from school, name, location, nationality, or other answers.
 
 ### Data model
 

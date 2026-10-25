@@ -30,7 +30,7 @@ Use the supplied Google Stitch artifacts in `stitch_ui_screen_implementation/` a
 
 ## Acceptance criteria
 
-- A student can sign up, log in, complete or edit a profile, view deterministic recommendations, answer relevant follow-ups, open a result, inspect evidence and checklist items, and reach the official provider.
+- A student can sign up, log in, complete or edit core and optional profile details, view deterministic recommendations, open a result, inspect evidence and checklist items, and reach the official provider.
 - Authentication and mutation failures preserve safe user input and display field-level or form-level guidance without echoing sensitive values.
 - The same core tasks work at mobile and desktop widths with keyboard-only navigation, visible focus, semantic landmarks, and WCAG 2.2 AA contrast.
 - Loading, empty catalog, no coverage, missing information, model fallback, session expiry, API failure, and not-found states are understandable and recoverable.

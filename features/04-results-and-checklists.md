@@ -4,7 +4,7 @@ Status: backend and responsive student results interface implemented and browser
 
 ## Implementation status
 - `POST /api/evaluate` returns complete reviewed program details, explicit verification states, exact-revision source links, checklist items, selection factors, and a deterministic explanation.
-- `POST /api/programs/{id}/recommendation-explanation` reevaluates an exact published revision and accepts temporary follow-up answers without saving them.
+- `POST /api/programs/{id}/recommendation-explanation` reevaluates an exact published revision from the saved student profile; profile changes are made through the profile endpoint.
 - Scholarship model assistance requires recorded opt-in, sends only rule-relevant profile fields, and lets the model select reviewed reasons rather than write factual claims.
 - Missing credentials, refusal, provider failure, invalid selections, and rate limits return the deterministic source-backed template.
 - Aggregate attempt outcomes and token counts are stored for operations; prompts, profile values, and explanation text are not stored.

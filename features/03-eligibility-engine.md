@@ -1,4 +1,4 @@
-# Deterministic eligibility and follow-up questions
+# Deterministic eligibility and missing-information detection
 
 Status: core evaluator, synthetic tests, authenticated evaluation API, and student results flow implemented; real reviewed catalog data pending. Parent specification: [plan.md](../plan.md).
 
@@ -13,11 +13,11 @@ Evaluate reviewed eligibility rules reproducibly and identify information that c
 - Return “Likely eligible” only for a satisfied and complete reviewed eligibility model; “Likely ineligible” only for conclusively failed necessary conditions; otherwise “Need more information.”
 - Unsupported conditions stay unknown. If unmodeled exceptions could override a failed condition, that condition cannot independently disqualify a student.
 - Distinguish mandatory scholarship criteria from competitive selection preferences.
-- Collect follow-up fields only from branches that can change the outcome. Separate answerable questions from unresolved conditions requiring provider review.
+- Return missing profile fields only from branches that can change the outcome. Keep them separate from unresolved conditions requiring provider review; students edit answers in their profile rather than inside Discover.
 - Generate reasons and questions from templates, retaining the source citation for every criterion. Explain failed OR alternatives in their group context.
 
 ## Interfaces and dependencies
-`POST /api/evaluate` combines the authenticated student's saved profile with validated session answers and filters. Return evaluated revision IDs, outcomes, criterion results, missing field metadata, and citations. Persist new answers only when the student saves them. Use the registry from [profile](01-student-intake.md) and published rules from the [catalog](05-program-catalog.md).
+`POST /api/evaluate` evaluates the authenticated student's saved profile and validated filters. Return evaluated revision IDs, outcomes, criterion results, missing field metadata, and citations. Profile changes use the profile endpoint rather than the Discover page. Use the registry from [profile](01-student-intake.md) and published rules from the [catalog](05-program-catalog.md).
 
 ## Acceptance criteria
 - All 100 independently labeled synthetic-profile cases pass.

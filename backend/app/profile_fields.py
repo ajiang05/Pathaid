@@ -25,6 +25,8 @@ FIELDS = {
     "pell_eligible": {"type": "boolean", "question": "Are you eligible for a Pell Grant?", "sensitive": True, "progressive": True},
     "student_aid_index": {"type": "integer", "question": "What is your Student Aid Index?", "sensitive": True, "progressive": True},
     "ethnicity": {"type": "string", "question": "How do you describe your ethnicity?", "sensitive": True, "progressive": True},
+    "race": {"type": "multi_choice", "values": ["american_indian_or_alaska_native", "asian", "black_or_african_american", "middle_eastern_or_north_african", "native_hawaiian_or_pacific_islander", "white", "other"], "question": "How do you describe your race?", "sensitive": True, "progressive": True},
+    "first_generation_student": {"type": "boolean", "question": "Are you a first-generation college student?", "sensitive": True, "progressive": True},
     "citizenship_status": {"type": "choice", "values": ["us_citizen", "permanent_resident", "international", "other"], "question": "What is your citizenship or immigration status?", "sensitive": True, "progressive": True},
     "major": {"type": "string", "question": "What is your major or field of study?", "sensitive": False, "progressive": True},
     "class_year": {"type": "choice", "values": ["first", "second", "third", "fourth", "fifth_or_later"], "question": "What is your class year?", "sensitive": False, "progressive": True},

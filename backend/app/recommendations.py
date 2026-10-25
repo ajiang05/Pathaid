@@ -220,7 +220,7 @@ def template_explanation(result: ProgramEvaluationResponse) -> str:
     }[result.label]
     details = [criterion.reason for criterion in result.criteria if criterion.truth != "unknown"][:2]
     if result.missing_fields:
-        details.append("You can answer the listed follow-up questions to update this result.")
+        details.append("You can add optional details to your student profile to update this result.")
     if result.unresolved_conditions:
         details.append("The provider must confirm the listed unresolved conditions.")
     return " ".join([prefix, *details, "Eligibility to apply does not predict selection or an award."])

@@ -683,7 +683,7 @@ No production load baseline exists yet. The MVP architecture is sized for a smal
 |---|---|---|---|
 | ADR-001 | Use a modular monolith | MVP modules share transactions and one small team owns the system | Deploy API and worker from one codebase; preserve module boundaries |
 | ADR-002 | Keep eligibility independent of web and persistence frameworks | Rules must be reproducible and easy to benchmark | API converts database records into pure inputs |
-| ADR-003 | Use three-valued logic | Missing or unsupported data must not become a false pass/fail | UI must explain unresolved results and follow-up questions |
+| ADR-003 | Use three-valued logic | Missing or unsupported data must not become a false pass/fail | UI must explain unresolved results and direct editable answers to the student profile |
 | ADR-004 | Version catalog content and point to one current revision | Public facts require history and auditability | Edits create drafts; publication changes a pointer atomically |
 | ADR-005 | Retain immutable source snapshots and exact evidence | Reviewers and students need traceable claims | Source bodies are sensitive operational data and increase storage |
 | ADR-006 | Use the relational database as the job queue | Keeps MVP operations and cost small while preserving durable state | Polling and lease logic live in the application; no broker semantics |

@@ -7,7 +7,7 @@ Show signed-in students a personalized home page of scholarships, grants, and ba
 
 ## Scope and behavior
 - Make scholarships a first-class category alongside grants, food assistance, emergency support, and housing resources.
-- Populate the home page from the saved profile, and refresh it after profile edits or new follow-up answers.
+- Populate the home page from the saved profile, and refresh results after profile edits.
 - Retrieve only published revisions and filter candidates using reviewed category, institutional, and geographic coverage metadata.
 - Match scholarships using applicable major, class-year, GPA/scale, financial-need, and other reviewed requirements through the shared eligibility engine.
 - Do not assume a 4.0 GPA scale or convert scales without a reviewed conversion rule.

@@ -6,7 +6,7 @@ These documents break the agreed [project plan](../plan.md) into focused impleme
 
 - [Student account and editable profile](01-student-intake.md)
 - [Personalized scholarship and assistance discovery](02-personalized-discovery.md)
-- [Deterministic eligibility and follow-up questions](03-eligibility-engine.md)
+- [Deterministic eligibility and missing-information detection](03-eligibility-engine.md)
 - [Source-backed results and application checklists](04-results-and-checklists.md)
 
 ## Catalog and AI administration
