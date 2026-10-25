@@ -154,7 +154,7 @@ link → return after profile or catalog changes.
 | F-07 | Quality/deployment | Must | Benchmarks, PostgreSQL CI, containers, health/recovery | Invented metrics/hosting claims | Local foundation implemented |
 | F-08 | Student/admin web UI | Must | Accessible responsive Next.js flows from Stitch | Native apps and invented designs | Implemented and browser-tested locally |
 | F-09 | Launch catalog | Must | 10–20 current reviewed programs; at least four scholarships and two beyond UMass | Broad coverage claims | 12 official-source candidates validated; human review pending |
-| F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Backend and admin UI implemented; controlled external-source verification pending |
+| F-10 | Scheduled scholarship discovery | Must | Daily approved-source scans, hash change detection, bounded one-hop discovery, private candidates | Broad crawling, silent content publication, notifications | Backend/admin UI and one controlled local official-source cycle verified; hosted verification pending |
 
 **Scope freeze:** Scope freezes when the Stitch student and admin flows are
 approved. Additions must identify the user outcome, release tradeoff, and work
@@ -377,7 +377,7 @@ states, and equivalent mobile and desktop task completion.
 
 ## 10. Technical boundaries
 
-- **Frontend:** Next.js, TypeScript, Tailwind — pending.
+- **Frontend:** Next.js 16.4.2, React 19, TypeScript, Tailwind — implemented locally.
 - **API:** FastAPI on Python 3.14.
 - **Database:** PostgreSQL 16, SQLAlchemy 2, Alembic.
 - **Authentication:** Custom server-side student and single-admin sessions.
@@ -386,8 +386,8 @@ states, and equivalent mobile and desktop task completion.
 - **Infrastructure:** Docker, Compose, GitHub Actions; hosting TBD after pricing.
 - **Constraints:** One developer, 4–6 weeks, $25/month, 10–20 programs, one
   worker by default.
-- **Risks:** Frontend/wireframes, real catalog, live model metrics, and deployed
-  concurrency remain unverified.
+- **Risks:** Human-reviewed catalog, formal live model metrics, hosted operations,
+  and deployed concurrency remain unverified.
 
 ### API summary
 
@@ -475,8 +475,8 @@ resolve findings.
 ### Product
 
 - [ ] Stitch prototype covers every student/admin screen and state.
-- [ ] Complete student journey works on mobile and desktop.
-- [ ] Admin ingestion/review/publication works through the UI.
+- [x] Complete student journey passes automated mobile and desktop browser tests.
+- [x] Admin ingestion/review/publication passes automated browser tests.
 - [ ] All Must features meet acceptance criteria.
 - [ ] Loading, empty, unknown, closed, error, and recovery states work.
 - [ ] Catalog has 10–20 current manually reviewed programs.
@@ -485,12 +485,13 @@ resolve findings.
 ### Engineering and trust
 
 - [x] Backend auth, CSRF, privacy, and publication boundaries have tests.
+- [x] Local runtime logs passed a credential/profile canary and account-deletion check.
 - [x] Eligibility passes 100/100 versioned cases.
 - [x] PostgreSQL migration/schema checks run in CI.
 - [x] Local Docker database, migrations, API readiness, and worker were verified.
 - [ ] Release image build passes CI.
 - [ ] Live extraction metrics are measured or explicitly remain unmeasured.
-- [ ] Accessibility and supported-browser checks pass.
+- [x] Automated accessibility and supported-browser checks pass locally.
 - [ ] Hosted HTTPS, cookies, origin, networking, and log redaction are verified.
 - [ ] Hosted backup restoration is practiced.
 
@@ -523,6 +524,7 @@ resolve findings.
 | 2026-10-19 | Kept frontend pending Stitch artifacts | Avoid inventing visual requirements | UI remains critical path | Aidan Jiang |
 | 2026-10-19 | Added daily approved-source discovery and refresh | Reduce manual scholarship collection while protecting publication quality | Scheduler and registry become MVP work; material changes still require review | Aidan Jiang |
 | 2026-10-19 | Marked live AI, real catalog, and hosting pending | Avoid unsupported claims | Requires evidence before launch | Aidan Jiang |
+| 2026-10-24 | Recorded responsive frontend and automated browser/accessibility completion | Keep scope status aligned with the tested implementation | Human review, hosted operations, and observed usability remain release gates | Aidan Jiang |
 
 ## 18. References
 

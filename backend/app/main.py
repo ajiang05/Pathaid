@@ -21,6 +21,7 @@ from .admin_auth import router as admin_auth_router
 from .admin_api import router as admin_router
 from .admin_review import router as admin_review_router
 from .catalog_schemas import ProgramDetail, ProgramSummary, SourceReference
+from .client_address import client_address
 from .database import get_db
 from .discovery import RankingRecord, rank_records
 from .eligibility import RuleValidationError, evaluate_eligibility
@@ -298,9 +299,7 @@ def check_origin(request: Request) -> None:
 def address_key(request: Request) -> str:
     """Return a privacy-reduced key for per-address rate limiting."""
 
-    # Only the direct peer address is trusted. Proxy forwarding headers are ignored.
-    address = request.client.host if request.client else "unknown"
-    return digest(address)
+    return digest(client_address(request))
 
 
 def check_rate_limit(db: Session, request: Request) -> None:

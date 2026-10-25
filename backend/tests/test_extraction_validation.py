@@ -1,6 +1,7 @@
 """Tests for deterministic validation after schema-constrained extraction."""
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from app.extraction_schemas import ExtractedProgramDraft
 from app.extraction_validation import validate_extracted_draft
@@ -123,6 +124,19 @@ def test_invalid_operand_type_blocks_the_proposal():
     assert "invalid_rule" in finding_codes(result)
 
 
+def test_unknown_choice_value_blocks_the_proposal():
+    """Model-friendly labels must not bypass the profile registry vocabulary."""
+
+    payload = proposal()
+    payload["eligibility_tree"]["field"] = "state"
+    payload["eligibility_tree"]["operator"] = "eq"
+    payload["eligibility_tree"]["value"] = "Massachusetts"
+
+    result = validate_extracted_draft(ExtractedProgramDraft.model_validate(payload), Snapshot())
+
+    assert "invalid_rule" in finding_codes(result)
+
+
 def test_unsupported_logic_is_preserved_as_a_warning():
     """Ambiguous mandatory logic reaches review without becoming eligibility."""
 
@@ -164,3 +178,47 @@ def test_missing_named_timezone_is_visible_to_reviewers():
 
     assert result.is_valid
     assert "missing_deadline_timezone" in finding_codes(result)
+
+
+def test_non_iana_deadline_timezone_is_rejected_before_revision_creation():
+    """Provider labels such as Eastern cannot fail later during persistence."""
+
+    data = proposal()
+    data["deadline_timezone"] = "Eastern"
+
+    result = validate_extracted_draft(ExtractedProgramDraft.model_validate(data), Snapshot())
+
+    assert not result.is_valid
+    assert "invalid_deadline_timezone" in finding_codes(result)
+
+
+def test_open_opportunity_with_past_deadline_is_rejected():
+    """A stale open label cannot be approved after its local deadline day."""
+
+    data = proposal()
+    data["application_deadline"] = "2026-09-15"
+
+    result = validate_extracted_draft(
+        ExtractedProgramDraft.model_validate(data),
+        Snapshot(),
+        as_of=datetime(2026, 9, 16, 4, 1, tzinfo=timezone.utc),
+    )
+
+    assert not result.is_valid
+    assert "open_after_deadline" in finding_codes(result)
+
+
+def test_open_opportunity_remains_valid_through_deadline_day():
+    """Date-only deadlines include the whole provider-local calendar day."""
+
+    data = proposal()
+    data["application_deadline"] = "2026-09-15"
+
+    result = validate_extracted_draft(
+        ExtractedProgramDraft.model_validate(data),
+        Snapshot(),
+        as_of=datetime(2026, 9, 16, 3, 30, tzinfo=timezone.utc),
+    )
+
+    assert result.is_valid
+    assert "open_after_deadline" not in finding_codes(result)

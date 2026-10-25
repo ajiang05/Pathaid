@@ -96,7 +96,7 @@ class UnresolvedCondition(StrictModel):
 class ExtractedProgramDraft(StrictModel):
     """Complete model output proposed for deterministic validation and review."""
 
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=240)
     description: str = Field(min_length=1)
     categories: list[Category] = Field(min_length=1)
     coverage: CoverageDraft
@@ -104,11 +104,11 @@ class ExtractedProgramDraft(StrictModel):
     eligibility_tree: RuleNode
     # This is the model's proposal. Only an administrator can attest completeness.
     coverage_complete: bool
-    award_cycle: str | None
+    award_cycle: str | None = Field(max_length=120)
     application_deadline: str | None
-    deadline_timezone: str | None
+    deadline_timezone: str | None = Field(max_length=80)
     application_availability: Literal["open", "closed", "unknown"]
-    assistance_amount: str | None
+    assistance_amount: str | None = Field(max_length=240)
     selection_factors: list[SelectionFactor]
     application_url: str | None
     unresolved_conditions: list[UnresolvedCondition]

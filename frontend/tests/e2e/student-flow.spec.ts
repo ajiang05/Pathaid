@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 const profile = {
   fields: {
@@ -55,23 +56,34 @@ async function mockStudentApi(page: Page) {
   });
 }
 
+async function expectNoAccessibilityViolations(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(results.violations).toEqual([]);
+}
+
 test("landing page leads to account creation", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /find financial support/i })).toBeVisible();
   await page.getByRole("link", { name: "Build your profile" }).click();
   await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByRole("heading", { name: "Start finding support" })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
 });
 
 test("authenticated student can discover and inspect a reviewed result", async ({ page }) => {
   await mockStudentApi(page);
   await page.goto("/home");
   await expect(page.getByRole("heading", { name: "Your support search starts here" })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "Discover support" }).click();
   await expect(page.getByRole("heading", { name: "Open opportunities" })).toBeVisible();
   await expect(page.getByText(result.name)).toBeVisible();
+  await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "View details" }).click();
   await expect(page.getByRole("heading", { name: result.name })).toBeVisible();
   await expect(page.getByText("Reviewed eligibility requirements")).toBeVisible();
   await expect(page.getByRole("link", { name: "Open official provider site" })).toHaveAttribute("href", result.application_url);
+  await expectNoAccessibilityViolations(page);
 });

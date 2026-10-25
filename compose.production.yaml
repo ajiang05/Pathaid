@@ -1,0 +1,27 @@
+services:
+  caddy:
+    image: caddy:2.11.4-alpine
+    environment:
+      PATHAID_HOSTNAME: ${PATHAID_HOSTNAME:?set PATHAID_HOSTNAME in the production environment}
+    depends_on:
+      frontend:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${PATHAID_DOCKER_SUBNET:-172.30.0.0/24}
+
+volumes:
+  caddy-data:
+  caddy-config:

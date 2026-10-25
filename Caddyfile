@@ -1,0 +1,16 @@
+{$PATHAID_HOSTNAME} {
+	encode zstd gzip
+
+	# Browser security headers that do not interfere with Next.js runtime scripts.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Caddy manages public certificates and forwards only to the private
+	# frontend. Next.js keeps browser API requests on the same origin.
+	reverse_proxy frontend:3000
+}

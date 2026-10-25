@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Mapping, Protocol
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .eligibility import RuleValidationError, validate_rule_tree
 from .extraction_schemas import (
@@ -54,6 +55,8 @@ def validate_extracted_draft(
     draft: ExtractedProgramDraft,
     snapshot: SnapshotForValidation,
     field_registry: Mapping[str, Mapping] = FIELDS,
+    *,
+    as_of: datetime | None = None,
 ) -> DraftValidationResult:
     """Check rule semantics, evidence provenance, coverage, dates, and URLs."""
 
@@ -70,7 +73,7 @@ def validate_extracted_draft(
         _validate_evidence(evidence, path, snapshot, findings)
 
     _validate_coverage(draft, field_registry, findings)
-    _validate_deadline(draft, findings)
+    _validate_deadline(draft, findings, as_of or datetime.now(timezone.utc))
     _validate_application_url(draft, findings)
 
     if _has_unsupported(draft.eligibility_tree):
@@ -150,15 +153,56 @@ def _validate_coverage(
         findings.append(_error("empty_institution", "coverage.institutions", "Coverage institutions cannot be blank."))
 
 
-def _validate_deadline(draft: ExtractedProgramDraft, findings: list[ValidationFinding]) -> None:
-    """Require a machine-readable ISO 8601 deadline when one is extracted."""
+def _validate_deadline(
+    draft: ExtractedProgramDraft,
+    findings: list[ValidationFinding],
+    as_of: datetime,
+) -> None:
+    """Validate deadline syntax, timezone, and open-status consistency."""
 
     if not draft.application_deadline:
         return
     try:
-        datetime.fromisoformat(draft.application_deadline.replace("Z", "+00:00"))
+        deadline = datetime.fromisoformat(draft.application_deadline.replace("Z", "+00:00"))
     except ValueError:
         findings.append(_error("invalid_deadline", "application_deadline", "The deadline must be an ISO 8601 date or timestamp."))
+        return
+    deadline_zone = None
+    if draft.deadline_timezone:
+        try:
+            deadline_zone = ZoneInfo(draft.deadline_timezone)
+        except ZoneInfoNotFoundError:
+            findings.append(
+                _error(
+                    "invalid_deadline_timezone",
+                    "deadline_timezone",
+                    "The deadline timezone must be a valid IANA timezone name.",
+                )
+            )
+    if draft.application_availability != "open":
+        return
+
+    # A date-only deadline remains open through that provider-local calendar
+    # day. A timestamp closes at its exact instant. Naive timestamps without a
+    # named timezone cannot be compared safely and already receive a warning.
+    comparison_zone = deadline.tzinfo or deadline_zone
+    if "T" not in draft.application_deadline:
+        current_date = as_of.astimezone(deadline_zone or timezone.utc).date()
+        is_past = deadline.date() < current_date
+    elif comparison_zone is not None:
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=deadline_zone)
+        is_past = deadline <= as_of.astimezone(deadline.tzinfo)
+    else:
+        is_past = False
+    if is_past:
+        findings.append(
+            _error(
+                "open_after_deadline",
+                "application_availability",
+                "An opportunity cannot remain open after its application deadline has passed.",
+            )
+        )
 
 
 def _validate_application_url(draft: ExtractedProgramDraft, findings: list[ValidationFinding]) -> None:

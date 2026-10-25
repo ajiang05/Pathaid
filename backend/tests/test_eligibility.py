@@ -191,6 +191,16 @@ class RuleValidationTests(unittest.TestCase):
         self.assert_invalid(condition("state", "gte", 3), "numeric field")
         self.assert_invalid(condition("state", "contains", "MA"), "multi-choice field")
 
+    def test_choice_operands_must_match_profile_values(self):
+        """Catalog rules cannot use labels that saved profiles will never contain."""
+
+        self.assert_invalid(condition("state", "eq", "Massachusetts"), "declared profile values")
+        self.assert_invalid(condition("state", "in", ["MA", "Massachusetts"]), "declared profile values")
+        self.assert_invalid(
+            condition("assistance_categories", "contains", "scholarship"),
+            "declared profile values",
+        )
+
     def test_evidence_is_required(self):
         rule = condition("state", "eq", "MA")
         rule["evidence"] = {"snapshot_id": "snapshot-1"}

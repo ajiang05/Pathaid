@@ -56,6 +56,12 @@ def test_normalizes_text_and_hash_deterministically():
     assert hash_text(first) == hash_text(second)
 
 
+def test_normalize_text_collapses_unicode_horizontal_spaces():
+    """HTML non-breaking spaces normalize like ordinary spaces for evidence."""
+
+    assert normalize_text("minimum\u00a0 weighted\u2009GPA", 100) == "minimum weighted GPA"
+
+
 def test_html_extraction_omits_scripts_styles_and_templates():
     """Only visible webpage content enters the retained extraction text."""
 

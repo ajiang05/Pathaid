@@ -4,10 +4,16 @@ on:
   push:
     paths:
       - "backend/**"
+      - ".env.example"
+      - "Caddyfile"
+      - "compose*.yaml"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      - ".env.example"
+      - "Caddyfile"
+      - "compose*.yaml"
       - ".github/workflows/backend-ci.yml"
 
 # A newer push supersedes an older run for the same branch or pull request.
@@ -95,4 +101,9 @@ jobs:
           POSTGRES_DB: pathaid
           POSTGRES_USER: pathaid
           POSTGRES_PASSWORD: ci-only-password
-        run: docker compose config --quiet
+          PATHAID_HOSTNAME: beta.pathaid.example
+          PATHAID_DOCKER_SUBNET: 172.30.0.0/24
+          PATHAID_TRUSTED_PROXY_CIDRS: 172.30.0.0/24
+        run: |
+          docker compose config --quiet
+          docker compose -f compose.yaml -f compose.production.yaml config --quiet

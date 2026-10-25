@@ -1,5 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "3000", 10);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error("PLAYWRIGHT_PORT must be a valid TCP port.");
+}
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -7,7 +13,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL,
     trace: "on-first-retry",
   },
   projects: [
@@ -15,9 +21,10 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: "npm run dev -- --hostname localhost",
-    url: "http://localhost:3000",
-    reuseExistingServer: false,
+    command: `npm run dev -- --hostname localhost --port ${port}`,
+    url: baseURL,
+    // Local Docker already serves this port; CI still starts a clean dev server.
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 });

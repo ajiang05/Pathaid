@@ -1,6 +1,8 @@
 """Tests for provider-independent behavior of the OpenAI extraction adapter."""
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -24,6 +26,7 @@ class Snapshot:
     id: str = "snapshot-1"
     source_url: str = "https://example.edu/aid"
     source_text: str = "Applicants must have a 3.0 GPA."
+    acquired_at: datetime = datetime(2026, 10, 24, 15, 30, tzinfo=timezone.utc)
 
 
 def draft() -> ExtractedProgramDraft:
@@ -108,6 +111,7 @@ def test_adapter_uses_structured_output_and_records_metadata():
     assert responses.kwargs["text_format"] is ExtractedProgramDraft
     assert responses.kwargs["model"] == "test-model"
     assert "student_profile" not in responses.kwargs["input"][1]["content"]
+    assert json.loads(responses.kwargs["input"][1]["content"])["extraction_date"] == "2026-10-24"
     assert result.schema_version == EXTRACTION_SCHEMA_VERSION
     assert result.usage.total_tokens == 200
     assert result.request_id == "request-1"
@@ -181,11 +185,31 @@ def test_gemini_adapter_uses_same_schema_and_normalizes_usage():
     )
     result = adapter.extract(Snapshot())
 
-    assert models.kwargs["config"]["response_schema"] is ExtractedProgramDraft
+    schema = models.kwargs["config"]["response_json_schema"]
+    assert schema["title"] == "ExtractedProgramDraft"
+    assert "oneOf" not in str(schema)
+    assert "discriminator" not in str(schema)
+    assert "children" not in schema["$defs"]["RuleGroup"]["required"]
+    assert schema["$defs"]["ConditionRule"]["properties"]["type"]["enum"] == ["condition"]
     assert models.kwargs["config"]["response_mime_type"] == "application/json"
     assert result.draft.name == "Example Award"
     assert result.usage.total_tokens == 29
     assert result.request_id == "gemini-request-1"
+
+
+def test_gemini_adapter_discards_oversized_optional_amount():
+    """An ignored maxLength becomes unknown instead of truncated financial data."""
+
+    raw = draft().model_dump(mode="json")
+    raw["assistance_amount"] = "x" * 241
+    adapter = GeminiExtractionAdapter(
+        GeminiExtractionConfig(api_key="test", model="gemini-test"),
+        client=SimpleNamespace(models=FakeModels(SimpleNamespace(parsed=raw, usage_metadata=None))),
+    )
+
+    result = adapter.extract(Snapshot())
+
+    assert result.draft.assistance_amount is None
 
 
 def test_provider_selection_requires_matching_key_and_known_provider():

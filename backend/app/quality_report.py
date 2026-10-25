@@ -68,7 +68,14 @@ def build_offline_report(extraction_predictions: dict[str, ExtractedProgramDraft
             "model_metrics_status": model_metrics_status,
         },
         "frontend": {
-            "browser_tests": "pending frontend implementation",
+            # Browser checks execute in the frontend workflow because they
+            # require Node, Chromium, and a running Next.js server. Keep their
+            # reproducible command and scope visible without claiming that this
+            # Python report executed them.
+            "browser_tests": "implemented; run separately",
+            "command": "cd frontend && npm run test:e2e",
+            "projects": ["desktop-chromium", "mobile-chromium"],
+            "accessibility_standard": "WCAG 2.2 AA tags via axe-core",
             "usability_sessions_completed": 0,
             "usability_sessions_required": 5,
         },

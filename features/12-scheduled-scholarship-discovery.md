@@ -1,6 +1,6 @@
 # Scheduled scholarship discovery and refresh
 
-Status: backend implemented; administrator UI and controlled external-source verification pending. Parent specification: [plan.md](../plan.md).
+Status: backend and administrator UI implemented; a controlled official-source changed/unchanged cycle was verified locally with robots enforcement and no model call for unchanged content. Hosted scheduling and alert verification remain pending. Parent specification: [plan.md](../plan.md).
 
 ## Goal
 
