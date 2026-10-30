@@ -6,7 +6,7 @@ This record identifies the 12 intended MVP launch candidates and the final check
 
 ## Queue note
 
-The local review queue contains extra drafts because live integration checks produced stronger replacements. Use only the revision IDs named in the candidate table below. The final repair set includes Pell and Gates replacements from earlier controlled runs, Adams from prompt 1.3.0, four prompt-1.3.0 replacements for legacy-schema drafts, and two source-backed correction drafts created through the invalid-draft recovery workflow. Reject each older draft after confirming its replacement. Publish only one revision for each program.
+The local review queue contains extra drafts because live integration checks produced stronger replacements. The **Current drafts** view shows only the newest pending revision for each stable program; the **Superseded drafts** view preserves older workflows for explicit rejection and audit history. Still confirm each revision ID against the candidate table below before deciding it. The final repair set includes Pell and Gates replacements from earlier controlled runs, Adams from prompt 1.3.0, four prompt-1.3.0 replacements for legacy-schema drafts, and two source-backed correction drafts created through the invalid-draft recovery workflow. Reject each older draft after confirming its replacement. Publish only one revision for each program.
 
 ## Candidate audit
 
@@ -27,11 +27,11 @@ The local review queue contains extra drafts because live integration checks pro
 
 ## Required publication procedure
 
-1. Sign in at `/admin/login` and open the awaiting-review queue.
+1. Sign in at `/admin/login`, open **Ingestion**, and select **Current drafts**.
 2. For each selected draft, compare every rule, checklist item, amount, deadline, link, and coverage field with its retained source.
 3. Resolve or consciously accept every warning. Set coverage complete only when no unsupported or unresolved requirement remains.
 4. Attest source accuracy and approve, or reject with a short reason. Approval creates the immutable review event and public revision pointer.
-5. Reject every awaiting draft whose revision ID is not the selected ID in the table, including superseded Pell, Gates, Adams, and legacy-schema drafts.
+5. Select **Superseded drafts** and reject every pending revision whose ID is not the selected ID in the table, including superseded Pell, Gates, Adams, and legacy-schema drafts.
 6. Confirm that exactly 12 programs appear through the public catalog API and student discovery interface.
 7. Export the reviewed bundle using `python -m app.catalog_seed export` and store it according to the deployment runbook.
 

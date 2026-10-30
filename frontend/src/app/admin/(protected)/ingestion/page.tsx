@@ -11,6 +11,7 @@ type Run = {
   parent_run_id: string | null;
   target_program_id: string | null;
   draft_revision_id: string | null;
+  superseded_by_revision_id: string | null;
   scheduled_source_id: string | null;
   scheduled_scan_id: string | null;
   discovered_candidate_id: string | null;
@@ -23,13 +24,13 @@ type Run = {
   completed_at: string | null;
 };
 
-type RunFilter = "awaiting_review" | "failed" | "published" | "all";
+type RunFilter = "current_review" | "superseded" | "awaiting_review" | "failed" | "published" | "all";
 
 export default function IngestionPage() {
   const session = useAdminSession();
   const [runs, setRuns] = useState<Run[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
-  const [filter, setFilter] = useState<RunFilter>("awaiting_review");
+  const [filter, setFilter] = useState<RunFilter>("current_review");
   const [showForm, setShowForm] = useState(false);
   const [method, setMethod] = useState("webpage");
   const [message, setMessage] = useState("");
@@ -86,8 +87,17 @@ export default function IngestionPage() {
     }
   }
 
-  const visibleRuns = filter === "all" ? runs : runs.filter((run) => run.state === filter);
+  const visibleRuns =
+    filter === "all"
+      ? runs
+      : filter === "current_review"
+        ? runs.filter((run) => run.state === "awaiting_review" && !run.superseded_by_revision_id)
+        : filter === "superseded"
+          ? runs.filter((run) => run.state === "awaiting_review" && Boolean(run.superseded_by_revision_id))
+          : runs.filter((run) => run.state === filter);
   const awaitingCount = runs.filter((run) => run.state === "awaiting_review").length;
+  const currentReviewCount = runs.filter((run) => run.state === "awaiting_review" && !run.superseded_by_revision_id).length;
+  const supersededCount = runs.filter((run) => run.state === "awaiting_review" && Boolean(run.superseded_by_revision_id)).length;
   const failedCount = runs.filter((run) => run.state === "failed").length;
   const publishedCount = runs.filter((run) => run.state === "published").length;
 
@@ -159,7 +169,9 @@ export default function IngestionPage() {
             <label>
               Show runs
               <select value={filter} onChange={(event) => setFilter(event.target.value as RunFilter)}>
-                <option value="awaiting_review">Awaiting review ({awaitingCount})</option>
+                <option value="current_review">Current drafts ({currentReviewCount})</option>
+                <option value="superseded">Superseded drafts ({supersededCount})</option>
+                <option value="awaiting_review">All awaiting review ({awaitingCount})</option>
                 <option value="failed">Failed attempts ({failedCount})</option>
                 <option value="published">Published ({publishedCount})</option>
                 <option value="all">All history ({runs.length})</option>
@@ -182,6 +194,7 @@ export default function IngestionPage() {
                       </span>
                       <span className="info-pill">{run.scheduled_source_id ? "Scheduled" : "Manual"}</span>
                       {run.discovered_candidate_id && <span className="info-pill">Discovered candidate</span>}
+                      {run.superseded_by_revision_id && <span className="info-pill">Superseded draft</span>}
                     </div>
                     <h2>{run.source_url}</h2>
                     <p>

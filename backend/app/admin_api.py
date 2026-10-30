@@ -335,7 +335,7 @@ class ManualRetryRequest(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
-def _run_summary(run: IngestionRun) -> dict:
+def _run_summary(run: IngestionRun, *, superseded_by_revision_id: str | None = None) -> dict:
     """Serialize diagnostics without returning source or extracted content."""
 
     return {
@@ -346,6 +346,10 @@ def _run_summary(run: IngestionRun) -> dict:
         "scheduled_scan_id": run.scheduled_scan_id,
         "discovered_candidate_id": run.discovered_candidate_id,
         "draft_revision_id": run.draft_revision_id,
+        # A newer pending draft for the same stable program is safer to review.
+        # Keep the older workflow visible as history without asking the UI to
+        # infer ordering from timestamps.
+        "superseded_by_revision_id": superseded_by_revision_id,
         "source_url": run.source_url,
         "source_method": run.source_method,
         "state": run.state,
@@ -444,7 +448,42 @@ def list_ingestion_runs(
         if state not in allowed:
             raise HTTPException(422, detail={"field": "state", "message": "Invalid state"})
         query = query.where(IngestionRun.state == state)
-    return [_run_summary(run) for run in db.scalars(query)]
+    runs = list(db.scalars(query))
+    latest_pending_by_program: dict[str, str] = {}
+    pending = db.execute(
+        select(
+            IngestionRun.target_program_id,
+            IngestionRun.draft_revision_id,
+        )
+        .where(
+            IngestionRun.state == "awaiting_review",
+            IngestionRun.target_program_id.is_not(None),
+            IngestionRun.draft_revision_id.is_not(None),
+        )
+        .order_by(
+            IngestionRun.target_program_id,
+            IngestionRun.created_at.desc(),
+            IngestionRun.id.desc(),
+        )
+    )
+    for program_id, revision_id in pending:
+        # Rows are newest-first within each program, so the first one is the
+        # only draft that should appear in the default current-review queue.
+        latest_pending_by_program.setdefault(program_id, revision_id)
+
+    return [
+        _run_summary(
+            run,
+            superseded_by_revision_id=(
+                latest_pending_by_program.get(run.target_program_id)
+                if run.state == "awaiting_review"
+                and run.target_program_id is not None
+                and latest_pending_by_program.get(run.target_program_id) != run.draft_revision_id
+                else None
+            ),
+        )
+        for run in runs
+    ]
 
 
 @router.get("/ingestion-runs/{run_id}")

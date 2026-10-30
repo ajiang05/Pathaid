@@ -1,5 +1,7 @@
 """Protected API tests for ingestion submission, inspection, and retry."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -74,6 +76,43 @@ def test_submit_list_and_idempotently_return_a_run(admin_client):
     # Summary endpoints do not return retained or submitted source bodies.
     assert "source_text" not in listed[0]
     assert "Official synthetic details" not in api.get("/api/admin/ingestion-runs").text
+
+
+def test_list_marks_older_pending_draft_for_same_program_as_superseded(admin_client):
+    """The review queue identifies only the newest pending draft as current."""
+
+    api, engine = admin_client
+    authenticate(api)
+    older_at = datetime(2026, 10, 20, tzinfo=timezone.utc)
+    with Session(engine) as db:
+        older = IngestionRun(
+            id="run-older",
+            idempotency_key="older",
+            request_fingerprint="a" * 64,
+            target_program_id="program-1",
+            draft_revision_id="revision-older",
+            source_url="https://example.edu/older",
+            source_method="webpage",
+            state="awaiting_review",
+            created_at=older_at,
+        )
+        newer = IngestionRun(
+            id="run-newer",
+            idempotency_key="newer",
+            request_fingerprint="b" * 64,
+            target_program_id="program-1",
+            draft_revision_id="revision-newer",
+            source_url="https://example.edu/newer",
+            source_method="webpage",
+            state="awaiting_review",
+            created_at=older_at + timedelta(days=1),
+        )
+        db.add_all([older, newer])
+        db.commit()
+
+    listed = {item["id"]: item for item in api.get("/api/admin/ingestion-runs").json()}
+    assert listed["run-newer"]["superseded_by_revision_id"] is None
+    assert listed["run-older"]["superseded_by_revision_id"] == "revision-newer"
 
 
 def test_conflicting_idempotency_and_invalid_source_shapes_are_rejected(admin_client):

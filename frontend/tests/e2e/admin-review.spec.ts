@@ -6,8 +6,9 @@ const revisionId = "revision-awaiting-review";
 const run = {
   id: "run-1",
   parent_run_id: null,
-  target_program_id: null,
+  target_program_id: "program-1",
   draft_revision_id: revisionId,
+  superseded_by_revision_id: null,
   scheduled_source_id: "scheduled-source-1",
   scheduled_scan_id: "scheduled-scan-1",
   discovered_candidate_id: "candidate-1",
@@ -31,6 +32,15 @@ const failedRun = {
   state: "failed",
   error_code: "invalid_draft",
   error_message: "The extracted draft failed validation.",
+};
+
+const supersededRun = {
+  ...run,
+  id: "run-superseded",
+  draft_revision_id: "revision-superseded",
+  superseded_by_revision_id: revisionId,
+  source_url: "https://example.edu/older-scholarship",
+  created_at: "2026-10-21T12:00:00Z",
 };
 
 const proposedDraft = {
@@ -88,7 +98,7 @@ test("administrator reviews retained evidence before publishing a draft", async 
       return route.fulfill({ json: { csrf_token: "admin-csrf", email: "reviewer@example.com" } });
     }
     if (path === "/api/admin/ingestion-runs") {
-      return route.fulfill({ json: [run, failedRun] });
+      return route.fulfill({ json: [run, supersededRun, failedRun] });
     }
     if (path === `/api/admin/revisions/${revisionId}`) {
       return route.fulfill({ json: review });
@@ -105,10 +115,14 @@ test("administrator reviews retained evidence before publishing a draft", async 
   await expect(page.getByText("Awaiting Review", { exact: true })).toBeVisible();
   await expect(page.getByText("Scheduled", { exact: true })).toBeVisible();
   await expect(page.getByText(failedRun.source_url)).toBeHidden();
+  await expect(page.getByText(supersededRun.source_url)).toBeHidden();
+  await page.getByLabel("Show runs").selectOption("superseded");
+  await expect(page.getByText(supersededRun.source_url)).toBeVisible();
+  await expect(page.getByText("Superseded draft", { exact: true })).toBeVisible();
   await page.getByLabel("Show runs").selectOption("failed");
   await expect(page.getByText(failedRun.source_url)).toBeVisible();
   await expect(page.getByText(run.source_url)).toBeHidden();
-  await page.getByLabel("Show runs").selectOption("awaiting_review");
+  await page.getByLabel("Show runs").selectOption("current_review");
   await expectNoAccessibilityViolations(page);
 
   await page.getByRole("link", { name: "Review draft" }).click();
