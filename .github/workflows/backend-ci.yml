@@ -7,6 +7,7 @@ on:
       - ".env.example"
       - "Caddyfile"
       - "compose*.yaml"
+      - "scripts/verify_hosted_beta.py"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - ".env.example"
       - "Caddyfile"
       - "compose*.yaml"
+      - "scripts/verify_hosted_beta.py"
       - ".github/workflows/backend-ci.yml"
 
 # A newer push supersedes an older run for the same branch or pull request.
@@ -92,6 +94,9 @@ jobs:
       - name: Validate launch catalog intake
         run: python -m app.catalog_intake validate
 
+      - name: Check hosted beta verifier syntax
+        run: python -m py_compile ../scripts/verify_hosted_beta.py
+
       - name: Build production backend image
         run: docker build --tag pathaid-backend:test .
 
@@ -107,3 +112,12 @@ jobs:
         run: |
           docker compose config --quiet
           docker compose -f compose.yaml -f compose.production.yaml config --quiet
+
+      - name: Validate Caddy configuration
+        working-directory: ${{ github.workspace }}
+        run: >-
+          docker run --rm
+          --env PATHAID_HOSTNAME=beta.pathaid.example
+          --volume "${{ github.workspace }}/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2.11.4-alpine
+          caddy validate --config /etc/caddy/Caddyfile
