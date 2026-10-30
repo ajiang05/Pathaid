@@ -44,6 +44,11 @@ from .source_service import acquire_source, persist_acquired_source
 from .scheduled_discovery import allowed_candidate_urls, create_candidate_runs, robots_allows, source_url_in_scope
 
 
+# These errors are source-backed and safe to expose in a private correction
+# draft. Provenance failures such as invented excerpts still fail the run.
+CORRECTABLE_VALIDATION_ERRORS = frozenset({"tautological_choice"})
+
+
 def process_acquisition_stage(
     db: Session,
     lease: RunLease,
@@ -226,12 +231,20 @@ def process_validation_stage(
 
     result = validate_extracted_draft(draft, snapshot)
     run.validation_findings = [asdict(finding) for finding in result.findings]
-    if not result.is_valid:
+    error_codes = {finding.code for finding in result.findings if finding.severity == "error"}
+    correction_allowed = bool(error_codes) and error_codes <= CORRECTABLE_VALIDATION_ERRORS
+    if not result.is_valid and not correction_allowed:
         _finish_failure(db, run, attempt, "invalid_draft", "The extracted draft failed deterministic validation.", False, config, clock)
         return
     try:
         program = _target_program(db, run, draft)
-        revision = _build_revision(program, snapshot, draft)
+        revision = _build_revision(
+            program,
+            snapshot,
+            draft,
+            validation_status="valid" if result.is_valid else "invalid",
+            validation_findings=run.validation_findings,
+        )
         db.add(revision)
         db.flush()
     except (ValueError, ZoneInfoNotFoundError, SQLAlchemyError):
@@ -247,7 +260,7 @@ def process_validation_stage(
     run.draft_revision_id = revision.id
     run.state = "awaiting_review"
     run.completed_at = clock()
-    if run.scheduled_scan_id and run.scheduled_source_id:
+    if result.is_valid and run.scheduled_scan_id and run.scheduled_source_id:
         scan = db.get(ScheduledScan, run.scheduled_scan_id)
         source = db.get(ScheduledSource, run.scheduled_source_id)
         if scan is not None and source is not None:
@@ -289,14 +302,17 @@ def _build_revision(
     program: Program,
     snapshot: SourceSnapshot,
     draft: ExtractedProgramDraft,
+    *,
+    validation_status: str,
+    validation_findings: list[dict],
 ) -> ProgramRevision:
-    """Map validated model output while reserving completeness for a human."""
+    """Map source-backed output while reserving completeness for a human."""
 
     revision = ProgramRevision(
         program=program,
         status="draft",
-        validation_status="valid",
-        validation_findings=[],
+        validation_status=validation_status,
+        validation_findings=validation_findings,
         name=draft.name,
         description=draft.description,
         categories=list(draft.categories),

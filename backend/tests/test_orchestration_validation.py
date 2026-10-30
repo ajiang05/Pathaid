@@ -102,6 +102,33 @@ def test_invented_evidence_fails_without_creating_a_draft(sessions):
         assert run.validation_findings[0]["code"] == "excerpt_not_found"
 
 
+def test_source_backed_tautology_creates_an_invalid_correction_draft(sessions):
+    """A reviewer can correct safe semantic findings without publishing them."""
+
+    def tautological(snapshot_id):
+        draft = proposal(snapshot_id).model_dump(mode="python")
+        draft["eligibility_tree"] = {
+            "type": "condition",
+            "field": "study_level",
+            "operator": "in",
+            "value": ["undergraduate", "graduate"],
+            "evidence": {"snapshot_id": snapshot_id, "excerpt": "Applicants must have a 3.0 GPA."},
+            "exceptions_complete": False,
+        }
+        return ExtractedProgramDraft.model_validate(draft)
+
+    with sessions() as db:
+        run = advance_to_validation(db, draft_factory=tautological)
+        process_validation_stage(db, claim_next_run(db, "worker", clock=lambda: NOW), clock=lambda: NOW)
+        db.refresh(run)
+        revision = db.get(ProgramRevision, run.draft_revision_id)
+        assert run.state == "awaiting_review"
+        assert revision.status == "draft"
+        assert revision.validation_status == "invalid"
+        assert revision.validation_findings[0]["code"] == "tautological_choice"
+        assert revision.program.current_published_revision_id is None
+
+
 def test_update_run_uses_existing_program_without_changing_public_pointer(sessions):
     """A replacement draft leaves the currently published revision untouched."""
 

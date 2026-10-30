@@ -122,11 +122,12 @@ def test_adapter_uses_structured_output_and_records_metadata():
 def test_prompt_requires_complete_mandatory_rule_coverage_and_current_profile_fields():
     """The extraction contract must not silently omit rules or drift from profile fields."""
 
-    assert PROMPT_VERSION == "1.3.0"
+    assert PROMPT_VERSION == "1.4.0"
     assert "every mandatory eligibility requirement" in SYSTEM_INSTRUCTIONS
     assert "Never omit a mandatory requirement" in SYSTEM_INSTRUCTIONS
     assert "race, first_generation_student" in SYSTEM_INSTRUCTIONS
     assert "Do not translate \"no prior bachelor's degree\" into study_level" in SYSTEM_INSTRUCTIONS
+    assert "never emit an in condition containing every allowed value" in SYSTEM_INSTRUCTIONS
 
 
 def test_refusal_has_an_explicit_safe_outcome():

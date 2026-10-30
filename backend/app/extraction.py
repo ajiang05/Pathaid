@@ -11,7 +11,7 @@ from typing import Any, Mapping, Protocol
 from .extraction_schemas import EXTRACTION_SCHEMA_VERSION, ExtractedProgramDraft
 
 
-PROMPT_VERSION = "1.3.0"
+PROMPT_VERSION = "1.4.0"
 DEFAULT_EXTRACTION_MODEL = "gpt-6-luna"
 DEFAULT_GEMINI_EXTRACTION_MODEL = "gemini-3.5-flash-lite"
 
@@ -40,6 +40,8 @@ native_hawaiian_or_pacific_islander, white, other; class_year: first, second, th
 assistance_categories: scholarships, grants, food,
 emergency, housing; state: two-letter postal codes including DC. Translate an explicitly equivalent source label
 to its stored value, such as "full-time" to full_time or "US citizen" to us_citizen. Use unsupported when the
+source accepts every allowed value for a choice field; never emit an in condition containing every allowed value,
+because it is tautological and fails deterministic validation. Use unsupported when the
 source concept is not exactly representable: high-school senior is not a class_year value, and a complex
 immigration category must not be guessed as other. A requirement to submit FAFSA or another form, attend an
 eligible institution set, have no prior degree, or remain in good standing on loans/refunds is also unsupported

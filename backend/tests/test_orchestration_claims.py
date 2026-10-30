@@ -122,6 +122,38 @@ def test_manual_retry_links_history_and_reuses_snapshot(sessions):
         assert child.state == "extracting"
 
 
+def test_manual_retry_resumes_invalid_draft_at_validation(sessions):
+    """A deterministic correction retry reuses output without another model call."""
+
+    with sessions() as db:
+        failed = create_ingestion_run(db, IngestionSubmission("invalid-old", WebSourceRequest("https://example.edu/aid")))
+        snapshot = SourceSnapshot(
+            source_url="https://example.edu/aid",
+            final_url="https://example.edu/aid",
+            acquisition_method="webpage",
+            content_hash="b" * 64,
+            source_text="Retained source.",
+        )
+        db.add(snapshot)
+        db.flush()
+        failed.state = "failed"
+        failed.error_code = "invalid_draft"
+        failed.source_snapshot_id = snapshot.id
+        failed.extracted_draft = {"name": "Stored proposal"}
+        failed.model = "model-1"
+        failed.prompt_version = "1.4.0"
+        failed.total_tokens = 123
+        db.commit()
+
+        child = create_manual_retry(db, failed.id, "manual-validation")
+
+        assert child.state == "validating"
+        assert child.extracted_draft == failed.extracted_draft
+        assert child.model == "model-1"
+        assert child.prompt_version == "1.4.0"
+        assert child.total_tokens == 123
+
+
 def test_valid_lease_loads_owned_run(sessions):
     """The exact unexpired fencing token authorizes stage updates."""
 

@@ -236,10 +236,23 @@ def create_manual_retry(
     if retry.parent_run_id is None:
         retry.parent_run_id = failed.id
         if failed.source_snapshot_id:
-            # A new model call can repair extraction/validation while avoiding
-            # another network acquisition of an already retained source.
             retry.source_snapshot_id = failed.source_snapshot_id
-            retry.state = "extracting"
+            if failed.error_code == "invalid_draft" and failed.extracted_draft:
+                # Deterministic validation can be resumed without paying for a
+                # second provider call or discarding source-backed output.
+                retry.extracted_draft = failed.extracted_draft
+                retry.model = failed.model
+                retry.prompt_version = failed.prompt_version
+                retry.schema_version = failed.schema_version
+                retry.provider_request_id = failed.provider_request_id
+                retry.input_tokens = failed.input_tokens
+                retry.output_tokens = failed.output_tokens
+                retry.total_tokens = failed.total_tokens
+                retry.state = "validating"
+            else:
+                # Extraction/provider failures need a new model call but can
+                # still avoid another acquisition of the retained source.
+                retry.state = "extracting"
         db.commit()
         db.refresh(retry)
     return retry
