@@ -100,6 +100,32 @@ chains fall back to the socket peer, preventing clients from choosing their
 own authentication throttle identity. Do not use a public network in that
 setting.
 
+### Public post-deployment canary
+
+After DNS and TLS are active, run the public canary from a machine outside the
+server:
+
+```sh
+python3 scripts/verify_hosted_beta.py https://pathaid.example.com
+```
+
+The canary checks the public liveness and database readiness responses,
+security headers, student signup, session cookies, CSRF-protected profile
+updates, deterministic discovery, and account deletion. It uses a unique
+`example.invalid` address and synthetic profile, and deletes that account in a
+`finally` block. If cleanup fails, it prints the exact synthetic address that
+an operator must remove.
+
+For a local dry run only:
+
+```sh
+python3 scripts/verify_hosted_beta.py http://localhost:3000 --allow-http-localhost
+```
+
+The production Caddy route exposes only the value-free `/health/live` and
+`/health/ready` responses directly from FastAPI. All `/api` browser traffic
+continues through Next.js on the same origin.
+
 ## Migrations
 
 Compose runs `alembic upgrade head` as a one-shot dependency before starting

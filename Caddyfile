@@ -10,7 +10,15 @@
 		-Server
 	}
 
-	# Caddy manages public certificates and forwards only to the private
-	# frontend. Next.js keeps browser API requests on the same origin.
-	reverse_proxy frontend:3000
+	# Expose only the API's value-free health responses for external uptime
+	# checks. The API service itself remains private on the Compose network.
+	handle /health/* {
+		reverse_proxy api:8000
+	}
+
+	# All browser traffic, including same-origin /api requests, goes through
+	# Next.js. Its rewrite forwards API calls to the private FastAPI service.
+	handle {
+		reverse_proxy frontend:3000
+	}
 }
