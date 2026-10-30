@@ -69,6 +69,8 @@ def validate_extracted_draft(
     except RuleValidationError as error:
         findings.append(_error("invalid_rule", "eligibility_tree", str(error)))
 
+    _validate_non_tautological_choices(draft.eligibility_tree, field_registry, findings)
+
     for path, evidence in _evidence_references(draft):
         _validate_evidence(evidence, path, snapshot, findings)
 
@@ -151,6 +153,30 @@ def _validate_coverage(
         findings.append(_error("invalid_state", "coverage.states", "Coverage contains an unsupported state identifier."))
     if any(not institution.strip() for institution in coverage.institutions):
         findings.append(_error("empty_institution", "coverage.institutions", "Coverage institutions cannot be blank."))
+
+
+def _validate_non_tautological_choices(
+    rule: RuleNode,
+    field_registry: Mapping[str, Mapping],
+    findings: list[ValidationFinding],
+    path: str = "eligibility_tree",
+) -> None:
+    """Reject choice conditions that accept every value and cannot filter anyone."""
+
+    if isinstance(rule, ConditionRule):
+        allowed = field_registry.get(rule.field, {}).get("values")
+        if rule.operator == "in" and allowed and isinstance(rule.value, list) and set(rule.value) == set(allowed):
+            findings.append(
+                _error(
+                    "tautological_choice",
+                    path,
+                    "A choice requirement cannot accept every allowed profile value.",
+                )
+            )
+        return
+    if isinstance(rule, RuleGroup):
+        for index, child in enumerate(rule.children):
+            _validate_non_tautological_choices(child, field_registry, findings, f"{path}.children.{index}")
 
 
 def _validate_deadline(

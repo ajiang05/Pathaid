@@ -137,6 +137,25 @@ def test_unknown_choice_value_blocks_the_proposal():
     assert "invalid_rule" in finding_codes(result)
 
 
+def test_choice_condition_accepting_every_value_is_rejected_as_tautological():
+    """A model cannot encode complex eligibility as a condition that passes everyone."""
+
+    data = proposal()
+    data["eligibility_tree"] = {
+        "type": "condition",
+        "field": "citizenship_status",
+        "operator": "in",
+        "value": ["us_citizen", "permanent_resident", "international", "other"],
+        "evidence": {"snapshot_id": "snapshot-1", "excerpt": "Community Scholars Award."},
+        "exceptions_complete": False,
+    }
+
+    result = validate_extracted_draft(ExtractedProgramDraft.model_validate(data), Snapshot())
+
+    assert not result.is_valid
+    assert "tautological_choice" in finding_codes(result)
+
+
 def test_unsupported_logic_is_preserved_as_a_warning():
     """Ambiguous mandatory logic reaches review without becoming eligibility."""
 

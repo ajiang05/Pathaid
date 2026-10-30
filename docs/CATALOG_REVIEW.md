@@ -6,7 +6,7 @@ This record identifies the 12 intended MVP launch candidates and the final check
 
 ## Queue note
 
-The local review queue contains 14 drafts because two live integration checks produced stronger replacements. Use Pell revision `17a55d53-8138-430b-ab43-43a6848cce35`, which replaced a JavaScript loading placeholder, and Gates revision `0e9b57b5-48d2-4e51-8c08-4f325384049f`, which was produced by the corrected prompt during the controlled scheduler run. Reject each older draft after confirming its replacement. Publish only one revision for each program.
+The local review queue contains extra drafts because live integration checks produced stronger replacements. Use Pell revision `17a55d53-8138-430b-ab43-43a6848cce35`, which replaced a JavaScript loading placeholder; Gates revision `0e9b57b5-48d2-4e51-8c08-4f325384049f`, which was produced by the corrected prompt during the controlled scheduler run; and Adams revision `9bdca1d9-7303-4ca8-9b0c-7be713494ab2`, which was produced with extraction prompt 1.3.0. Reject each older draft after confirming its replacement. Publish only one revision for each program.
 
 ## Candidate audit
 
@@ -23,7 +23,7 @@ The local review queue contains 14 drafts because two live integration checks pr
 | UMass Amherst Undergraduate Scholarships | [UMass Amherst](https://www.umass.edu/financialaid/undergraduate-scholarships) | Passed after removing the unsupported grants category and canonicalizing full-time enrollment. | Confirm whether the page should remain one umbrella resource or be split into individual awards later. |
 | UMass Amherst Food Security Support | [UMass Amherst](https://www.umass.edu/dean-students/basic-needs/food-security) | Passed without findings. | Confirm current pantry and registration instructions. |
 | Community Foundation of Western Massachusetts Scholarship Program | [Community Foundation](https://communityfoundation.org/students/scholarships/) | Passed after safely representing full- or part-time enrollment; the source does not state a named deadline timezone. | Confirm the closed March 1, 2026 cycle, regional exceptions, and $3,000 maximum. |
-| John and Abigail Adams Scholarship | [Massachusetts DHE](https://www.mass.edu/osfa/programs/adams.asp) | Passed with an unsupported-logic warning for MCAS and Massachusetts high-school requirements. | Confirm current institutional award values and that there is no separate application process. |
+| John and Abigail Adams Scholarship | [Massachusetts DHE](https://www.mass.edu/osfa/programs/adams.asp) | Replacement revision `9bdca1d9-7303-4ca8-9b0c-7be713494ab2` passed after prompt 1.3.0 preserved every stated mandatory requirement. MCAS/high-school standing, complex residency/citizenship, annual FAFSA/MASFA, eligible program/institution, prior-degree, and loan/refund rules remain safely unsupported; full-time enrollment is modeled. | Confirm current institutional award values and the no-application process; keep coverage incomplete and reject the older Adams drafts. |
 
 ## Required publication procedure
 
