@@ -8,6 +8,9 @@ on:
       - "Caddyfile"
       - "compose*.yaml"
       - "scripts/verify_hosted_beta.py"
+      - "scripts/usability_report.py"
+      - "scripts/test_usability_report.py"
+      - "docs/usability_sessions.json"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
@@ -16,6 +19,9 @@ on:
       - "Caddyfile"
       - "compose*.yaml"
       - "scripts/verify_hosted_beta.py"
+      - "scripts/usability_report.py"
+      - "scripts/test_usability_report.py"
+      - "docs/usability_sessions.json"
       - ".github/workflows/backend-ci.yml"
 
 # A newer push supersedes an older run for the same branch or pull request.
@@ -96,6 +102,10 @@ jobs:
 
       - name: Check hosted beta verifier syntax
         run: python -m py_compile ../scripts/verify_hosted_beta.py
+
+      - name: Test usability evidence verifier
+        working-directory: ${{ github.workspace }}/scripts
+        run: python -m unittest -v test_usability_report.py
 
       - name: Build production backend image
         run: docker build --tag pathaid-backend:test .

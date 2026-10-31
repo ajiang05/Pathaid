@@ -4,6 +4,18 @@ Status: protocol ready; 0 of 5 observed student sessions completed.
 
 Use this same protocol for five students before the limited beta. Do not prefill outcomes. Remove direct identifiers from notes and ask participants not to enter real sensitive financial information in a local or demonstration environment.
 
+Record the anonymized structured evidence in `docs/usability_sessions.json`.
+After all five sessions and finding resolutions are entered, evaluate every MVP
+threshold from the repository root:
+
+```sh
+python3 scripts/usability_report.py
+```
+
+The command exits unsuccessfully for incomplete evidence, a failed metric, or
+an unresolved finding observed in at least two sessions. Do not copy the
+synthetic examples from the verifier tests into the real evidence file.
+
 ## Session setup
 
 - Use the hosted beta when available; use the local stack only for internal dry runs.
