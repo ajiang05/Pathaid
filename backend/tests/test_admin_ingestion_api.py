@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app, password_hash
-from app.models import IngestionRun, SourceSnapshot
+from app.models import IngestionRun, Program, ProgramRevision, SourceSnapshot
 
 
 @pytest.fixture
@@ -108,11 +108,43 @@ def test_list_marks_older_pending_draft_for_same_program_as_superseded(admin_cli
             created_at=older_at + timedelta(days=1),
         )
         db.add_all([older, newer])
+
+        published_program = Program(
+            id="program-published",
+            slug="program-published",
+            current_published_revision_id="revision-published",
+        )
+        publication = ProgramRevision(
+            id="revision-published",
+            program_id=published_program.id,
+            status="published",
+            validation_status="valid",
+            name="Published program",
+            description="Published after an older draft entered review.",
+            categories=["scholarships"],
+            coverage={},
+            eligibility_tree={"type": "all", "conditions": []},
+            provider_url="https://example.edu/published",
+            verified_at=older_at + timedelta(days=2),
+        )
+        stale_after_publication = IngestionRun(
+            id="run-prepublication",
+            idempotency_key="prepublication",
+            request_fingerprint="c" * 64,
+            target_program_id=published_program.id,
+            draft_revision_id="revision-prepublication",
+            source_url="https://example.edu/prepublication",
+            source_method="webpage",
+            state="awaiting_review",
+            created_at=older_at + timedelta(days=1),
+        )
+        db.add_all([published_program, publication, stale_after_publication])
         db.commit()
 
     listed = {item["id"]: item for item in api.get("/api/admin/ingestion-runs").json()}
     assert listed["run-newer"]["superseded_by_revision_id"] is None
     assert listed["run-older"]["superseded_by_revision_id"] == "revision-newer"
+    assert listed["run-prepublication"]["superseded_by_revision_id"] == "revision-published"
 
 
 def test_conflicting_idempotency_and_invalid_source_shapes_are_rejected(admin_client):

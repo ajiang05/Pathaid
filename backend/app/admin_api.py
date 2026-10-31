@@ -471,19 +471,52 @@ def list_ingestion_runs(
         # only draft that should appear in the default current-review queue.
         latest_pending_by_program.setdefault(program_id, revision_id)
 
+    current_publications = {
+        program_id: (revision_id, verified_at)
+        for program_id, revision_id, verified_at in db.execute(
+            select(
+                Program.id,
+                Program.current_published_revision_id,
+                ProgramRevision.verified_at,
+            )
+            .join(
+                ProgramRevision,
+                ProgramRevision.id == Program.current_published_revision_id,
+            )
+            .where(
+                Program.current_published_revision_id.is_not(None),
+                ProgramRevision.verified_at.is_not(None),
+            )
+        )
+    }
+
+    def superseding_revision(run: IngestionRun) -> str | None:
+        """Return the newer pending or already-published revision, if any."""
+
+        if run.state != "awaiting_review" or run.target_program_id is None:
+            return None
+        publication = current_publications.get(run.target_program_id)
+        if publication and _as_utc(run.created_at) <= _as_utc(publication[1]):
+            # A completed human publication decision supersedes proposals that
+            # were already waiting when that decision occurred. A later draft
+            # remains visible as a legitimate update proposal.
+            return publication[0]
+        latest_pending = latest_pending_by_program.get(run.target_program_id)
+        return latest_pending if latest_pending != run.draft_revision_id else None
+
     return [
         _run_summary(
             run,
-            superseded_by_revision_id=(
-                latest_pending_by_program.get(run.target_program_id)
-                if run.state == "awaiting_review"
-                and run.target_program_id is not None
-                and latest_pending_by_program.get(run.target_program_id) != run.draft_revision_id
-                else None
-            ),
+            superseded_by_revision_id=superseding_revision(run),
         )
         for run in runs
     ]
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Normalize SQLite-naive and PostgreSQL-aware timestamps for ordering."""
+
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 @router.get("/ingestion-runs/{run_id}")
