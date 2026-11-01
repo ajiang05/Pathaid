@@ -1,6 +1,6 @@
 # PathAid local-first redesign plan
 
-**Status:** Phase 1 complete and verified; Phase 2 is next
+**Status:** Phases 1–2 complete and verified; Phase 3 is next
 **Last updated:** November 1, 2026
 
 This file is the authoritative implementation sequence. Product scope is in
@@ -40,13 +40,13 @@ security/migration tests.
 
 ## Phase 2 — private profile and deterministic matching
 
-- [~] Adapt the existing field schema and pure eligibility engine.
-- [ ] Add separate current, permanent, and school locations.
-- [ ] Add structured activities, employment, service, memberships, leadership.
-- [ ] Add optional sensitive scholarship fields and unknown semantics.
-- [ ] Implement strict Strong/Possible/Not a match classification.
-- [ ] Define stable availability/deadline/freshness/relevance ordering.
-- [ ] Build the single-user Profile and Discover interfaces with no login or
+- [x] Adapt the existing field schema and pure eligibility engine.
+- [x] Add separate current, permanent, and school locations.
+- [x] Add structured activities, employment, service, memberships, leadership.
+- [x] Add optional sensitive scholarship fields and unknown semantics.
+- [x] Implement strict Strong/Possible/Not a match classification.
+- [x] Define stable availability/deadline/freshness/relevance ordering.
+- [x] Build the single-user Profile and Discover interfaces with no login or
   inline follow-up questionnaire.
 
 **Exit:** saved fixture profiles produce reproducible explanations and ranks.
@@ -54,9 +54,9 @@ security/migration tests.
 ## Phase 3 — approved sources and automated discovery
 
 - [~] Reuse safe acquisition, snapshots, hashing, and extraction adapters.
-- [ ] Implement source registry and school-directory confirmation.
-- [ ] Implement generic bounded-directory adapter.
-- [ ] Implement AcademicWorks/Blackbaud public-listing adapter.
+- [x] Implement source registry and school-directory confirmation.
+- [x] Implement generic bounded-directory adapter.
+- [x] Implement AcademicWorks/Blackbaud public-listing adapter.
 - [ ] Implement Kaleidoscope public-listing adapter.
 - [ ] Add manual lead intake and official sponsor verification.
 - [ ] Enforce robots, terms/policy, rate, path, depth, and page budgets.

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .eligibility import EligibilityLabel, evaluate_eligibility
-from .profile_fields import FIELDS
+from .profile_fields import MATCH_FIELDS
 
 
 BENCHMARK_VERSION = "1.0.0"
@@ -88,7 +88,7 @@ def evaluate_eligibility_benchmark(dataset: dict[str, Any]) -> EligibilityBenchm
                 revision_id=f"benchmark-{suite['id']}",
                 rule=suite["rule"],
                 profile=profile,
-                field_registry=FIELDS,
+                field_registry=MATCH_FIELDS,
                 coverage_complete=suite.get("coverage_complete", True),
             )
             if result.label.value != expected_label:

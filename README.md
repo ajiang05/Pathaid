@@ -6,10 +6,11 @@ requirements with Gemini, evaluates eligibility deterministically against a
 private local profile, and helps fill applications in Chrome. The student
 reviews every application and submits it personally.
 
-> **Redesign status:** Phase 1 is implemented: the backend now has a local
-> SQLite baseline, macOS Keychain secret boundary, loopback API, extension-token
-> handshake, and safe local-data operations. Scholarship profile, discovery,
-> matching UI, and application-copilot behavior remain in later phases. Follow
+> **Redesign status:** Phases 1–2 are implemented: the local SQLite/Keychain
+> foundation, private profile, strict deterministic matching, accountless UI,
+> bounded source registry, generic directory acquisition, and the
+> AcademicWorks/Blackbaud public adapter are verified. Kaleidoscope, saved
+> lists, and application-copilot behavior remain in later phases. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries
@@ -103,7 +104,7 @@ API keys, encryption keys, and credentials.
 
 ```text
 backend/       Local FastAPI foundation plus retained domain modules
-frontend/      Existing Next.js interface to be simplified for one local user
+frontend/      Accountless local Next.js profile and discovery interface
 extension/     Planned Chrome application copilot
 docs/          Product, architecture, UX, and setup specifications
 features/      Ordered feature contracts and acceptance criteria

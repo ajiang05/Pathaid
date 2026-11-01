@@ -74,6 +74,15 @@ class AcquiredSource:
     # Raw href values are retained in memory only so an approved discovery
     # page can produce bounded candidates. They are never trusted as URLs.
     discovered_links: tuple[str, ...] = ()
+    discovered_link_candidates: tuple["DiscoveredLink", ...] = ()
+
+
+@dataclass(frozen=True)
+class DiscoveredLink:
+    """One raw anchor target plus its visible text for traversal filtering."""
+
+    href: str
+    text: str
 
 
 @dataclass(frozen=True)
@@ -257,6 +266,7 @@ def acquire_web_source(
             source_byte_count=len(response.body),
             redirect_count=redirect_count,
             discovered_links=extract_html_links(decoded) if is_html else (),
+            discovered_link_candidates=extract_html_link_candidates(decoded) if is_html else (),
         )
 
 
@@ -317,7 +327,7 @@ class SocketHttpTransport:
             connection = http.client.HTTPConnection(address, url.port, timeout=timeout_seconds)
         headers = {
             "Host": _host_header(url),
-            "User-Agent": "Pathaid/1.0 source-acquisition",
+            "User-Agent": "PathAid/0.1 (+local scholarship discovery; no authentication)",
             "Accept": "text/html, application/xhtml+xml, text/plain",
             "Accept-Encoding": "identity",
             "Connection": "close",
@@ -458,6 +468,24 @@ def extract_html_links(value: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(parser.links))
 
 
+def extract_html_link_candidates(value: str) -> tuple[DiscoveredLink, ...]:
+    """Return page-ordered anchors with normalized visible link text."""
+
+    parser = _VisibleTextParser()
+    try:
+        parser.feed(value)
+        parser.close()
+    except (AssertionError, ValueError) as error:
+        raise AcquisitionError("invalid_html", "The source contains malformed HTML.") from error
+    seen: set[str] = set()
+    result: list[DiscoveredLink] = []
+    for href, link_text in parser.link_candidates:
+        if href not in seen:
+            seen.add(href)
+            result.append(DiscoveredLink(href, " ".join(link_text.split())))
+    return tuple(result)
+
+
 def hash_text(value: str) -> str:
     """Return the SHA-256 hash stored with the normalized source snapshot."""
 
@@ -513,7 +541,9 @@ class _VisibleTextParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
         self.links: list[str] = []
+        self.link_candidates: list[tuple[str, str]] = []
         self._ignored_depth = 0
+        self._active_link: tuple[str, int] | None = None
 
     def handle_starttag(self, tag: str, attrs) -> None:
         tag = tag.casefold()
@@ -524,10 +554,16 @@ class _VisibleTextParser(HTMLParser):
         if self._ignored_depth == 0 and tag == "a":
             href = next((value for name, value in attrs if name.casefold() == "href"), None)
             if isinstance(href, str) and href.strip():
-                self.links.append(href.strip())
+                cleaned = href.strip()
+                self.links.append(cleaned)
+                self._active_link = (cleaned, len(self.parts))
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.casefold()
+        if tag == "a" and self._active_link is not None:
+            href, start = self._active_link
+            self.link_candidates.append((href, "".join(self.parts[start:])))
+            self._active_link = None
         if tag in self._ignored_tags and self._ignored_depth:
             self._ignored_depth -= 1
         elif self._ignored_depth == 0 and tag in self._block_tags:

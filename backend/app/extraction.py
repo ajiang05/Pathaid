@@ -11,7 +11,7 @@ from typing import Any, Mapping, Protocol
 from .extraction_schemas import EXTRACTION_SCHEMA_VERSION, ExtractedProgramDraft
 
 
-PROMPT_VERSION = "1.4.0"
+PROMPT_VERSION = "2.0.0"
 DEFAULT_EXTRACTION_MODEL = "gpt-6-luna"
 DEFAULT_GEMINI_EXTRACTION_MODEL = "gemini-3.5-flash-lite"
 
@@ -27,18 +27,22 @@ Do not infer missing dates, timezones, amounts, availability, coverage, exceptio
 is a proposal for human review and has no publishing authority.
 Every eligibility node type must be exactly one of: condition, unsupported, and, or. A condition has field,
 operator, value, evidence, and exceptions_complete; unsupported has description and evidence; and/or has children.
-Condition field must be exactly one of: school, state, study_level, enrollment, assistance_categories,
-income_range, pell_eligible, student_aid_index, ethnicity, race, first_generation_student,
-citizenship_status, major, class_year, gpa, gpa_scale. Use an unsupported node when a mandatory fact cannot use
+Condition field must be exactly one of: school, school_id, school_city, school_state, current_city,
+current_state, current_postal_code, permanent_city, permanent_state, permanent_postal_code, study_level,
+enrollment, class_year, degree_type, major, minor, gpa, gpa_scale, credits_completed, expected_graduation,
+date_of_birth, income_range, pell_eligible, student_aid_index, ethnicity, race, gender, disability_status,
+first_generation_student, citizenship_status, veteran_status, and experiences. Identity and contact fields
+must not be used as eligibility conditions. Use an unsupported node when a mandatory fact cannot use
 one of those fields. Operators are exactly
-eq, in, contains, gt, gte, lt, or lte. Use study_level only when the source explicitly states undergraduate or
+eq, in, contains, gt, gte, lt, lte, before, on_or_before, after, on_or_after, or experience_any. Use
+experience_any only for a structured activity, employment, volunteering, membership, leadership, or honor
+requirement. Use study_level only when the source explicitly states undergraduate or
 graduate status; never invent academic_level. Choice conditions must use only these exact stored values:
 study_level: undergraduate, graduate; enrollment: full_time, part_time; income_range: under_25k, 25k_50k,
 50k_75k, 75k_100k, over_100k; citizenship_status: us_citizen, permanent_resident, international, other;
 race: american_indian_or_alaska_native, asian, black_or_african_american, middle_eastern_or_north_african,
 native_hawaiian_or_pacific_islander, white, other; class_year: first, second, third, fourth, fifth_or_later;
-assistance_categories: scholarships, grants, food,
-emergency, housing; state: two-letter postal codes including DC. Translate an explicitly equivalent source label
+school_state/current_state/permanent_state: two-letter postal codes including DC. Translate an explicitly equivalent source label
 to its stored value, such as "full-time" to full_time or "US citizen" to us_citizen. Use unsupported when the
 source accepts every allowed value for a choice field; never emit an in condition containing every allowed value,
 because it is tautological and fails deterministic validation. Use unsupported when the

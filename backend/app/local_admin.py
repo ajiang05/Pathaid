@@ -7,8 +7,11 @@ import getpass
 from pathlib import Path
 
 from .config import Settings
+from .database import Database
 from .local_data import backup_database, reset_local_data, restore_database, upgrade_database, validate_database
 from .secrets import GEMINI_API_KEY, KeychainSecretStore, get_or_create_document_key, get_or_create_extension_token
+from .source_registry import import_ipeds_directory
+from .source_scanning import execute_registered_scan
 
 
 def parser() -> argparse.ArgumentParser:
@@ -23,6 +26,11 @@ def parser() -> argparse.ArgumentParser:
     reset.add_argument("--yes", action="store_true", help="confirm destructive reset")
     commands.add_parser("set-gemini-key", help="save a Gemini key in macOS Keychain")
     commands.add_parser("status", help="validate the local database")
+    institutions = commands.add_parser("import-institutions", help="import an official NCES IPEDS HD directory CSV")
+    institutions.add_argument("source", type=Path)
+    institutions.add_argument("--year", type=int, required=True)
+    scan = commands.add_parser("scan-source", help="run one confirmed source with its registered adapter")
+    scan.add_argument("source_id")
     return result
 
 
@@ -53,6 +61,29 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "status":
         validate_database(settings.database_path)
         print("PathAid database is current and passes its integrity check.")
+    elif args.command == "import-institutions":
+        upgrade_database(settings)
+        database = Database(settings)
+        try:
+            with database.sessions.begin() as db:
+                count = import_ipeds_directory(db, args.source, source_year=args.year)
+        finally:
+            database.close()
+        print(f"Imported {count} NCES IPEDS institutions for {args.year}.")
+    elif args.command == "scan-source":
+        upgrade_database(settings)
+        database = Database(settings)
+        try:
+            run = execute_registered_scan(database, args.source_id)
+        finally:
+            database.close()
+        print(
+            f"Scan {run.status}: {run.pages_attempted} pages, "
+            f"{run.snapshots_created} new snapshots, {run.unchanged_pages} unchanged."
+        )
+        if run.status == "failed":
+            print(f"Safe error code: {run.error_code}")
+            return 1
     return 0
 
 

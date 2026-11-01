@@ -9,6 +9,7 @@ from app.source_acquisition import (
     hash_text,
     normalize_html,
     normalize_text,
+    extract_html_link_candidates,
     prepare_pasted_source,
     validate_source_url,
 )
@@ -73,6 +74,11 @@ def test_html_extraction_omits_scripts_styles_and_templates():
     normalized = normalize_html(html, 1_000)
     assert normalized == "Scholarship & Grant\nApply today."
     assert "secret" not in normalized
+
+
+def test_link_candidates_preserve_href_and_visible_text_for_safe_filtering():
+    links = extract_html_link_candidates('<a href="/apply?id=7"><strong>Community Scholarship</strong></a>')
+    assert [(item.href, item.text) for item in links] == [("/apply?id=7", "Community Scholarship")]
 
 
 def test_pasted_source_records_unverified_method_without_network():

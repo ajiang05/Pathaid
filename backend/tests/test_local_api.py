@@ -90,7 +90,7 @@ def test_host_and_cors_boundaries_are_narrow(tmp_path):
 
 def test_legacy_account_admin_and_publication_routes_are_absent(tmp_path):
     app, _settings, _secrets = configured_app(tmp_path)
-    paths = {route.path for route in app.routes}
+    paths = {route.path for route in app.routes if hasattr(route, "path")}
     assert not any(path.startswith("/api/auth") for path in paths)
     assert not any(path.startswith("/api/admin") for path in paths)
     assert "/api/programs" not in paths
