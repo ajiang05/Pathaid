@@ -1,0 +1,37 @@
+{
+  "version": "1.0.0",
+  "status": "unverified_candidates",
+  "source": "legacy_catalog_intake_v1",
+  "entries": [
+    {
+      "id": "gates-scholarship",
+      "name": "The Gates Scholarship",
+      "url": "https://www.thegatesscholarship.org/scholarship/"
+    },
+    {
+      "id": "coca-cola-scholars",
+      "name": "Coca-Cola Scholars Program Scholarship",
+      "url": "https://www.coca-colascholarsfoundation.org/apply/"
+    },
+    {
+      "id": "cooke-college-scholarship",
+      "name": "Cooke College Scholarship Program",
+      "url": "https://www.jkcf.org/our-scholarships/college-scholarship-program/"
+    },
+    {
+      "id": "western-mass-scholarships",
+      "name": "Community Foundation of Western Massachusetts Scholarship Program",
+      "url": "https://communityfoundation.org/students/scholarships/"
+    },
+    {
+      "id": "umass-undergraduate-scholarships",
+      "name": "UMass Amherst Undergraduate Scholarships",
+      "url": "https://www.umass.edu/financialaid/undergraduate-scholarships"
+    },
+    {
+      "id": "massachusetts-adams-scholarship",
+      "name": "John and Abigail Adams Scholarship",
+      "url": "https://www.mass.edu/osfa/programs/adams.asp"
+    }
+  ]
+}

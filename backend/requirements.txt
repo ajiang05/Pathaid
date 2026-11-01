@@ -1,11 +1,12 @@
 # HTTP API framework and local ASGI server.
 fastapi>=0.115,<1
 uvicorn>=0.34,<1
-# Database ORM, schema migration tool, and PostgreSQL driver.
+# Local SQLite ORM and schema migration tool.
 SQLAlchemy>=2.0,<3
 alembic>=1.15,<2
-psycopg[binary]>=3.2,<4
-# Structured Outputs client used by OpenAI extraction and recommendation adapters.
+# macOS Keychain integration for API and encryption secrets.
+keyring>=25,<26
+# Retained temporarily by the reusable legacy extraction adapter during migration.
 openai>=2,<3
 # Gemini structured-output client used by Gemini extraction and recommendation adapters.
 google-genai>=1.40,<2

@@ -18,10 +18,12 @@ COPY migrations ./migrations
 COPY app ./app
 COPY data ./data
 
-# A fixed unprivileged identity prevents the API or worker from running as root.
+# A fixed unprivileged identity prevents the local development API from running as root.
 RUN addgroup --system pathaid && adduser --system --ingroup pathaid pathaid \
-    && chown -R pathaid:pathaid /app
+    && mkdir -p /data && chown -R pathaid:pathaid /app /data
 USER pathaid
 
 EXPOSE 8000
+# Native macOS startup binds to 127.0.0.1. The optional container listens on
+# its isolated interface and Compose publishes it only to host loopback.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
