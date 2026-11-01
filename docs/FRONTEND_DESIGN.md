@@ -1,98 +1,117 @@
-# PathAid frontend design and implementation contract
+# PathAid local interface design
 
-Status: implemented for the MVP. Last verified: October 20, 2026.
+## Direction
 
-## Product direction
+The interface is a calm personal workspace, not a public marketplace or admin
+console. It should help the student answer three questions quickly:
 
-PathAid serves students who need a calm way to find reviewed scholarships and assistance programs, understand why a result applies to them, and continue to the official provider. Administrators use a separate workspace to monitor sources and ingestion and to approve revisions before publication.
+1. Which scholarships am I strongly or possibly eligible for?
+2. What is missing, required, or due?
+3. What can PathAid safely prepare while leaving final review/submission to me?
 
-The interface follows the supplied Google Stitch artifacts in `stitch_ui_screen_implementation/`. Its visual direction is **Quiet Utility**: clear, supportive, restrained, and trustworthy. It avoids gamification, artificial urgency, award predictions, and unsupported match scores.
+Retain the existing “Quiet Utility” visual language where practical: restrained
+green, clear borders, strong text contrast, consistent cards, visible focus, and
+no gamified match percentages or artificial urgency.
 
-## Technology and accessibility
+## Navigation
 
-- Next.js App Router 16, React 19, and TypeScript
-- Tailwind CSS 4 plus shared semantic CSS classes in `frontend/src/app/globals.css`
-- Custom semantic HTML components with no client component library
-- Inter when available, followed by system sans serif fonts
-- Current evergreen browsers supported by Next.js 16
-- WCAG 2.2 AA target, semantic landmarks, visible keyboard focus, 44px controls, text paired with status color, and reduced motion support
+- Home
+- Discover
+- Saved
+- Profile
+- Sources
+- Documents
+- Settings
 
-The browser calls relative `/api/*` paths. Next.js proxies them to `PATHAID_API_URL`, preserving same-origin HttpOnly session cookies. Eligibility, ranking, evidence, publication status, and profile validation always come from the backend.
+Remove student/admin login, admin ingestion, revision review, and publication
+navigation. The local app opens directly to the single user's workspace.
 
-## Design tokens
+## Screen contracts
 
-Tokens live in `frontend/src/app/globals.css` and originate in `stitch_ui_screen_implementation/pathaid/DESIGN.md`.
+### Home
 
-| Purpose | Token | Value |
-| --- | --- | --- |
-| Page canvas | `--background` | `#FAFAF7` |
-| Primary text | `--foreground` | `#24382D` |
-| Card surface | `--surface` | `#FFFFFF` |
-| Muted surface | `--surface-muted` | `#F0F4EF` |
-| Primary action | `--primary` | `#084C33` |
-| Supporting text | `--muted-foreground` | `#52665A` |
-| Border | `--border` | `#D8E2D9` |
-| Focus ring | `--ring` | `#286449` |
-| Success | `--success` | `#246B4C` |
-| Warning | semantic component value | `#895400` |
-| Destructive | semantic component value | `#A92D32` |
+Show profile completeness, last/next scan, overdue catch-up, source errors,
+extension connection, and shortcuts to Strong matches and In progress items.
 
-The base spacing rhythm is 4px. Common spacing uses 8, 16, 24, 32, and 48px. Controls use an 8px radius, structural cards use 12px, and pills use a full radius. Cards use a one pixel border and generally no shadow. Long prose is limited to about 68 characters per line. Monetary and date facts use tabular figures where alignment matters.
+### Profile
 
-## Responsive behavior
+Group fields into identity/contact, school and three locations, academics,
+demographics/aid, citizenship, and structured experiences. Mark optional and
+sensitive values clearly. Explain that completion reduces Possible matches.
+Changing school previews which school sources will be deactivated.
 
-- **Mobile, below 640px:** one column, 16px page margins, stacked actions, single column choices and facts.
-- **Tablet, 640–899px:** fluid one or two column content with 24px gutters.
-- **Desktop, 900px and wider:** 240px student sidebar and a workspace capped at 1180px.
-- The student sidebar becomes a header and fixed three item bottom navigation below 900px. Safe area insets protect the bottom navigation.
-- Admin navigation wraps at mobile sizes; source and run rows become cards and review columns stack.
-- Tables are avoided for core MVP tasks so critical state never disappears through horizontal clipping.
+### Discover
 
-## Route contract
+Show Strong first, Possible second, then separate Automatically considered and
+Verified sweepstakes sections. Do not ask follow-up questions here. Not a match
+may be inspectable through a filter for transparency but is not promoted.
 
-| Route | User goal and main action | Required states |
-| --- | --- | --- |
-| `/` | Understand PathAid and create a profile | Responsive marketing content and trust explanation |
-| `/signup` | Create a student account | Pending, validation error, service failure |
-| `/login` | Resume a student account | Pending, invalid credentials, service failure |
-| `/onboarding` | Save the five core matching fields | Registry loading, save error, redirect to discovery |
-| `/home` | See profile readiness and start discovery | Loading, incomplete profile, ready, API failure |
-| `/discover` | Review deterministic results grouped into consistent opportunity cards | Loading, empty catalog, missing profile, API failure, open/unknown/closed availability groups |
-| `/programs/[id]` | Inspect criteria, evidence, checklist, unresolved conditions, and official links | Loading, absent from current results, API failure, explanation fallback |
-| `/profile` | Edit saved answers, consent, or delete the account | Loading, saved, validation error, delete confirmation |
-| `/privacy` | Understand data use and matching limits | Readable long-form content |
-| `/admin/login` | Start an administrator session | Pending, invalid credentials, service failure |
-| `/admin/sources` | Register, pause, resume, edit, and scan approved sources | Loading, empty, scan outcome, failure, scheduled source metadata |
-| `/admin/ingestion` | Create and monitor manual or scheduled ingestion work | Loading, empty, queued/running/failed/draft/published, retry failure |
-| `/admin/revisions/[id]` | Compare source material, edit structured data, approve, or reject a draft | Loading, not found, malformed JSON, mutation failure |
+All scholarship cards share the same grid and field order: sponsor/type, title,
+award, deadline, match class, key passed/unknown reason, source freshness, and
+one primary action. Missing data uses an explicit fallback, not a collapsed box.
 
-Student navigation is landing → authentication → onboarding → home/discovery → detail → official provider. Administrator navigation is login → sources or ingestion → revision review. Student and administrator sessions remain separate.
+### Scholarship detail
 
-## Component rules
+Separate hard requirements, selection preferences, materials, source evidence,
+policy restrictions, and official links. Save/Skip/Apply feedback appears near
+the clicked control and is announced accessibly; it must not appear only at the
+top of a long page.
 
-- Links navigate and buttons perform actions. Every control has a visible result.
-- Primary buttons use the deep green fill. Outline and quiet buttons carry secondary actions. Destructive red is reserved for account deletion and rejection.
-- Labels appear above inputs. Sensitive and optional fields explain that they may be skipped or removed. Recoverable errors retain entered values.
-- Program cards use a consistent grid and show category, name, verified amount or fallback, eligibility label, deadline, availability, missing-profile status, and a detail link.
-- Eligibility labels use backend wording. Unknown answers and unknown availability remain explicit and never appear as failure.
-- Loading panels reserve space. Empty and error panels name what happened and provide a next action when retry is possible.
-- Official source links open in a new tab with `noopener noreferrer`.
+### Saved
 
-## Privacy and product boundaries
+Use three visible filters: Not started, In progress, Already applied. Skipped is
+managed separately as a cycle-level hidden preference. Automatically considered
+records use an informational state rather than a fake application status.
 
-The frontend does not make eligibility decisions, reorder API results, or expose unpublished revisions. Optional eligibility answers are managed in the student profile, and Discover evaluates only saved values. Saved values are changed only through profile actions protected by CSRF. Optional AI wording requires profile consent and never changes eligibility or rank.
+### Sources
 
-Saved scholarships, application tracking, notifications, award predictions, sponsored ranking, and provider self-service are outside the MVP.
+Explain that approval authorizes a bounded directory, not an entire website.
+Show adapter, host/path, school/sponsor, pause/resume, scan now, last/next scan,
+page budget, and errors. Manual lead entry stores one URL and does not approve
+the domain.
 
-## Verification contract
+### Documents
 
-The frontend is complete when all of these pass:
+Show one current résumé and transcript with replacement/removal actions and
+encryption status. Essay cards show prompt, tags, themes, word count, date, and
+prior use. Every attachment remains an extension-side explicit action.
 
-```bash
-cd frontend
-npm run lint
-npm run build
-npm run test:e2e
-```
+### Settings
 
-Browser tests run the landing and authenticated discovery/detail paths in desktop Chromium and a mobile Chromium viewport with deterministic mocked API responses. CI repeats lint, build, browser tests, and the production container build without live AI calls.
+Show Gemini configured state without revealing the key, full-essay analysis
+choice/data notice, extension connection, backup/restore, local diagnostics, and
+destructive reset.
+
+## Chrome side panel
+
+The side panel has four stages:
+
+1. **Page status:** supported, unsupported, disconnected, or policy blocked.
+2. **Preview:** proposed values grouped into ordinary, sensitive, ambiguous, and
+   skipped; every value names its profile source.
+3. **Fill:** one Fill application action; no Submit action exists.
+4. **Files:** separate explicit buttons for the relevant résumé, transcript, or
+   recommended essay.
+
+Always show that the student must review, certify, and submit. Policy warnings
+must name whether automation, AI essay analysis, or both are disabled.
+
+## Accessibility and responsiveness
+
+- Target WCAG 2.2 AA.
+- Use semantic landmarks, labels, status announcements, and visible focus.
+- Provide at least 44px touch targets and never rely on color alone.
+- Preserve entered values after recoverable errors.
+- Mobile uses a compact navigation pattern without hiding safety information.
+- Reduce motion when requested.
+- Ensure preview tables/cards are keyboard navigable and sensitive indicators
+  have text equivalents.
+
+## State language
+
+- Eligibility: Strong match, Possible match, Not a match.
+- Requirement: Pass, Unknown, Fail.
+- Saved: Not started, In progress, Already applied.
+- Availability: Verified open, unavailable/expired, or verifying.
+
+Avoid “guaranteed,” “best chance,” “approved,” or predicted award language.

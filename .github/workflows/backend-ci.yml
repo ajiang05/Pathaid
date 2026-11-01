@@ -5,63 +5,33 @@ on:
     paths:
       - "backend/**"
       - ".env.example"
-      - "Caddyfile"
-      - "compose*.yaml"
-      - "scripts/verify_hosted_beta.py"
-      - "scripts/usability_report.py"
-      - "scripts/test_usability_report.py"
-      - "docs/usability_sessions.json"
+      - "compose.yaml"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
       - ".env.example"
-      - "Caddyfile"
-      - "compose*.yaml"
-      - "scripts/verify_hosted_beta.py"
-      - "scripts/usability_report.py"
-      - "scripts/test_usability_report.py"
-      - "docs/usability_sessions.json"
+      - "compose.yaml"
       - ".github/workflows/backend-ci.yml"
 
-# A newer push supersedes an older run for the same branch or pull request.
 concurrency:
   group: backend-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# The workflow only needs permission to check out repository contents.
 permissions:
   contents: read
 
 jobs:
   test:
-    name: Migrations and tests
+    name: Local SQLite foundation
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: pathaid_test
-          POSTGRES_USER: pathaid
-          POSTGRES_PASSWORD: pathaid
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U pathaid -d pathaid_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     defaults:
       run:
         working-directory: backend
-
     env:
-      DATABASE_URL: postgresql+psycopg://pathaid:pathaid@localhost:5432/pathaid_test
-      PATHAID_PUBLIC_ORIGIN: http://localhost:3000
-      PATHAID_SECURE_COOKIES: "false"
+      PATHAID_DATA_DIR: ${{ runner.temp }}/pathaid-data
+      PATHAID_DATABASE_PATH: ${{ runner.temp }}/pathaid-data/pathaid.sqlite3
 
     steps:
       - name: Check out repository
@@ -84,50 +54,21 @@ jobs:
           head_count="$(alembic heads | sed '/^[[:space:]]*$/d' | wc -l)"
           test "$head_count" -eq 1
 
-      - name: Apply PostgreSQL migrations
+      - name: Apply fresh SQLite migrations
         run: alembic upgrade head
 
       - name: Check models match migrations
         run: alembic check
 
-      # The suite injects deterministic providers, so CI makes no paid model calls.
       - name: Run backend tests
         run: pytest -q
 
-      - name: Report offline quality measurements
+      - name: Report retained offline quality measurements
         run: python -m app.quality_report
 
-      - name: Validate launch catalog intake
-        run: python -m app.catalog_intake validate
-
-      - name: Check hosted beta verifier syntax
-        run: python -m py_compile ../scripts/verify_hosted_beta.py
-
-      - name: Test usability evidence verifier
-        working-directory: ${{ github.workspace }}/scripts
-        run: python -m unittest -v test_usability_report.py
-
-      - name: Build production backend image
+      - name: Build local development backend image
         run: docker build --tag pathaid-backend:test .
 
-      - name: Validate Docker Compose configuration
+      - name: Validate optional development Compose
         working-directory: ${{ github.workspace }}
-        env:
-          POSTGRES_DB: pathaid
-          POSTGRES_USER: pathaid
-          POSTGRES_PASSWORD: ci-only-password
-          PATHAID_HOSTNAME: beta.pathaid.example
-          PATHAID_DOCKER_SUBNET: 172.30.0.0/24
-          PATHAID_TRUSTED_PROXY_CIDRS: 172.30.0.0/24
-        run: |
-          docker compose config --quiet
-          docker compose -f compose.yaml -f compose.production.yaml config --quiet
-
-      - name: Validate Caddy configuration
-        working-directory: ${{ github.workspace }}
-        run: >-
-          docker run --rm
-          --env PATHAID_HOSTNAME=beta.pathaid.example
-          --volume "${{ github.workspace }}/Caddyfile:/etc/caddy/Caddyfile:ro"
-          caddy:2.11.4-alpine
-          caddy validate --config /etc/caddy/Caddyfile
+        run: docker compose config --quiet

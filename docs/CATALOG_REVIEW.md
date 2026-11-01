@@ -1,6 +1,13 @@
 # Launch catalog review record
 
-Status: automated and source-level audit updated locally on October 30, 2026. Human attestation and publication remain pending for 10 programs; Gates and Pell are already published.
+> **Archived legacy evidence (October 2026):** This record belongs to the
+> retired hosted catalog/reviewer workflow. It is preserved only as engineering
+> history and as a possible source-URL inventory. Its non-scholarship programs,
+> revision IDs, attestations, and publication instructions are not requirements
+> for the local-first MVP. Do not execute this review queue during the redesign.
+
+Legacy status: automated and source-level audit was updated locally on October
+30, 2026. No further human publication work is planned.
 
 This record identifies the 12 intended MVP launch candidates and the final checks an administrator must make before publication. Automated extraction, deterministic validation, and this engineering audit do not replace the administrator's source-accuracy attestation.
 

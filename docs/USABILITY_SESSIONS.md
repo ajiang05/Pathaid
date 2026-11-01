@@ -1,6 +1,12 @@
 # MVP usability session protocol
 
-Status: protocol ready; 0 of 5 observed student sessions completed.
+> **Archived legacy protocol:** This protocol targets the retired hosted,
+> account-based student experience. It must not be used as the release gate for
+> the local-first redesign. Feature 14 will introduce a new protocol covering
+> local setup, source approval, matching, saved scholarships, and the Chrome
+> application copilot.
+
+Legacy status: 0 of 5 sessions completed; this gate is cancelled.
 
 Use this same protocol for five students before the limited beta. Do not prefill outcomes. Remove direct identifiers from notes and ask participants not to enter real sensitive financial information in a local or demonstration environment.
 

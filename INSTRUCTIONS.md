@@ -1,339 +1,152 @@
-# Pathaid setup and command guide
+# PathAid local setup and command guide
 
-This is the practical setup and operations guide for local development. Run
-commands from the repository root unless a section says otherwise. The system
-design is illustrated in [the architecture diagrams](docs/ARCHITECTURE_DIAGRAM.md).
+Phase 1 provides the local macOS backend foundation. Scholarship profile,
+discovery, saved-list, and extension UI behavior arrive in later phases; consult
+[plan.md](plan.md) for implementation status.
 
 ## Prerequisites
 
-- Docker Desktop with Docker Compose v2
+- macOS
 - Git
-- Node.js and npm when running the frontend outside Docker
-- Python 3.14 when running the backend outside Docker
-- A Gemini key only for live extraction or optional AI-assisted explanations
+- Python 3.14
+- Node.js/npm for the existing frontend development build
+- Google Chrome for the future unpacked extension
 
-Never commit `.env`, database dumps, API keys, plain-text passwords, session
-cookies, or exported catalog bundles containing retained source text.
+PostgreSQL, Caddy, administrator credentials, and a hosted domain are no longer
+required.
 
-## Recommended setup: Docker Compose
+## Backend setup
 
-Docker runs PostgreSQL, migrations, FastAPI, the ingestion worker, the daily
-scheduler, and Next.js together. You do not activate the Python virtual
-environment for this approach.
-
-1. Create the local environment file:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Open `.env` and replace at least these values:
-
-   ```dotenv
-   POSTGRES_DB=pathaid
-   POSTGRES_USER=pathaid
-   POSTGRES_PASSWORD=choose-a-long-random-local-password
-   PATHAID_ADMIN_EMAIL=your-admin-email@example.com
-   PATHAID_ADMIN_PASSWORD_HASH='scrypt$...'
-   PATHAID_PUBLIC_ORIGIN=http://localhost:3000
-   PATHAID_SECURE_COOKIES=false
-   ```
-
-3. If using Gemini, also set:
-
-   ```dotenv
-   GEMINI_API_KEY=your-key
-   PATHAID_EXTRACTION_PROVIDER=gemini
-   PATHAID_EXTRACTION_MODEL=gemini-3.5-flash-lite
-   PATHAID_RECOMMENDATION_PROVIDER=gemini
-   PATHAID_RECOMMENDATION_MODEL=gemini-3.5-flash-lite
-   ```
-
-4. Start or rebuild the complete stack:
-
-   ```bash
-   docker compose up --build --detach
-   docker compose ps
-   ```
-
-5. Open the application:
-
-   - Student interface: <http://localhost:3000>
-   - Administrator login: <http://localhost:3000/admin/login>
-   - API liveness: <http://localhost:8000/health/live>
-   - API readiness: <http://localhost:8000/health/ready>
-
-`{"status":"live"}` means the API process is running. `{"status":"ready"}`
-also confirms that PostgreSQL is reachable and migrated.
-
-## Administrator password setup or reset
-
-The password hash is stored in `.env`; the plain password is not. From the
-repository root:
-
-```bash
-cd backend
-.venv/bin/python -c 'from app.main import password_hash; import getpass; print(password_hash(getpass.getpass("New admin password: ")))'
-```
-
-When the prompt appears, type the password and press Enter. Nothing is shown
-while you type. Copy the entire output, including the `scrypt$` prefix, into the
-root `.env` file and keep single quotes around it:
-
-```dotenv
-PATHAID_ADMIN_PASSWORD_HASH='scrypt$16384$8$1$...'
-```
-
-Then reload the API configuration:
-
-```bash
-cd ..
-docker compose up --detach --force-recreate api
-```
-
-Log in with `PATHAID_ADMIN_EMAIL` and the plain password you typed—not the
-`scrypt$...` value. `KeyboardInterrupt` at the password prompt means the command
-was cancelled, usually with Ctrl+C; run it again.
-
-## Everyday Docker commands
-
-```bash
-# Show service state
-docker compose ps
-
-# Follow all logs or one service
-docker compose logs --follow
-docker compose logs --follow api
-docker compose logs --follow worker
-docker compose logs --follow scheduler
-
-# Restart one service
-docker compose restart api
-
-# Rebuild after code or dependency changes
-docker compose up --build --detach
-
-# Stop containers but preserve PostgreSQL data
-docker compose down
-```
-
-Do not add `--volumes` to `docker compose down` unless you intentionally want
-to delete the local database.
-
-## Database migrations
-
-Alembic applies ordered, version-controlled schema changes. Compose normally
-runs it automatically before the API and worker start.
-
-```bash
-# Apply pending migrations through Docker
-docker compose run --rm migrate
-
-# Show the migration stored in PostgreSQL
-docker compose exec database sh -c \
-  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT * FROM alembic_version;"'
-```
-
-For native backend development from `backend/`:
-
-```bash
-.venv/bin/alembic upgrade head
-```
-
-Create migrations only for deliberate model/schema changes, review them before
-running them, and never edit an already deployed migration.
-
-## Backend development without Docker
-
-Use the virtual environment inside `backend/`:
+From the repository root:
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
-export DATABASE_URL=sqlite:///./pathaid.db
-alembic upgrade head
-uvicorn app.main:app --reload
+python -m app.local_admin init
 ```
 
-The prompt prefix `(.venv)` means the environment is active. If port 8000 is
-already in use, the Docker API may already be running. Either use Docker and
-skip `uvicorn`, stop it with `docker compose stop api`, or choose another port:
+`init` creates the local SQLite schema and stores the extension-installation and
+future document-encryption keys in macOS Keychain. It does not print either key.
+By default, local data is placed under:
 
-```bash
-uvicorn app.main:app --reload --port 8001
+```text
+~/Library/Application Support/PathAid/
 ```
 
-## Frontend development without Docker
+## Gemini key
 
-Start the backend first, then use another terminal:
+Save or replace the personal Gemini key without putting it in `.env`:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd backend
+.venv/bin/python -m app.local_admin set-gemini-key
 ```
 
-If Docker already runs the frontend on port 3000, stop it first:
+The prompt hides input. The key is stored under the Keychain service
+`com.pathaid.local`. Extraction is not connected to the new runtime until the
+discovery phase, but the secret boundary is ready.
+
+## Start the local API
+
+Apply migrations and bind FastAPI to loopback only:
 
 ```bash
-docker compose stop frontend
+cd backend
+.venv/bin/alembic upgrade head
+.venv/bin/python -m app
 ```
 
-## Tests and quality checks
+Check it from another terminal:
 
 ```bash
-# Backend tests and offline quality report
+curl http://127.0.0.1:8000/health/live
+curl http://127.0.0.1:8000/health/ready
+curl http://127.0.0.1:8000/api/local/status
+```
+
+`ready` confirms the SQLite schema, migration version, WAL mode, and foreign-key
+enforcement. The native entrypoint hardcodes `127.0.0.1`; set
+`PATHAID_API_PORT` to use a different port if 8000 is occupied.
+
+## Tests and schema verification
+
+```bash
 cd backend
 .venv/bin/pytest -q
+.venv/bin/alembic heads
+.venv/bin/alembic check
 .venv/bin/python -m app.quality_report
-
-# Frontend lint, production build, browser, and accessibility checks
-cd ../frontend
-npm run lint
-npm run build
-npx playwright install chromium
-npm run test:e2e
 ```
 
-The test configuration adds `backend/` to Python's import path, so
-`PYTHONPATH=.` should not be necessary.
+The suite uses temporary databases and in-memory secret stores; it never changes
+your Keychain or real local database.
 
-## Ingestion and scheduled discovery
+## Backup and restore
 
-With Docker, the worker and scheduler run continuously. Usually you should let
-those services work normally. To step through work manually, stop the relevant
-continuous service first, run one temporary process, and start it again:
-
-```bash
-docker compose stop worker
-docker compose run --rm worker python -m app.worker --once
-docker compose start worker
-
-docker compose stop scheduler
-docker compose run --rm scheduler python -m app.scheduled_discovery --once
-docker compose start scheduler
-```
-
-The worker acquires official content, asks Gemini for a structured proposal,
-validates it, and stops at private administrator review. It never publishes
-automatically. An unchanged scheduled page skips Gemini.
-
-Validate or queue the versioned launch intake from `backend/`:
-
-```bash
-.venv/bin/python -m app.catalog_intake validate
-.venv/bin/python -m app.catalog_intake queue --entry gates-scholarship
-.venv/bin/python -m app.catalog_intake queue
-```
-
-The queue command is idempotent and does not approve anything.
-
-## Reviewing and publishing catalog drafts
-
-1. Start the stack and sign in at <http://localhost:3000/admin/login>.
-2. Open **Ingestion** and filter to **Awaiting review**.
-3. Open a draft and compare every field and evidence excerpt with the retained
-   official source.
-4. Correct the draft and save it to rerun deterministic validation.
-5. Check the source-accuracy attestation only after personally verifying it.
-6. Mark coverage complete only when no unsupported or unresolved requirement
-   remains; otherwise publish conservatively with incomplete coverage.
-7. Approve or reject the revision.
-
-The current launch-candidate decisions and replacement revision IDs are in
-[the catalog review record](docs/CATALOG_REVIEW.md). AI output and validation
-do not substitute for the administrator's attestation.
-
-After reviewed programs are published, export the portable catalog bundle:
-
-```bash
-docker compose exec api python -m app.catalog_seed export /tmp/reviewed-catalog.json
-docker compose cp api:/tmp/reviewed-catalog.json ./reviewed-catalog.json
-```
-
-The bundle contains retained source text and reviewer identity. Keep it private
-and do not commit it without an explicit repository policy.
-
-## PostgreSQL backup
-
-Create a custom-format backup from the repository root:
-
-```bash
-docker compose exec -T database sh -c \
-  'pg_dump --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --format=custom' \
-  > pathaid.dump
-```
-
-The dump contains accounts, password hashes, profiles, source text, and review
-history. Encrypt it, restrict access, and never commit it. Restore procedures
-and production safety checks are in [the deployment guide](docs/deployment.md).
-
-## Git workflow
-
-Before committing:
-
-```bash
-git status --short
-git diff --check
-```
-
-Stage only related files and use a focused commit message:
-
-```bash
-git add path/to/related-file
-git commit -m "type(scope): describe the change"
-git push -u origin your-branch-name
-```
-
-Common types are `feat`, `fix`, `test`, `docs`, and `chore`. Avoid combining
-unrelated changes merely to make one large commit.
-
-## Troubleshooting
-
-### Compose reports missing PostgreSQL variables
-
-Run Compose from the repository root and confirm that `.env` exists there with
-nonempty `POSTGRES_DB`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` values.
-
-### `Address already in use`
-
-Another process already owns the port—commonly the Docker API on 8000 or
-frontend on 3000. Check `docker compose ps`; do not run a duplicate native
-server unless you stop the corresponding container or choose another port.
-
-### `ModuleNotFoundError: No module named 'app'`
-
-Run backend commands from `backend/` using its virtual environment, for example:
+Stop the API before restore. Create a consistent Phase 1 SQLite backup:
 
 ```bash
 cd backend
-.venv/bin/pytest -q
+.venv/bin/python -m app.local_admin backup /absolute/path/pathaid-backup.sqlite3
 ```
 
-### Docker changes do not appear
+The command refuses to overwrite an existing file. Restore a validated backup:
 
-Docker images contain copied source code. Rebuild the affected services:
+```bash
+.venv/bin/python -m app.local_admin restore /absolute/path/pathaid-backup.sqlite3
+.venv/bin/python -m app.local_admin status
+```
+
+Phase 1 backups are database recovery snapshots. Encrypted user backups and
+document exclusions are implemented in Phase 6; do not place real sensitive
+profile data in this transitional runtime.
+
+## Reset local data
+
+Reset is destructive and deliberately requires `--yes`:
+
+```bash
+cd backend
+.venv/bin/python -m app.local_admin reset --yes
+```
+
+It removes only the resolved PathAid SQLite/WAL files and the three managed
+Keychain entries (Gemini, extension token, document key). It refuses to reset a
+database outside the PathAid data directory and does not delete unrelated files.
+
+## Optional Docker development stack
+
+Docker Compose now runs SQLite migration, FastAPI, and the existing frontend.
+It has no PostgreSQL or Caddy service:
 
 ```bash
 docker compose up --build --detach
+docker compose ps
+docker compose logs --follow api
+docker compose down
 ```
 
-### Admin login still rejects the new password
-
-Confirm that the complete hash is single-quoted in the root `.env`, the login
-email exactly matches `PATHAID_ADMIN_EMAIL`, and the API was force-recreated.
-Never enter the hash itself in the browser password field.
-
-### Check service health and recent errors
+If an older stack already uses ports 8000 or 3000, choose unused host ports:
 
 ```bash
-docker compose ps
-docker compose logs --tail 100 api
-docker compose logs --tail 100 worker
-docker compose logs --tail 100 scheduler
+PATHAID_API_PORT=8766 PATHAID_WEB_PORT=3100 docker compose up --build --detach
 ```
 
-For production TLS, networking, backup restoration, and catalog transfer, use
-[the deployment guide](docs/deployment.md).
+The container is an optional development convenience, not the target macOS
+secret-storage runtime. Keychain-dependent endpoints are expected to remain
+unavailable inside the Linux container.
+
+## Non-secret overrides
+
+Copy `.env.example` only when you need development path/origin overrides. Never
+put Gemini, extension, document, portal, or browser credentials in it.
+
+## Documentation
+
+- [Product requirements](docs/PRD.md)
+- [MVP scope](docs/MVP.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Legacy inventory](docs/LEGACY_INVENTORY.md)
+- [Implementation plan](plan.md)

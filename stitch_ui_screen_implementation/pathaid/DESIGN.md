@@ -1,5 +1,6 @@
 ---
 name: PathAid
+status: legacy visual reference for the local-first redesign
 colors:
   surface: '#FFFFFF'
   surface-dim: '#c8e0d0'

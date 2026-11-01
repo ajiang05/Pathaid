@@ -1,194 +1,138 @@
-# Pathaid architecture diagrams
+# PathAid architecture diagrams
 
-Last verified against `feature/reviewed-launch-catalog` on 2026-10-25. These
-diagrams describe the implemented application and the prepared single-server
-hosted topology. Public provisioning, human catalog approval, and hosted
-verification remain release gates.
+These diagrams describe the approved local-first target, not every component in
+the current legacy implementation.
 
-## Component and code map
-
-```mermaid
-flowchart TB
-    subgraph Browser[Browser applications]
-        StudentUI[Student routes<br/>frontend/src/app]
-        AdminUI[Admin routes<br/>frontend/src/app/admin]
-        APIClient[Same-origin API client<br/>frontend/src/lib/api.ts]
-        StudentUI --> APIClient
-        AdminUI --> APIClient
-    end
-
-    subgraph FastAPI[FastAPI application]
-        Accounts[Accounts, profiles, discovery<br/>app/main.py]
-        AdminAuth[Admin authentication<br/>app/admin_auth.py]
-        AdminReview[Draft review and publication<br/>app/admin_review.py]
-        AdminOps[Sources and operations<br/>app/admin_api.py]
-        Catalog[Published catalog queries<br/>app/catalog.py]
-        Eligibility[Eligibility and ranking<br/>app/eligibility.py + discovery.py]
-        Recommendations[Grounded explanations<br/>app/recommendations.py]
-    end
-
-    subgraph Automation[Background automation]
-        SchedulerCode[Schedule and scope policy<br/>app/scheduled_discovery.py]
-        WorkerCode[Durable stage runner<br/>app/worker.py]
-        Stages[Acquire → extract → validate<br/>app/orchestration_stages.py]
-        Acquisition[Safe source acquisition<br/>app/source_acquisition.py]
-        Extraction[Gemini/OpenAI adapters<br/>app/extraction.py]
-        SchedulerCode --> WorkerCode --> Stages
-        Stages --> Acquisition
-        Stages --> Extraction
-    end
-
-    subgraph Persistence[Persistence]
-        Models[SQLAlchemy models<br/>app/models.py]
-        Migrations[Alembic migrations<br/>backend/migrations]
-        Postgres[(PostgreSQL)]
-        Models --> Postgres
-        Migrations --> Postgres
-    end
-
-    APIClient --> Accounts
-    APIClient --> AdminAuth
-    APIClient --> AdminReview
-    APIClient --> AdminOps
-    Accounts --> Catalog --> Eligibility
-    Accounts --> Recommendations
-    Accounts --> Models
-    AdminAuth --> Models
-    AdminReview --> Models
-    AdminOps --> Models
-    SchedulerCode --> Models
-    Stages --> Models
-```
-
-The API process handles HTTP requests only. Scheduled acquisition and model
-extraction run in separate processes, with PostgreSQL coordinating work and
-preserving progress across restarts.
-
-## Runtime and trust boundaries
+## System context
 
 ```mermaid
 flowchart LR
-    Student[Student browser]
-    Admin[Administrator browser]
+    User[Student on macOS]
+    Web[Local PathAid web app]
+    Ext[Chrome application copilot]
+    API[Loopback FastAPI service]
+    DB[(SQLite)]
+    Vault[Encrypted local document vault]
+    Keychain[macOS Keychain]
+    Public[Approved public scholarship sources]
+    Portal[Official application portals]
+    Gemini[Google Gemini]
 
-    subgraph Public[Public HTTPS boundary]
-        Caddy[Caddy TLS edge]
-    end
-
-    subgraph App[Private application network]
-        Next[Next.js 16 frontend<br/>same-origin /api proxy]
-        API[FastAPI API<br/>student and admin sessions]
-        Worker[Ingestion worker<br/>leased durable stages]
-        Scheduler[Daily scheduler<br/>approved source scopes]
-        Migrate[Alembic migration job]
-        DB[(PostgreSQL 16<br/>system of record)]
-    end
-
-    subgraph External[Approved external services]
-        Sources[Official provider websites]
-        Gemini[Gemini API]
-    end
-
-    Student -->|HTTPS| Caddy
-    Admin -->|HTTPS| Caddy
-    Caddy -->|private HTTP| Next
-    Next -->|same-origin JSON| API
-    API -->|SQLAlchemy| DB
-    Worker -->|claim and persist| DB
-    Scheduler -->|schedule and enqueue| DB
-    Migrate -->|ordered schema upgrades| DB
-    Worker -->|bounded HTTP acquisition| Sources
-    Worker -->|structured extraction| Gemini
-    API -.->|consented explanation only| Gemini
+    User --> Web
+    User --> Ext
+    Web <--> API
+    Ext <--> API
+    API <--> DB
+    API <--> Vault
+    Vault -. key .-> Keychain
+    API -. API key .-> Keychain
+    API --> Public
+    API --> Gemini
+    Ext --> Portal
+    User --> Portal
 ```
 
-Security boundaries:
-
-- Caddy is the only public container in the prepared production overlay.
-- PostgreSQL, the API, worker, scheduler, and migration job have no public
-  production port.
-- Student and administrator sessions use separate opaque HttpOnly cookies and
-  CSRF tokens.
-- Forwarded client addresses affect authentication throttling only when the
-  socket peer belongs to `PATHAID_TRUSTED_PROXY_CIDRS`.
-- Gemini never receives credentials or identity data and has no publication
-  authority.
-
-## Automated acquisition and human publication
+## Discovery and matching
 
 ```mermaid
 flowchart TD
-    Due[Approved source becomes due]
-    Claim[Scheduler claims source window]
-    Acquire[Worker acquires bounded public content]
-    Hash{Normalized content changed?}
-    Fresh[Record unchanged freshness]
-    Extract[Gemini proposes structured draft]
-    Validate[Deterministic schema, rule,<br/>evidence, URL, and deadline validation]
-    Review[Private administrator review<br/>source beside editable proposal]
-    Decision{Human decision}
-    Correct[Correct and revalidate]
-    Reject[Reject and retain audit history]
-    Publish[Atomically publish revision<br/>and append approval event]
-    PublicCatalog[(Current published catalog)]
-
-    Due --> Claim --> Acquire --> Hash
-    Hash -->|No| Fresh
-    Hash -->|Yes| Extract --> Validate
-    Validate -->|Invalid| Correct
-    Validate -->|Valid or warned| Review --> Decision
-    Decision -->|Edit| Correct --> Validate
-    Decision -->|Reject| Reject
-    Decision -->|Approve with attestations| Publish --> PublicCatalog
+    Due[Daily due scan or launch catch-up] --> Scope{Approved scope and policy?}
+    Scope -- No --> Stop[Do not automate]
+    Scope -- Yes --> Fetch[Bounded public fetch]
+    Fetch --> Changed{Normalized content changed?}
+    Changed -- No --> Fresh[Update scan freshness]
+    Changed -- Yes --> Extract[Gemini extracts structured requirements]
+    Extract --> Validate{Deterministic validation passes?}
+    Validate -- No --> Invalid[Keep prior valid version and record failure]
+    Validate -- Yes --> Version[Store active scholarship version]
+    Version --> Match[Compare with local profile]
+    Match --> Fail{Any hard failure?}
+    Fail -- Yes --> NotMatch[Not a match]
+    Fail -- No --> Unknown{Any hard unknown?}
+    Unknown -- Yes --> Possible[Possible match]
+    Unknown -- No --> Strong[Strong match]
 ```
 
-The scheduler, worker, and model stop before publication. Only an authenticated
-administrator can attest to source accuracy and publish a valid revision.
-
-## Student matching and explanations
+## Lead verification
 
 ```mermaid
 sequenceDiagram
-    actor Student
-    participant Web as Next.js
-    participant API as FastAPI
-    participant DB as PostgreSQL
-    participant Engine as Eligibility and ranking
-    participant AI as Gemini (optional)
+    actor U as User
+    participant P as PathAid
+    participant L as Lead listing
+    participant S as Official sponsor
 
-    Student->>Web: Sign in and save profile
-    Web->>API: Same-origin authenticated request + CSRF
-    API->>DB: Store optional typed answers and consent
-    Student->>Web: Discover support
-    Web->>API: POST /api/evaluate
-    API->>DB: Load current published revisions only
-    API->>Engine: Evaluate three-valued rules and stable ranking
-    Engine-->>API: Labels, reasons, missing fields, and ranking factors
-    API-->>Web: Source-backed deterministic results
-    opt Student opted into AI explanations
-        Web->>API: Request explanation for one published revision
-        API->>AI: Minimum relevant fields + reviewed facts
-        AI-->>API: Structured selection of supplied reasons
-        API-->>Web: Validated explanation or deterministic fallback
+    U->>P: Save individual lead URL/title
+    P->>L: Resolve sponsor/application reference
+    P->>S: Acquire current official page
+    alt official evidence is valid
+        S-->>P: Current rules and application URL
+        P-->>U: Show verified scholarship match
+    else absent, stale, or unverifiable
+        P-->>U: Keep lead history; hide from current matches
     end
-    Web-->>Student: Eligibility, availability, checklist, and official link
 ```
 
-Eligibility, application availability, and award selection remain separate.
-The model cannot change candidates, labels, ranking, deadlines, or amounts.
+## Application copilot
 
-## Deployment units
+```mermaid
+sequenceDiagram
+    actor U as Student
+    participant W as PathAid web app
+    participant P as Official portal
+    participant E as Chrome side panel
+    participant A as Local FastAPI
 
-| Unit | Implementation | Public exposure | Durable state |
-|---|---|---|---|
-| TLS edge | Caddy 2.11.4 | Ports 80/443 | Certificate volumes |
-| Web | Next.js 16.4.2 standalone server | Through Caddy | None |
-| API | FastAPI on Python 3.14 | Through Next.js `/api` proxy | PostgreSQL |
-| Worker | Python ingestion process | None | PostgreSQL stages and leases |
-| Scheduler | Python scheduling process | None | PostgreSQL schedules and scans |
-| Migration | Alembic one-shot job | None | PostgreSQL schema history |
-| Database | PostgreSQL 16 | None | Named volume and encrypted backup |
+    U->>W: Click Apply
+    W->>A: Mark In progress
+    W->>P: Open official application
+    U->>E: Activate PathAid
+    E->>P: Inspect supported visible fields
+    E->>A: Request mapped local values
+    A-->>E: Values, sensitivity labels, document metadata
+    E-->>U: Preview proposed and skipped fields
+    U->>E: Fill application
+    E->>P: Fill supported fields only
+    U->>E: Attach selected file
+    E->>P: Attach that file
+    U->>P: Review, certify, and submit personally
+```
 
-See [Architecture](ARCHITECTURE.md) for component details and
-[Deployment](deployment.md) for configuration, migrations, backup, and the
-prepared production Compose overlay.
+## Local security boundaries
+
+```mermaid
+flowchart TB
+    subgraph Browser[Chrome]
+      UI[Local web UI]
+      Side[Extension side panel]
+      Tab[Active application tab]
+    end
+    subgraph Mac[Local PathAid processes]
+      API[127.0.0.1 FastAPI]
+      Worker[Scheduler and worker]
+      DB[(SQLite)]
+      Files[Encrypted documents]
+    end
+    KC[macOS Keychain]
+    Net[Approved public sources / Gemini]
+
+    UI --> API
+    Side -->|exact origin + install token| API
+    Side -->|user activation only| Tab
+    API --> DB
+    Worker --> DB
+    API --> Files
+    API -. secrets .-> KC
+    Worker --> Net
+```
+
+## Target data ownership
+
+| Data | Location | Sent externally? |
+| --- | --- | --- |
+| Student profile and match results | SQLite | No for eligibility |
+| Public scholarship source text | Snapshots/SQLite | Yes, to Gemini extraction |
+| Gemini key and document key | macOS Keychain | Gemini key only to Gemini |
+| Résumé/transcript | Encrypted local vault | Only to user-selected portal attachment |
+| Essays | SQLite/encrypted backup | Optional Gemini analysis when allowed |
+| Portal credentials/cookies | Browser only | Never stored by PathAid |
