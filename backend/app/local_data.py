@@ -14,8 +14,8 @@ from .config import Settings
 from .secrets import MANAGED_SECRET_NAMES, SecretStore
 
 
-EXPECTED_MIGRATION = "0001_local_foundation"
-REQUIRED_TABLES = {"alembic_version", "app_settings", "local_profile"}
+EXPECTED_MIGRATION = "0002_private_profile"
+REQUIRED_TABLES = {"alembic_version", "app_settings", "local_profile", "profile_experiences"}
 
 
 class LocalDataError(RuntimeError):

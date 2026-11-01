@@ -16,7 +16,7 @@ from .extraction_schemas import (
     RuleNode,
     UnsupportedRule,
 )
-from .profile_fields import FIELDS
+from .profile_fields import MATCH_FIELDS
 from .source_acquisition import AcquisitionError, validate_source_url
 
 
@@ -54,7 +54,7 @@ class DraftValidationResult:
 def validate_extracted_draft(
     draft: ExtractedProgramDraft,
     snapshot: SnapshotForValidation,
-    field_registry: Mapping[str, Mapping] = FIELDS,
+    field_registry: Mapping[str, Mapping] = MATCH_FIELDS,
     *,
     as_of: datetime | None = None,
 ) -> DraftValidationResult:
@@ -148,7 +148,8 @@ def _validate_coverage(
         findings.append(_error("duplicate_state", "coverage.states", "Coverage states must be unique."))
     if len(coverage.institutions) != len(set(coverage.institutions)):
         findings.append(_error("duplicate_institution", "coverage.institutions", "Coverage institutions must be unique."))
-    known_states = set(field_registry.get("state", {}).get("values", []))
+    # All three location fields use the same canonical postal-code registry.
+    known_states = set(field_registry.get("school_state", {}).get("values", []))
     if any(state not in known_states for state in coverage.states):
         findings.append(_error("invalid_state", "coverage.states", "Coverage contains an unsupported state identifier."))
     if any(not institution.strip() for institution in coverage.institutions):

@@ -1,8 +1,9 @@
 # Local runtime and packaging
 
-PathAid's MVP is a local macOS application, not a hosted deployment. The Phase 1
-foundation described here is implemented; later scheduler, extension, document,
-and packaging components remain tracked in [../plan.md](../plan.md).
+PathAid's MVP is a local macOS application, not a hosted deployment. The local
+foundation and private deterministic matching described here are implemented;
+later source, scheduler, extension, document, and packaging components remain
+tracked in [../plan.md](../plan.md).
 
 ## Runtime topology
 
@@ -18,7 +19,7 @@ and packaging components remain tracked in [../plan.md](../plan.md).
 PostgreSQL, Caddy, TLS domains, public ingress, administrator credentials, and
 cloud container deployment are not MVP dependencies.
 
-## Current Phase 1 startup
+## Current local startup
 
 ```bash
 cd backend

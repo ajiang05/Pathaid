@@ -1,107 +1,134 @@
-"""Tests for transparent coverage filtering and discovery ordering."""
+"""Tests for strict matching and stable current scholarship ordering."""
 
+import json
 from datetime import datetime, timezone
 
-from app.discovery import RankingRecord, match_coverage, rank_records
+from app.discovery import RankingRecord, rank_current_matches
+from app.eligibility import EligibilityLabel
+from app.matching import ScholarshipCandidate, evaluate_candidates
 
 
-def record(
-    program_id: str,
-    name: str,
-    label: str,
-    availability: str,
-    deadline: datetime | None = None,
-    coverage: dict | None = None,
-) -> RankingRecord:
-    """Build a concise synthetic ranking input."""
-
-    return RankingRecord(
-        program_id=program_id,
-        name=name,
-        eligibility_label=label,
-        application_availability=availability,
-        application_deadline=deadline,
-        coverage=coverage or {"type": "national"},
-    )
+def record(identifier: str, *, label="Strong match", availability="verified_open", deadline=None, freshness=None, relevance=0):
+    return RankingRecord(identifier, identifier.title(), label, availability, deadline, freshness, relevance)
 
 
-def test_coverage_prefers_institution_then_state_then_national():
-    """The most specific reviewed match becomes the relevance factor."""
-
-    profile = {"school": "University of Massachusetts Amherst", "state": "MA"}
-    assert match_coverage({"institutions": ["University of Massachusetts Amherst"], "states": ["MA"], "national": True}, profile).relevance == "institution"
-    assert match_coverage({"states": ["MA"], "national": True}, profile).relevance == "state"
-    assert match_coverage({"type": "national"}, profile).relevance == "national"
-
-
-def test_explicit_coverage_mismatch_filters_candidate():
-    """A student outside reviewed local coverage does not receive the record."""
-
-    local = record("local", "Local Program", "Likely eligible", "open", coverage={"states": ["NY"]})
-    assert rank_records([local], {"state": "MA"}) == []
+def test_only_verified_strong_and_possible_matches_are_current():
+    records = [
+        record("strong"),
+        record("possible", label="Possible match"),
+        record("failed", label="Not a match"),
+        record("unknown", availability="unknown"),
+        record("closed", availability="closed"),
+        record("unavailable", availability="unavailable"),
+    ]
+    assert [item.record.scholarship_id for item in rank_current_matches(records)] == ["strong", "possible"]
 
 
-def test_missing_coverage_answer_keeps_candidate_unresolved():
-    """Missing school/state data cannot be treated as a coverage mismatch."""
-
-    local = record("local", "Local Program", "Need more information", "open", coverage={"states": ["MA"]})
-    ranked = rank_records([local], {})
-    assert ranked[0].relevance == "coverage unresolved"
-
-
-def test_ranking_follows_eligibility_availability_deadline_relevance_and_name():
-    """Every ordering factor follows the precedence defined in the plan."""
-
+def test_ranking_has_explicit_nullable_keys_and_stable_id_tiebreaker():
     near = datetime(2027, 1, 1, tzinfo=timezone.utc)
     far = datetime(2027, 2, 1, tzinfo=timezone.utc)
+    fresh = datetime(2026, 12, 1, tzinfo=timezone.utc)
+    stale = datetime(2026, 11, 1, tzinfo=timezone.utc)
     records = [
-        record("eligible-closed", "Closed", "Likely eligible", "closed"),
-        record("unresolved-open", "Unresolved", "Need more information", "open", near),
-        record("eligible-unknown", "Confirm", "Likely eligible", "unknown", near),
-        record("eligible-open-no-date", "No Date", "Likely eligible", "open"),
-        record("eligible-open-far", "Far", "Likely eligible", "open", far),
-        record("eligible-open-near-national", "Near National", "Likely eligible", "open", near),
-        record("eligible-open-near-state", "Near State", "Likely eligible", "open", near, {"states": ["MA"]}),
-        record("ineligible-open", "Ineligible", "Likely ineligible", "open", near),
+        record("possible", label="Possible match", deadline=near, freshness=fresh, relevance=100),
+        record("unknown-deadline", freshness=fresh, relevance=100),
+        record("far", deadline=far, freshness=fresh, relevance=100),
+        record("near-stale", deadline=near, freshness=stale, relevance=100),
+        record("near-fresh-low", deadline=near, freshness=fresh, relevance=1),
+        record("near-fresh-high-b", deadline=near, freshness=fresh, relevance=10),
+        record("near-fresh-high-a", deadline=near, freshness=fresh, relevance=10),
     ]
-    ranked = rank_records(records, {"state": "MA"})
-    assert [item.record.program_id for item in ranked] == [
-        "eligible-open-near-state",
-        "eligible-open-near-national",
-        "eligible-open-far",
-        "eligible-open-no-date",
-        "eligible-unknown",
-        "eligible-closed",
-        "unresolved-open",
-        "ineligible-open",
+    ranked = rank_current_matches(records)
+    assert [item.record.scholarship_id for item in ranked] == [
+        "near-fresh-high-a",
+        "near-fresh-high-b",
+        "near-fresh-low",
+        "near-stale",
+        "far",
+        "unknown-deadline",
+        "possible",
     ]
-    assert ranked[4].section == "Confirm availability"
-    assert ranked[4].ranking_factors["deadline"] == "not used for this availability section"
+    assert ranked[5].ranking_factors["deadline"] == "unknown"
+    assert ranked[0].ranking_factors["stable_id"] == "near-fresh-high-a"
 
 
-def test_name_and_id_make_ties_stable():
-    """Name and stable program ID produce repeatable final tie-breaks."""
+def test_same_inputs_produce_byte_stable_ordered_ids():
+    records = [record("b"), record("a"), record("c", label="Possible match")]
+    first = [item.record.scholarship_id for item in rank_current_matches(records)]
+    second = [item.record.scholarship_id for item in rank_current_matches(records)]
+    assert first == second == ["a", "b", "c"]
 
-    records = [
-        record("b", "Same Name", "Likely eligible", "open"),
-        record("z", "Zulu", "Likely eligible", "open"),
-        record("a", "Same Name", "Likely eligible", "open"),
-        record("alpha", "Alpha", "Likely eligible", "open"),
+
+def test_same_fixture_produces_byte_stable_explanations_and_ranking_factors():
+    evidence = {"snapshot_id": "fixture", "excerpt": "Applicants need a 3.0 GPA."}
+    candidates = [ScholarshipCandidate(
+        scholarship_id="stable-scholarship",
+        version_id="stable-cycle",
+        name="Stable Scholarship",
+        hard_requirements={"type": "condition", "field": "gpa", "operator": "gte", "value": 3.0, "evidence": evidence},
+        requirements_complete=True,
+        availability="verified_open",
+        deadline=datetime(2027, 3, 1, tzinfo=timezone.utc),
+        source_freshness=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        relevance_score=7,
+    )]
+
+    def snapshot():
+        result = evaluate_candidates(candidates, {"gpa": 3.5}, {"gpa": {"type": "number"}})[0]
+        return json.dumps({
+            "id": result.candidate.scholarship_id,
+            "label": result.eligibility.label.value,
+            "truth": result.eligibility.truth.value,
+            "reasons": [item.reason for item in result.eligibility.criteria],
+            "ranking": result.ranking_factors,
+        }, sort_keys=True, separators=(",", ":"))
+
+    assert snapshot() == snapshot()
+
+
+def test_selection_preferences_never_override_hard_eligibility():
+    evidence = {"snapshot_id": "fixture", "excerpt": "Synthetic GPA requirement."}
+    candidate = ScholarshipCandidate(
+        scholarship_id="synthetic",
+        version_id="v1",
+        name="Synthetic Scholarship",
+        hard_requirements={"type": "condition", "field": "gpa", "operator": "gte", "value": 3.5, "evidence": evidence},
+        requirements_complete=True,
+        availability="verified_open",
+        deadline=None,
+        source_freshness=None,
+        relevance_score=100,
+        selection_preferences=({"field": "leadership", "weight": "high"},),
+    )
+    result = evaluate_candidates([candidate], {"gpa": 3.0}, {"gpa": {"type": "number"}})[0]
+    assert result.eligibility.label is EligibilityLabel.NOT_MATCH
+    assert result.ranking_factors is None
+
+
+def test_fixture_profiles_produce_strong_possible_and_not_match():
+    evidence = {"snapshot_id": "fixture", "excerpt": "Synthetic state and GPA requirements."}
+    candidate = ScholarshipCandidate(
+        scholarship_id="fixture-scholarship",
+        version_id="cycle-1",
+        name="Fixture Scholarship",
+        hard_requirements={
+            "type": "and",
+            "children": [
+                {"type": "condition", "field": "school_state", "operator": "eq", "value": "MA", "evidence": evidence},
+                {"type": "condition", "field": "gpa", "operator": "gte", "value": 3.0, "evidence": evidence},
+            ],
+        },
+        requirements_complete=True,
+        availability="verified_open",
+        deadline=None,
+        source_freshness=None,
+    )
+    registry = {"school_state": {"type": "choice", "values": ["MA", "NY"]}, "gpa": {"type": "number"}}
+    cases = [
+        ({"school_state": "MA", "gpa": 3.5}, EligibilityLabel.STRONG),
+        ({"school_state": "MA"}, EligibilityLabel.POSSIBLE),
+        ({"school_state": "NY", "gpa": 4.0}, EligibilityLabel.NOT_MATCH),
     ]
-    assert [item.record.program_id for item in rank_records(records, {})] == ["alpha", "a", "b", "z"]
-
-
-def test_unknown_availability_ignores_deadlines_and_uses_relevance_then_name():
-    """Unverified dates cannot silently prioritize confirm-availability records."""
-
-    early = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    late = datetime(2030, 1, 1, tzinfo=timezone.utc)
-    records = [
-        record("national-early", "Alpha", "Likely eligible", "unknown", early),
-        record("state-late", "Zulu", "Likely eligible", "unknown", late, {"states": ["MA"]}),
-        record("national-late", "Beta", "Likely eligible", "unknown", late),
-    ]
-    ranked = rank_records(records, {"state": "MA"})
-    assert [item.record.program_id for item in ranked] == ["state-late", "national-early", "national-late"]
-    assert all(item.section == "Confirm availability" for item in ranked)
-    assert all(item.ranking_factors["deadline"] == "not used for this availability section" for item in ranked)
+    for profile, expected in cases:
+        result = evaluate_candidates([candidate], profile, registry)[0]
+        assert result.eligibility.label is expected

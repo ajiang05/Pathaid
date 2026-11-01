@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { SessionProvider } from "@/components/session-provider";
 
 export const metadata: Metadata = {
   title: { default: "PathAid", template: "%s | PathAid" },
-  description: "Find reviewed scholarships and student support with clear, source-backed eligibility guidance.",
+  description: "A private local scholarship finder and application copilot.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  return <html lang="en" data-scroll-behavior="smooth"><body><SessionProvider>{children}</SessionProvider></body></html>;
+  return <html lang="en" data-scroll-behavior="smooth"><body>{children}</body></html>;
 }

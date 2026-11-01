@@ -14,11 +14,13 @@ from app.eligibility import (
 # Tests use a small registry so the engine remains independent of FastAPI and
 # the database. The production API will pass its full profile-field registry.
 FIELD_REGISTRY = {
-    "state": {"type": "choice", "values": ["MA", "NY"]},
+    "school_state": {"type": "choice", "values": ["MA", "NY"]},
     "study_level": {"type": "choice", "values": ["undergraduate", "graduate"]},
     "gpa": {"type": "number"},
     "class_year": {"type": "choice", "values": ["first", "second", "third", "fourth"]},
-    "assistance_categories": {"type": "multi_choice", "values": ["scholarships", "grants"]},
+    "race": {"type": "multi_choice", "values": ["asian", "white"]},
+    "expected_graduation": {"type": "month"},
+    "experiences": {"type": "experience_list"},
 }
 
 
@@ -60,9 +62,9 @@ class EligibilityEvaluationTests(unittest.TestCase):
         """Each comparison operator should produce the expected truth value."""
 
         cases = [
-            (condition("state", "eq", "MA"), {"state": "MA"}, TruthValue.TRUE),
-            (condition("state", "in", ["MA", "NY"]), {"state": "NY"}, TruthValue.TRUE),
-            (condition("assistance_categories", "contains", "scholarships"), {"assistance_categories": ["scholarships"]}, TruthValue.TRUE),
+            (condition("school_state", "eq", "MA"), {"school_state": "MA"}, TruthValue.TRUE),
+            (condition("school_state", "in", ["MA", "NY"]), {"school_state": "NY"}, TruthValue.TRUE),
+            (condition("race", "contains", "asian"), {"race": ["asian"]}, TruthValue.TRUE),
             (condition("gpa", "gt", 3.0), {"gpa": 3.1}, TruthValue.TRUE),
             (condition("gpa", "gte", 3.0), {"gpa": 3.0}, TruthValue.TRUE),
             (condition("gpa", "lt", 3.0), {"gpa": 2.9}, TruthValue.TRUE),
@@ -78,7 +80,7 @@ class EligibilityEvaluationTests(unittest.TestCase):
         rule = {
             "type": "and",
             "children": [
-                condition("state", "eq", "MA", 1),
+                condition("school_state", "eq", "MA", 1),
                 {
                     "type": "or",
                     "children": [
@@ -88,19 +90,19 @@ class EligibilityEvaluationTests(unittest.TestCase):
                 },
             ],
         }
-        self.assertIs(evaluate(rule, {"state": "MA", "study_level": "graduate"}).truth, TruthValue.TRUE)
-        self.assertIs(evaluate(rule, {"state": "MA", "study_level": "undergraduate"}).truth, TruthValue.UNKNOWN)
-        self.assertIs(evaluate(rule, {"state": "NY"}).truth, TruthValue.FALSE)
+        self.assertIs(evaluate(rule, {"school_state": "MA", "study_level": "graduate"}).truth, TruthValue.TRUE)
+        self.assertIs(evaluate(rule, {"school_state": "MA", "study_level": "undergraduate"}).truth, TruthValue.UNKNOWN)
+        self.assertIs(evaluate(rule, {"school_state": "NY"}).truth, TruthValue.FALSE)
 
     def test_missing_questions_only_when_they_can_change_the_outcome(self):
         """Resolved AND/OR branches must not ask irrelevant follow-up questions."""
 
-        and_rule = {"type": "and", "children": [condition("state", "eq", "MA"), condition("gpa", "gte", 3.0)]}
-        self.assertEqual(evaluate(and_rule, {"state": "NY"}).missing_fields, ())
+        and_rule = {"type": "and", "children": [condition("school_state", "eq", "MA"), condition("gpa", "gte", 3.0)]}
+        self.assertEqual(evaluate(and_rule, {"school_state": "NY"}).missing_fields, ())
 
-        or_rule = {"type": "or", "children": [condition("state", "eq", "MA"), condition("gpa", "gte", 3.0)]}
-        self.assertEqual(evaluate(or_rule, {"state": "MA"}).missing_fields, ())
-        self.assertEqual(evaluate(or_rule, {"state": "NY"}).missing_fields, ("gpa",))
+        or_rule = {"type": "or", "children": [condition("school_state", "eq", "MA"), condition("gpa", "gte", 3.0)]}
+        self.assertEqual(evaluate(or_rule, {"school_state": "MA"}).missing_fields, ())
+        self.assertEqual(evaluate(or_rule, {"school_state": "NY"}).missing_fields, ("gpa",))
 
     def test_failed_or_condition_is_explained_as_an_alternative(self):
         """Keep a resolved failed alternative without making it disqualifying."""
@@ -108,28 +110,28 @@ class EligibilityEvaluationTests(unittest.TestCase):
         rule = {
             "type": "or",
             "children": [
-                condition("state", "eq", "MA", 1),
+                condition("school_state", "eq", "MA", 1),
                 condition("study_level", "eq", "graduate", 2),
                 condition("gpa", "gte", 3.0, 3),
             ],
         }
-        result = evaluate(rule, {"state": "NY", "study_level": "graduate"})
-        self.assertIs(result.label, EligibilityLabel.LIKELY_ELIGIBLE)
+        result = evaluate(rule, {"school_state": "NY", "study_level": "graduate"})
+        self.assertIs(result.label, EligibilityLabel.STRONG)
         self.assertEqual(result.missing_fields, ())
         self.assertEqual([criterion.truth for criterion in result.criteria], [TruthValue.FALSE, TruthValue.TRUE])
 
     def test_incomplete_coverage_and_unmodeled_exceptions_are_unknown(self):
         """The engine stays conservative when reviewed rules are incomplete."""
 
-        passing = condition("state", "eq", "MA")
-        result = evaluate(passing, {"state": "MA"}, complete=False)
-        self.assertIs(result.label, EligibilityLabel.NEED_MORE_INFORMATION)
+        passing = condition("school_state", "eq", "MA")
+        result = evaluate(passing, {"school_state": "MA"}, complete=False)
+        self.assertIs(result.label, EligibilityLabel.POSSIBLE)
         self.assertIn("incomplete", result.unresolved_conditions[0])
 
-        exception_rule = condition("state", "eq", "MA", exceptions_complete=False)
-        result = evaluate(exception_rule, {"state": "NY"})
+        exception_rule = condition("school_state", "eq", "MA", exceptions_complete=False)
+        result = evaluate(exception_rule, {"school_state": "NY"})
         self.assertIs(result.truth, TruthValue.UNKNOWN)
-        self.assertIs(result.label, EligibilityLabel.NEED_MORE_INFORMATION)
+        self.assertIs(result.label, EligibilityLabel.POSSIBLE)
 
     def test_unsupported_condition_requires_provider_review(self):
         """A condition the engine cannot model is unresolved, not false."""
@@ -151,9 +153,9 @@ class EligibilityEvaluationTests(unittest.TestCase):
         # Each tuple explicitly records its expected label. Values cover fifty
         # points below the boundary, the exact boundary, and forty-nine above.
         cases = [
-            *((round(2.50 + index / 100, 2), EligibilityLabel.LIKELY_INELIGIBLE) for index in range(50)),
-            (3.00, EligibilityLabel.LIKELY_ELIGIBLE),
-            *((round(3.01 + index / 100, 2), EligibilityLabel.LIKELY_ELIGIBLE) for index in range(49)),
+            *((round(2.50 + index / 100, 2), EligibilityLabel.NOT_MATCH) for index in range(50)),
+            (3.00, EligibilityLabel.STRONG),
+            *((round(3.01 + index / 100, 2), EligibilityLabel.STRONG) for index in range(49)),
         ]
         self.assertEqual(len(cases), 100)
         for gpa, expected in cases:
@@ -163,12 +165,12 @@ class EligibilityEvaluationTests(unittest.TestCase):
     def test_same_inputs_produce_equal_results(self):
         """Evaluation is deterministic and does not mutate the supplied profile."""
 
-        rule = condition("state", "eq", "MA")
-        profile = {"state": "MA"}
+        rule = condition("school_state", "eq", "MA")
+        profile = {"school_state": "MA"}
         first = evaluate(rule, profile)
         second = evaluate(rule, profile)
         self.assertEqual(first, second)
-        self.assertEqual(profile, {"state": "MA"})
+        self.assertEqual(profile, {"school_state": "MA"})
 
 
 class RuleValidationTests(unittest.TestCase):
@@ -182,37 +184,60 @@ class RuleValidationTests(unittest.TestCase):
 
     def test_unknown_fields_operators_and_node_types(self):
         self.assert_invalid(condition("unknown", "eq", "x"), "Unknown profile field")
-        self.assert_invalid(condition("state", "matches", "MA"), "Unknown rule operator")
+        self.assert_invalid(condition("school_state", "matches", "MA"), "Unknown rule operator")
         self.assert_invalid({"type": "maybe"}, "Unknown rule node type")
 
     def test_empty_groups_and_invalid_operands(self):
         self.assert_invalid({"type": "and", "children": []}, "at least one child")
-        self.assert_invalid(condition("state", "in", []), "non-empty list")
-        self.assert_invalid(condition("state", "gte", 3), "numeric field")
-        self.assert_invalid(condition("state", "contains", "MA"), "multi-choice field")
+        self.assert_invalid(condition("school_state", "in", []), "non-empty list")
+        self.assert_invalid(condition("school_state", "gte", 3), "numeric field")
+        self.assert_invalid(condition("school_state", "contains", "MA"), "multi-choice field")
 
     def test_choice_operands_must_match_profile_values(self):
         """Catalog rules cannot use labels that saved profiles will never contain."""
 
-        self.assert_invalid(condition("state", "eq", "Massachusetts"), "declared profile values")
-        self.assert_invalid(condition("state", "in", ["MA", "Massachusetts"]), "declared profile values")
+        self.assert_invalid(condition("school_state", "eq", "Massachusetts"), "declared profile values")
+        self.assert_invalid(condition("school_state", "in", ["MA", "Massachusetts"]), "declared profile values")
         self.assert_invalid(
-            condition("assistance_categories", "contains", "scholarship"),
+            condition("race", "contains", "unknown_race"),
             "declared profile values",
         )
 
+    def test_date_and_structured_experience_operators(self):
+        graduation = condition("expected_graduation", "on_or_before", "2028-05")
+        self.assertIs(evaluate(graduation, {"expected_graduation": "2028-05"}).truth, TruthValue.PASS)
+        self.assertIs(evaluate(graduation, {"expected_graduation": "2028-06"}).truth, TruthValue.FAIL)
+
+        leadership = condition(
+            "experiences",
+            "experience_any",
+            {"kind": "volunteering", "leadership": True, "minimum_hours": 20},
+        )
+        experiences = [{"kind": "volunteering", "leadership": True, "hours": 24, "organization": "Food Bank", "title": "Lead"}]
+        self.assertIs(evaluate(leadership, {"experiences": experiences}).truth, TruthValue.PASS)
+
+    def test_explicit_unknown_is_distinct_from_unanswered(self):
+        rule = condition("gpa", "gte", 3.0)
+        unanswered = evaluate(rule, {})
+        explicit = evaluate(rule, {"gpa": {"status": "unknown"}})
+        self.assertEqual(unanswered.missing_fields, ("gpa",))
+        self.assertEqual(unanswered.unknown_fields, ())
+        self.assertEqual(explicit.missing_fields, ())
+        self.assertEqual(explicit.unknown_fields, ("gpa",))
+        self.assertIs(explicit.label, EligibilityLabel.POSSIBLE)
+
     def test_evidence_is_required(self):
-        rule = condition("state", "eq", "MA")
+        rule = condition("school_state", "eq", "MA")
         rule["evidence"] = {"snapshot_id": "snapshot-1"}
         self.assert_invalid(rule, "requires excerpt")
 
     def test_depth_and_size_limits(self):
-        nested = condition("state", "eq", "MA")
+        nested = condition("school_state", "eq", "MA")
         for _ in range(9):
             nested = {"type": "and", "children": [nested]}
         self.assert_invalid(nested, "deeply nested")
 
-        wide = {"type": "or", "children": [condition("state", "eq", "MA", number) for number in range(201)]}
+        wide = {"type": "or", "children": [condition("school_state", "eq", "MA", number) for number in range(201)]}
         self.assert_invalid(wide, "too many nodes")
 
 

@@ -1,26 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, ApiError } from "@/lib/api";
-import type { Evaluation, ProgramResult } from "@/types/api";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api";
 import { ResultCard } from "@/components/result-card";
+import type { MatchesResponse } from "@/types/api";
 
-const sectionOrder=["Open opportunities","Confirm availability","Closed opportunities"];
-
-export default function DiscoverPage(){
-  const [evaluation,setEvaluation]=useState<Evaluation|null>(null);const [state,setState]=useState<"loading"|"ready"|"empty"|"error">("loading");const [message,setMessage]=useState("");
-  const evaluate=useCallback(async()=>{setState("loading");try{const data=await api<Evaluation>("/api/evaluate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({answers:{},categories:[]})});setEvaluation(data);setState(data.results.length?"ready":"empty")}catch(error){setState("error");setMessage(error instanceof ApiError&&error.status===422?"Complete your core profile and choose at least one support category first.":"We could not evaluate the catalog. Try again shortly.")}},[]);
-  useEffect(()=>{const timer=window.setTimeout(()=>void evaluate(),0);return()=>window.clearTimeout(timer)},[evaluate]);
-  const hasMissingProfileDetails=useMemo(()=>evaluation?.results.some(result=>result.missing_fields.length>0)??false,[evaluation]);
-  const grouped=useMemo(()=>{const groups=new Map<string,ProgramResult[]>();evaluation?.results.forEach(r=>{const key=r.availability_section??"open";groups.set(key,[...(groups.get(key)??[]),r])});return groups},[evaluation]);
-  return <><div className="page-heading"><div><p className="eyebrow">Reviewed catalog</p><h1>Discover support</h1><p>Results are grouped by eligibility and availability using your saved profile.</p></div></div>
-    {state==="loading"&&<section className="skeleton-panel" aria-label="Evaluating opportunities"/>}
-    {state==="error"&&<section className="empty-panel"><h2>Recommendations unavailable</h2><p>{message}</p><button className="button button-primary" onClick={()=>void evaluate()}>Try again</button></section>}
-    {state==="empty"&&<section className="empty-panel"><h2>No reviewed programs match these categories yet</h2><p>This reflects the current catalog coverage, not your eligibility for financial support.</p></section>}
-    {state==="ready"&&<div className="results-layout">
-      {hasMissingProfileDetails&&<section className="profile-details-note"><div><strong>Want more precise eligibility results?</strong><p>Add any optional details you are comfortable sharing in your student profile.</p></div><Link className="button button-outline" href="/profile">Update profile</Link></section>}
-      <div className="results-list">{sectionOrder.filter(s=>grouped.has(s)).map((section,index)=><section key={section} aria-labelledby={`results-section-${index}`}><div className="section-heading"><h2 id={`results-section-${index}`}>{section}</h2><span>{grouped.get(section)?.length}</span></div><div className="result-grid">{grouped.get(section)?.map(result=><ResultCard key={result.program_id} result={result}/>)}</div></section>)}</div>
-    </div>}
+export default function DiscoverPage() {
+  const [data, setData] = useState<MatchesResponse | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    api<MatchesResponse>("/api/matches").then(setData).catch(() => setFailed(true));
+  }, []);
+  const load = () => {
+    setFailed(false);
+    api<MatchesResponse>("/api/matches").then(setData).catch(() => setFailed(true));
+  };
+  const groups = useMemo(() => ({
+    strong: data?.results.filter(item => item.match_label === "Strong match") ?? [],
+    possible: data?.results.filter(item => item.match_label === "Possible match") ?? [],
+  }), [data]);
+  return <>
+    <div className="page-heading"><div><p className="eyebrow">Current verified scholarships</p><h1>Discover</h1><p>Results come only from your saved profile. PathAid never asks follow-up questions on this page.</p></div></div>
+    {!data && !failed && <section className="skeleton-panel" aria-label="Loading scholarship matches" />}
+    {failed && <section className="empty-panel"><h2>Matches unavailable</h2><p>Check that the local backend is running.</p><button className="button button-primary" onClick={load}>Try again</button></section>}
+    {data?.catalog_status === "awaiting_approved_sources" && <section className="empty-panel"><h2>No approved scholarship sources yet</h2><p>Your profile is ready for matching. Phase 3 will add confirmed school directories and official scholarship sources; PathAid does not insert fake opportunities.</p><Link className="button button-outline" href="/profile">Improve profile completeness</Link></section>}
+    {data?.catalog_status === "ready" && data.results.length === 0 && <section className="empty-panel"><h2>No current verified matches</h2><p>This is not a finding that you are ineligible. It reflects the current source coverage.</p></section>}
+    {groups.strong.length > 0 && <section><div className="section-heading"><h2>Strong matches</h2><span>{groups.strong.length}</span></div><div className="result-grid">{groups.strong.map(item => <ResultCard key={item.scholarship_id} result={item} />)}</div></section>}
+    {groups.possible.length > 0 && <section><div className="section-heading"><h2>Possible matches</h2><span>{groups.possible.length}</span></div><p className="missing-note">At least one hard requirement is unknown. Add details in Profile to improve precision.</p><div className="result-grid">{groups.possible.map(item => <ResultCard key={item.scholarship_id} result={item} />)}</div></section>}
   </>;
 }

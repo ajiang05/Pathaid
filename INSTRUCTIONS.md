@@ -1,8 +1,9 @@
 # PathAid local setup and command guide
 
-Phase 1 provides the local macOS backend foundation. Scholarship profile,
-discovery, saved-list, and extension UI behavior arrive in later phases; consult
-[plan.md](plan.md) for implementation status.
+Phases 1–2 provide the local macOS backend foundation, private profile,
+deterministic matching, and accountless Profile/Discover interface. Approved
+source discovery, saved-list, and extension behavior arrive in later phases;
+consult [plan.md](plan.md) for authoritative status.
 
 ## Prerequisites
 
@@ -85,7 +86,7 @@ your Keychain or real local database.
 
 ## Backup and restore
 
-Stop the API before restore. Create a consistent Phase 1 SQLite backup:
+Stop the API before restore. Create a consistent SQLite recovery backup:
 
 ```bash
 cd backend
@@ -99,9 +100,10 @@ The command refuses to overwrite an existing file. Restore a validated backup:
 .venv/bin/python -m app.local_admin status
 ```
 
-Phase 1 backups are database recovery snapshots. Encrypted user backups and
-document exclusions are implemented in Phase 6; do not place real sensitive
-profile data in this transitional runtime.
+Current backups are database recovery snapshots and are not encrypted. The live
+profile is local but is also not application-level encrypted. Encrypted portable
+backups and document exclusions arrive in Phase 6, so protect backup files as
+sensitive data.
 
 ## Reset local data
 

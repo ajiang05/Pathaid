@@ -4,7 +4,7 @@ const port = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "3000", 10);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PLAYWRIGHT_PORT must be a valid TCP port.");
 }
-const baseURL = `http://localhost:${port}`;
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -21,7 +21,7 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: `npm run dev -- --hostname localhost --port ${port}`,
+    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
     url: baseURL,
     // Local Docker already serves this port; CI still starts a clean dev server.
     reuseExistingServer: !process.env.CI,

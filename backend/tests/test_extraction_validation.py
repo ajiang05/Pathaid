@@ -128,7 +128,7 @@ def test_unknown_choice_value_blocks_the_proposal():
     """Model-friendly labels must not bypass the profile registry vocabulary."""
 
     payload = proposal()
-    payload["eligibility_tree"]["field"] = "state"
+    payload["eligibility_tree"]["field"] = "school_state"
     payload["eligibility_tree"]["operator"] = "eq"
     payload["eligibility_tree"]["value"] = "Massachusetts"
 

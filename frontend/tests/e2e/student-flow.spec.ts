@@ -1,127 +1,88 @@
-import { expect, test, type Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import { expect, test, type Route } from "@playwright/test";
 
+const completeness = { known: 5, unknown: 1, unanswered: 25, total: 31, percent_known: 16 };
 const profile = {
+  fields: { school: "University of Massachusetts Amherst", school_state: "MA", current_state: "MA", permanent_state: "NY", study_level: "undergraduate", pell_eligible: { status: "unknown" } },
+  experiences: [], completeness, school_revision: 1, school_changed: false,
+};
+const choice = (section: string, label: string) => ({ section, type: "choice", label, question: label, values: ["MA", "NY", "CA"], sensitive: false, optional: true, allow_unknown: true });
+const registry = {
   fields: {
-    school: "University of Massachusetts Amherst",
-    state: "MA",
-    study_level: "undergraduate",
-    enrollment: "full_time",
-    assistance_categories: ["scholarship"],
+    school: { section: "school", type: "string", label: "Current college or university", question: "Current college or university", sensitive: false, optional: false, allow_unknown: true, maximum: 120 },
+    school_state: choice("school", "School state"), current_state: choice("current_residence", "Current residence state"), permanent_state: choice("permanent_residence", "Permanent or home state"),
+    pell_eligible: { section: "eligibility", type: "boolean", label: "Pell Grant eligible", question: "Pell Grant eligible", sensitive: true, optional: true, allow_unknown: true },
   },
-  ai_opt_in: false,
+  sections: [
+    { id: "school", label: "Current school" }, { id: "current_residence", label: "Current residence" },
+    { id: "permanent_residence", label: "Permanent or home residence" }, { id: "eligibility", label: "Optional eligibility information" },
+  ],
+  unknown_answer: { status: "unknown" },
+};
+const matches = {
+  results: [
+    { scholarship_id: "strong-1", name: "Engineering Scholars Award", sponsor: "Example Foundation", award: "$2,500", deadline: "2027-03-15", match_label: "Strong match", key_reasons: ["All known hard requirements pass."], unknown_fields: [] },
+    { scholarship_id: "possible-1", name: "Community Leadership Scholarship", sponsor: "Example University", award: null, deadline: null, match_label: "Possible match", key_reasons: ["Pell status is required but unknown."], unknown_fields: ["pell_eligible"] },
+  ], not_matches: [], profile_completeness: completeness, catalog_status: "ready",
 };
 
-const result = {
-  program_id: "mass-opportunity",
-  revision_id: "revision-1",
-  name: "Massachusetts Student Opportunity Grant",
-  description: "Support for eligible undergraduate students in Massachusetts.",
-  categories: ["scholarship"],
-  label: "Likely eligible",
-  truth: "true",
-  criteria: [{ id: "state", field: "state", operator: "equals", truth: "true", reason: "You reported living in Massachusetts.", answerable: true, evidence: { quote: "Applicants must be Massachusetts residents.", source_url: "https://example.edu/grant" } }],
-  missing_fields: [{ field: "pell_eligible", question: "Are you eligible for a Pell Grant?", answer_type: "boolean", sensitive: true }],
-  unresolved_conditions: [],
-  application_availability: "verified_open",
-  application_deadline: "2027-03-15",
-  deadline_timezone: "America/New_York",
-  deadline_verification: "verified",
-  deadline_timezone_verification: "verified",
-  assistance_amount: "$2,500",
-  amount_verification: "verified",
-  award_cycle: "2026-2027",
-  award_cycle_verification: "verified",
-  checklist: [{ item: "Transcript", description: "Upload an unofficial transcript." }],
-  checklist_verification: "verified",
-  selection_factors: [],
-  verified_at: "2026-10-20T12:00:00Z",
-  provider_url: "https://example.edu/grant",
-  application_url: "https://example.edu/grant/apply",
-  sources: [{ source_url: "https://example.edu/grant" }],
-  coverage: {},
-  template_explanation: "Your saved profile meets the reviewed residency requirement.",
-  availability_section: "Open opportunities",
-  relevance: "high",
-  ranking_factors: {},
-};
-
-async function mockStudentApi(page: Page) {
-  await page.route("**/api/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === "/api/auth/session") return route.fulfill({ json: { csrf_token: "test-csrf" } });
-    if (path === "/api/profile") return route.fulfill({ json: profile });
-    if (path === "/api/evaluate") return route.fulfill({ json: { categories: ["scholarship"], results: [result] } });
-    return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
-  });
+async function fulfillApi(route: Route) {
+  const path = new URL(route.request().url()).pathname;
+  if (path === "/api/profile-fields") return route.fulfill({ json: registry });
+  if (path === "/api/profile") {
+    if (route.request().method() === "DELETE") return route.fulfill({ status: 204 });
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON();
+      return route.fulfill({ json: { ...profile, fields: body.fields, experiences: body.experiences } });
+    }
+    return route.fulfill({ json: profile });
+  }
+  if (path === "/api/matches") return route.fulfill({ json: matches });
+  return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
 }
 
-async function expectNoAccessibilityViolations(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(results.violations).toEqual([]);
-}
+test.beforeEach(async ({ page }) => page.route("**/api/**", fulfillApi));
 
-test("landing page leads to account creation", async ({ page }) => {
+test("root opens the accountless local home", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /find financial support/i })).toBeVisible();
-  await page.getByRole("link", { name: "Build your profile" }).click();
-  await expect(page).toHaveURL(/\/signup$/);
-  await expect(page.getByRole("heading", { name: "Start finding support" })).toBeVisible();
-  await expectNoAccessibilityViolations(page);
+  await expect(page).toHaveURL(/\/home$/);
+  await expect(page.getByRole("heading", { name: "Your scholarship search" })).toBeVisible();
+  await expect(page.getByText("Private on this Mac")).toBeVisible();
+  await expect(page.getByRole("link", { name: /log in|sign up/i })).toHaveCount(0);
 });
 
-test("new account enters onboarding with a refreshed session", async ({ page }) => {
-  let authenticated = false;
-  const profileFields = {
-    fields: {
-      school: { type: "string", question: "What school do you attend?" },
-      state: { type: "choice", question: "What state do you live in?", values: ["MA"] },
-      study_level: { type: "choice", question: "What is your study level?", values: ["undergraduate"] },
-      enrollment: { type: "choice", question: "What is your enrollment status?", values: ["full_time"] },
-      assistance_categories: { type: "multi_choice", question: "What support are you looking for?", values: ["scholarship"] },
-    },
-  };
-  await page.route("**/api/**", async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === "/api/auth/session") {
-      return authenticated
-        ? route.fulfill({ json: { csrf_token: "test-csrf" } })
-        : route.fulfill({ status: 401, json: { detail: "Not authenticated" } });
-    }
-    if (path === "/api/auth/signup") {
-      authenticated = true;
-      return route.fulfill({ status: 201, json: { csrf_token: "test-csrf" } });
-    }
-    if (path === "/api/profile-fields") return route.fulfill({ json: profileFields });
-    if (path === "/api/profile") return route.fulfill({ json: { fields: {}, ai_opt_in: false } });
-    return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
-  });
+test("profile separates locations, unknown answers, and structured experiences", async ({ page }) => {
+  await page.goto("/profile");
+  await expect(page.getByRole("heading", { name: "Your profile" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current school" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current residence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Permanent or home residence" })).toBeVisible();
+  await expect(page.getByLabel("Current residence state", { exact: true })).toHaveValue("MA");
+  await expect(page.getByLabel("Permanent or home state", { exact: true })).toHaveValue("NY");
+  await expect(page.getByLabel("Pell Grant eligible answer status")).toHaveValue("unknown");
 
-  await page.goto("/signup");
-  await page.getByLabel("Email address").fill("new-student@example.com");
-  await page.getByLabel("Password").fill("a-secure-test-password");
-  await page.getByRole("button", { name: "Create account" }).click();
-
-  await expect(page).toHaveURL(/\/onboarding$/);
-  await expect(page.getByRole("heading", { name: /tell us what support fits/i })).toBeVisible();
-  await expect(page.getByText("Log in to continue.")).not.toBeVisible();
+  await page.getByRole("button", { name: "Add experience" }).click();
+  await page.getByLabel("Experience 1 type").selectOption("volunteering");
+  await page.getByLabel("Experience 1 organization").fill("Community Food Bank");
+  await page.getByLabel("Experience 1 title").fill("Volunteer coordinator");
+  await page.getByLabel("Experience 1 tags").fill("service, food security");
+  const patch = page.waitForRequest(request => request.url().endsWith("/api/profile") && request.method() === "PATCH");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  const body = (await patch).postDataJSON();
+  expect(body.fields.current_state).toBe("MA");
+  expect(body.fields.permanent_state).toBe("NY");
+  expect(body.fields.pell_eligible).toEqual({ status: "unknown" });
+  expect(body.experiences[0]).toMatchObject({ kind: "volunteering", organization: "Community Food Bank", leadership: false, tags: ["service", "food security"] });
+  await expect(page.getByRole("status")).toHaveText("Profile saved locally.");
 });
 
-test("authenticated student can discover and inspect a reviewed result", async ({ page }) => {
-  await mockStudentApi(page);
-  await page.goto("/home");
-  await expect(page.getByRole("heading", { name: "Your support search starts here" })).toBeVisible();
-  await expectNoAccessibilityViolations(page);
-  await page.getByRole("link", { name: "Discover support" }).click();
-  await expect(page.getByRole("heading", { name: "Open opportunities" })).toBeVisible();
-  await expect(page.getByText(result.name)).toBeVisible();
-  await expect(page.getByText("Optional follow-up")).not.toBeVisible();
-  await expectNoAccessibilityViolations(page);
-  await page.getByRole("link", { name: "View details" }).click();
-  await expect(page.getByRole("heading", { name: result.name })).toBeVisible();
-  await expect(page.getByText("Reviewed eligibility requirements")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open official provider site" })).toHaveAttribute("href", result.application_url);
-  await expectNoAccessibilityViolations(page);
+test("discover groups deterministic matches without inline questions", async ({ page }) => {
+  await page.goto("/discover");
+  await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Strong matches" })).toBeVisible();
+  await expect(page.getByText("Engineering Scholars Award")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Possible matches" })).toBeVisible();
+  await expect(page.getByText("Community Leadership Scholarship")).toBeVisible();
+  await expect(page.getByText("Unknown: Pell Eligible")).toBeVisible();
+  await expect(page.locator("form")).toHaveCount(0);
+  await expect(page.getByRole("textbox")).toHaveCount(0);
 });

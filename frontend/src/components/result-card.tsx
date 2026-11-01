@@ -1,14 +1,18 @@
-import Link from "next/link";
-import { dateLabel, readable } from "@/lib/api";
-import type { ProgramResult } from "@/types/api";
+import { readable } from "@/lib/api";
+import type { MatchResult } from "@/types/api";
 
-export function ResultCard({result}:{result:ProgramResult}) {
+function deadline(value: string | null) {
+  if (!value) return "Unknown";
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(value));
+}
+
+export function ResultCard({ result }: { result: MatchResult }) {
+  const statusClass = result.match_label === "Strong match" ? "status-true" : "status-pill";
   return <article className="result-card">
-    <header className="result-top"><p className="result-provider">{result.categories.map(readable).join(" · ")}</p><h3>{result.name}</h3></header>
-    <p className="result-description">{result.description}</p>
-    <dl className="result-facts"><div><dt>Amount</dt><dd>{result.assistance_amount??"Not verified"}</dd></div><div><dt>Deadline</dt><dd>{dateLabel(result.application_deadline)}</dd></div><div><dt>Availability</dt><dd>{readable(result.application_availability)}</dd></div></dl>
-    <div className="pill-row"><span className={`status-pill status-${result.truth}`}>{result.label}</span></div>
-    {result.missing_fields.length>0&&<p className="missing-note">Some eligibility details are not saved in your profile.</p>}
-    <div className="result-footer"><span>{result.relevance&&readable(result.relevance)}</span><Link className="button button-primary" href={`/programs/${result.program_id}`}>View details</Link></div>
+    <header className="result-top"><p className="result-provider">{result.sponsor}</p><h3>{result.name}</h3></header>
+    <dl className="result-facts"><div><dt>Award</dt><dd>{result.award ?? "Not stated"}</dd></div><div><dt>Deadline</dt><dd>{deadline(result.deadline)}</dd></div><div><dt>Eligibility</dt><dd>{result.match_label}</dd></div></dl>
+    <div className="pill-row"><span className={`status-pill ${statusClass}`}>{result.match_label}</span></div>
+    {result.key_reasons.length > 0 && <ul className="missing-note">{result.key_reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}
+    {result.unknown_fields.length > 0 && <p className="missing-note">Unknown: {result.unknown_fields.map(readable).join(", ")}</p>}
   </article>;
 }
