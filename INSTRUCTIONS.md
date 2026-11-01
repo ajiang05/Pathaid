@@ -49,6 +49,43 @@ The prompt hides input. The key is stored under the Keychain service
 `com.pathaid.local`. Extraction is not connected to the new runtime until the
 discovery phase, but the secret boundary is ready.
 
+## Import the U.S. institution directory
+
+PathAid selects schools from the authoritative NCES IPEDS directory rather
+than maintaining a hand-written school list. Download the latest **Directory
+information (HD)** CSV ZIP from the [IPEDS Data Center](https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx?gotoReportId=7),
+extract its CSV, and import it with the matching collection year:
+
+```bash
+cd backend
+.venv/bin/python -m app.local_admin import-institutions /absolute/path/HD2025.csv --year 2025
+```
+
+The import is local, repeatable, and does not require a paid API key. It stores
+only institution identity, aliases, city/state, official website, dataset year,
+and import time. A newer HD file safely updates matching Unit IDs.
+
+## Run one confirmed source
+
+The Sources screen queues **Scan now** for the future scheduler. During current
+development, run a confirmed generic or AcademicWorks directory immediately with its displayed
+source ID:
+
+```bash
+cd backend
+.venv/bin/python -m app.local_admin scan-source SOURCE_UUID
+```
+
+The scan checks `robots.txt`, exact host/path approval, depth, page budget, and
+request rate. It follows only scholarship-related links and stores immutable
+normalized snapshots. A failed scan records a safe error code and retains every
+previous valid snapshot.
+
+For AcademicWorks/Blackbaud, confirm the root path (`/`) because public listings
+may move between `/opportunities` and `/?page=N`. The adapter still follows only
+public listing pagination and numeric `/opportunities/{id}` detail pages; it
+never follows sign-in, application, or external-opportunity routes.
+
 ## Start the local API
 
 Apply migrations and bind FastAPI to loopback only:

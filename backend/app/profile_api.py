@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from .database import Database
 from .models import AppSetting, LocalProfile, ProfileExperience
 from .profile_fields import FIELDS, SECTIONS, ProfileValidationError, completeness, validate_profile_patch
+from .source_registry import deactivate_prior_school_scopes
 
 
 class ExperienceInput(BaseModel):
@@ -126,14 +127,21 @@ def create_profile_router(database: Database) -> APIRouter:
     @router.patch("/profile")
     def patch_profile(body: ProfilePatch, db: Session = Depends(get_db)) -> dict:
         profile = singleton(db)
-        old_school = profile.data.get("school")
+        old_school = (profile.data.get("school_id"), profile.data.get("school"))
         try:
             profile.data = validate_profile_patch(body.fields, profile.data)
         except ProfileValidationError as error:
             raise HTTPException(422, detail={"field": error.field_name, "message": "Invalid profile answer"}) from error
-        school_changed = "school" in body.fields and profile.data.get("school") != old_school
+        # A free-text school edit is no longer authoritative NCES selection.
+        # Keep matching data, but require institution selection again before a
+        # new school-owned crawl scope can be proposed.
+        if "school" in body.fields and "school_id" not in body.fields and profile.data.get("school") != old_school[1]:
+            profile.data = {name: value for name, value in profile.data.items() if name != "school_id"}
+        new_school = (profile.data.get("school_id"), profile.data.get("school"))
+        school_changed = bool({"school", "school_id"}.intersection(body.fields)) and new_school != old_school
         if school_changed:
             profile.school_revision += 1
+            deactivate_prior_school_scopes(db, current_revision=profile.school_revision)
             setting = db.get(AppSetting, "needs_school_source_onboarding")
             if setting is None:
                 db.add(AppSetting(key="needs_school_source_onboarding", value="true"))

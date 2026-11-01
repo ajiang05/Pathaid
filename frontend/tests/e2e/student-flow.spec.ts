@@ -86,3 +86,68 @@ test("discover groups deterministic matches without inline questions", async ({ 
   await expect(page.locator("form")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
 });
+
+test("source registry requires confirmation and keeps manual leads isolated", async ({ page }) => {
+  await page.unroute("**/api/**");
+  let localProfile = { ...profile, fields: { ...profile.fields } as Record<string, unknown> };
+  const sourceItems: Record<string, unknown>[] = [];
+  const leadItems: Record<string, unknown>[] = [];
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/profile") return route.fulfill({ json: localProfile });
+    if (path === "/api/institutions") return route.fulfill({ json: [{ unit_id: "166629", name: "University of Massachusetts Amherst", aliases: ["UMass"], city: "Amherst", state: "MA", website_url: "https://www.umass.edu/", source: "NCES IPEDS", source_year: 2025 }] });
+    if (path === "/api/institutions/166629/select") {
+      localProfile = { ...localProfile, fields: { ...localProfile.fields, school_id: "166629", school: "University of Massachusetts Amherst", school_city: "Amherst", school_state: "MA" } };
+      return route.fulfill({ json: { changed: true, school_revision: 2 } });
+    }
+    if (path === "/api/sources" && request.method() === "GET") return route.fulfill({ json: sourceItems });
+    if (path === "/api/sources" && request.method() === "POST") {
+      const body = request.postDataJSON();
+      const item = { ...body, id: "scope-1", hostname: "www.umass.edu", school_revision: 2, status: "proposed", confirmed_at: null, policy_status: "unknown", policy_checked_at: null, last_attempt_at: null, last_success_at: null, last_content_change_at: null, next_scan_at: null, scan_requested_at: null, last_error_code: null };
+      sourceItems.push(item);
+      return route.fulfill({ status: 201, json: item });
+    }
+    if (path === "/api/sources/scope-1/confirm") {
+      Object.assign(sourceItems[0], { status: "active", confirmed_at: "2026-11-01T12:00:00Z", next_scan_at: "2026-11-01T12:00:00Z" });
+      return route.fulfill({ json: sourceItems[0] });
+    }
+    if (path === "/api/sources/scope-1/scan-now") {
+      Object.assign(sourceItems[0], { scan_requested_at: "2026-11-01T12:01:00Z" });
+      return route.fulfill({ json: sourceItems[0] });
+    }
+    if (path === "/api/leads" && request.method() === "GET") return route.fulfill({ json: leadItems });
+    if (path === "/api/leads" && request.method() === "POST") {
+      const body = request.postDataJSON();
+      const item = { id: "lead-1", title: body.title, canonical_url: body.url, hostname: "bigfuture.collegeboard.org", status: "unverified", official_url: null, last_error_code: null };
+      leadItems.push(item);
+      return route.fulfill({ status: 201, json: item });
+    }
+    return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
+  });
+
+  await page.goto("/sources");
+  await expect(page.getByRole("heading", { name: "Sources" })).toBeVisible();
+  await page.getByLabel("Find a U.S. college or university").fill("UMass");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page.getByText("NCES 2025")).toBeVisible();
+  await page.getByRole("button", { name: "Select" }).click();
+  await expect(page.getByText(/is now your current school/)).toBeVisible();
+
+  await page.getByLabel("Source name").fill("UMass scholarships");
+  await page.getByLabel("Directory URL").fill("https://www.umass.edu/financialaid/undergraduate-scholarships");
+  await page.getByLabel("Allowed path prefix").fill("/financialaid");
+  await page.getByRole("button", { name: "Save unconfirmed proposal" }).click();
+  await expect(page.getByText("Proposed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Scan now" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Confirm boundary" }).click();
+  await expect(page.getByText("Active", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Scan now" }).click();
+  await expect(page.getByRole("status")).toHaveText("The source is queued for its next scan.");
+
+  await page.getByLabel("Lead title").fill("BigFuture scholarship");
+  await page.getByLabel("Exact URL").fill("https://bigfuture.collegeboard.org/scholarships/example");
+  await page.getByRole("button", { name: "Save lead" }).click();
+  await expect(page.getByText("Lead saved as one URL. Its surrounding domain was not approved.")).toBeVisible();
+  await expect(page.locator(".source-card")).toHaveCount(1);
+});

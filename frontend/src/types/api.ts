@@ -54,3 +54,48 @@ export type MatchesResponse = {
   profile_completeness: Completeness;
   catalog_status: "ready" | "awaiting_approved_sources";
 };
+
+export type Institution = {
+  unit_id: string;
+  name: string;
+  aliases: string[];
+  city: string;
+  state: string;
+  website_url: string | null;
+  source: "NCES IPEDS";
+  source_year: number;
+};
+
+export type SourceScope = {
+  id: string;
+  name: string;
+  ownership: "school" | "sponsor";
+  adapter: "generic" | "academicworks" | "kaleidoscope";
+  canonical_url: string;
+  hostname: string;
+  allowed_path_prefix: string;
+  institution_unit_id: string | null;
+  school_revision: number | null;
+  status: "proposed" | "active" | "paused" | "inactive" | "policy_blocked";
+  confirmed_at: string | null;
+  max_depth: number;
+  page_budget: number;
+  requests_per_minute: number;
+  scan_interval_hours: number;
+  policy_status: "unknown" | "allowed" | "blocked";
+  last_attempt_at: string | null;
+  last_success_at: string | null;
+  next_scan_at: string | null;
+  scan_requested_at: string | null;
+  last_error_code: string | null;
+};
+
+export type ManualLead = {
+  id: string;
+  title: string;
+  canonical_url: string;
+  hostname: string;
+  status: "unverified" | "official_verified" | "unavailable" | "rejected";
+  official_url: string | null;
+  last_error_code: string | null;
+};

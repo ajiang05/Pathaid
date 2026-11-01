@@ -54,9 +54,9 @@ security/migration tests.
 ## Phase 3 — approved sources and automated discovery
 
 - [~] Reuse safe acquisition, snapshots, hashing, and extraction adapters.
-- [ ] Implement source registry and school-directory confirmation.
-- [ ] Implement generic bounded-directory adapter.
-- [ ] Implement AcademicWorks/Blackbaud public-listing adapter.
+- [x] Implement source registry and school-directory confirmation.
+- [x] Implement generic bounded-directory adapter.
+- [x] Implement AcademicWorks/Blackbaud public-listing adapter.
 - [ ] Implement Kaleidoscope public-listing adapter.
 - [ ] Add manual lead intake and official sponsor verification.
 - [ ] Enforce robots, terms/policy, rate, path, depth, and page budgets.

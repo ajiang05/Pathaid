@@ -9,6 +9,7 @@ async function mockLocalApi(page: Page) {
     if (path === "/api/profile-fields") return route.fulfill({ json: { fields: { school: { section: "school", type: "string", label: "Current college or university", question: "Current college or university", sensitive: false, optional: false, allow_unknown: true, maximum: 120 } }, sections: [{ id: "school", label: "Current school" }], unknown_answer: { status: "unknown" } } });
     if (path === "/api/profile") return route.fulfill({ json: { fields: {}, experiences: [], completeness, school_revision: 0, school_changed: false } });
     if (path === "/api/matches") return route.fulfill({ json: { results: [], not_matches: [], profile_completeness: completeness, catalog_status: "awaiting_approved_sources" } });
+    if (path === "/api/sources" || path === "/api/leads") return route.fulfill({ json: [] });
     return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
   });
 }
@@ -20,7 +21,7 @@ async function expectAccessible(page: Page) {
 
 test.beforeEach(async ({ page }) => mockLocalApi(page));
 
-for (const route of ["/home", "/profile", "/discover", "/privacy"]) {
+for (const route of ["/home", "/profile", "/discover", "/sources", "/privacy"]) {
   test(`${route} has no automated accessibility violations`, async ({ page }) => {
     await page.goto(route);
     await page.locator(".skeleton-panel").waitFor({ state: "detached" }).catch(() => undefined);
