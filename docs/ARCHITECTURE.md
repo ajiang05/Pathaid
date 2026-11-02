@@ -128,6 +128,10 @@ Each approved source stores:
 
 Changing school marks old school-specific sources inactive; it does not delete
 history. The new school's proposed directory requires one-time confirmation.
+Boundary confirmation does not authorize scanning by itself. The user records a
+separate source-policy assessment; unknown or blocked policies cannot scan, and
+each assessment is append-only evidence. Clearing a prohibition leaves the
+source paused until an explicit resume.
 
 ### 5.2 Network safety
 

@@ -109,7 +109,11 @@ test("source registry requires confirmation and keeps manual leads isolated", as
       return route.fulfill({ status: 201, json: item });
     }
     if (path === "/api/sources/scope-1/confirm") {
-      Object.assign(sourceItems[0], { status: "active", confirmed_at: "2026-11-01T12:00:00Z", next_scan_at: "2026-11-01T12:00:00Z" });
+      Object.assign(sourceItems[0], { status: "active", confirmed_at: "2026-11-01T12:00:00Z", next_scan_at: null });
+      return route.fulfill({ json: sourceItems[0] });
+    }
+    if (path === "/api/sources/scope-1/policy") {
+      Object.assign(sourceItems[0], { policy_status: "allowed", policy_checked_at: "2026-11-01T12:00:30Z", next_scan_at: "2026-11-01T12:00:30Z" });
       return route.fulfill({ json: sourceItems[0] });
     }
     if (path === "/api/sources/scope-1/scan-now") {
@@ -119,7 +123,7 @@ test("source registry requires confirmation and keeps manual leads isolated", as
     if (path === "/api/leads" && request.method() === "GET") return route.fulfill({ json: leadItems });
     if (path === "/api/leads" && request.method() === "POST") {
       const body = request.postDataJSON();
-      const item = { id: "lead-1", title: body.title, canonical_url: body.url, hostname: "bigfuture.collegeboard.org", status: "unverified", official_url: null, last_error_code: null };
+      const item = { id: "lead-1", title: body.title, canonical_url: body.url, hostname: "bigfuture.collegeboard.org", status: "unverified", official_url: null, official_hostname: null, last_attempt_at: null, verified_at: null, last_error_code: null };
       leadItems.push(item);
       return route.fulfill({ status: 201, json: item });
     }
@@ -142,6 +146,9 @@ test("source registry requires confirmation and keeps manual leads isolated", as
   await expect(page.getByRole("button", { name: "Scan now" })).toHaveCount(0);
   await page.getByRole("button", { name: "Confirm boundary" }).click();
   await expect(page.getByText("Active", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Scan now" })).toBeDisabled();
+  await page.getByRole("button", { name: "Record policy review" }).click();
+  await expect(page.getByText("Policy: Allowed", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Scan now" }).click();
   await expect(page.getByRole("status")).toHaveText("The source is queued for its next scan.");
 

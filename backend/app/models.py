@@ -121,6 +121,22 @@ class SourceScope(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class SourcePolicyAssessment(Base):
+    """Immutable user-reviewed evidence about source automation policy."""
+
+    __tablename__ = "source_policy_assessments"
+    __table_args__ = (
+        CheckConstraint("outcome IN ('allowed', 'blocked')", name="ck_source_policy_assessment_outcome"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_scope_id: Mapped[str] = mapped_column(ForeignKey("source_scopes.id"), index=True)
+    outcome: Mapped[str] = mapped_column(String(20), index=True)
+    evidence_url: Mapped[str | None] = mapped_column(String(2_000), nullable=True)
+    evidence_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class ManualLead(Base):
     """One untrusted URL lead that grants no crawl scope around it."""
 

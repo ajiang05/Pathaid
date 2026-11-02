@@ -230,8 +230,9 @@ def execute_bounded_scan(
             raise RegistryError("source_not_found", "Source not found.")
         if scope.adapter != adapter or scope.status != "active" or scope.confirmed_at is None:
             raise RegistryError("source_not_scannable", "The source is not confirmed, active, or compatible with this adapter.")
-        if scope.policy_status == "blocked":
-            raise RegistryError("policy_blocked", "Source policy prohibits automation.")
+        if scope.policy_status != "allowed":
+            code = "policy_blocked" if scope.policy_status == "blocked" else "policy_unchecked"
+            raise RegistryError(code, "Review and allow the source automation policy before scanning.")
         boundary = _boundary(scope)
         db.add(SourceScanRun(
             id=run_id, source_scope_id=scope.id, status="running", started_at=started,

@@ -81,6 +81,13 @@ request rate. It follows only scholarship-related links and stores immutable
 normalized snapshots. A failed scan records a safe error code and retains every
 previous valid snapshot.
 
+Before the first scan, confirm the boundary and record an automation-policy
+review on **Sources**. Select **No explicit prohibition found** only after
+reviewing the relevant official rules. If automation is explicitly prohibited,
+record the official policy URL and exact text; PathAid clears queued work and
+blocks the source. Clearing that decision leaves the source paused until you
+explicitly resume it.
+
 For AcademicWorks/Blackbaud, confirm the root path (`/`) because public listings
 may move between `/opportunities` and `/?page=N`. The adapter still follows only
 public listing pagination and numeric `/opportunities/{id}` detail pages; it

@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select, update
+from sqlalchemy.exc import DatabaseError
 
+from app import source_api
 from app.config import Settings
 from app.database import Database
 from app.local_data import upgrade_database
 from app.main import create_app
-from app.models import SourceScope
-from app import source_api
+from app.models import SourcePolicyAssessment, SourceScope
 from app.source_registry import import_ipeds_directory, scope_allows_url
 from conftest import FakeSecretStore
 
@@ -102,7 +105,12 @@ def test_unconfirmed_scope_cannot_scan_and_confirmation_is_explicit(tmp_path):
         assert blocked.status_code == 422
         active = client.post(f"/api/sources/{source['id']}/confirm").json()
         assert active["status"] == "active"
-        assert active["confirmed_at"] is not None and active["next_scan_at"] is not None
+        assert active["confirmed_at"] is not None and active["next_scan_at"] is None
+        unchecked = client.post(f"/api/sources/{source['id']}/scan-now")
+        assert unchecked.status_code == 422
+        assert unchecked.json()["detail"]["code"] == "policy_unchecked"
+        active = client.post(f"/api/sources/{source['id']}/policy", json={"outcome": "allowed"}).json()
+        assert active["policy_status"] == "allowed" and active["next_scan_at"] is not None
         queued = client.post(f"/api/sources/{source['id']}/scan-now").json()
         assert queued["scan_requested_at"] is not None
 
@@ -128,6 +136,7 @@ def test_pause_resume_preserves_scan_history(tmp_path):
         select_umass(client)
         source_id = client.post("/api/sources", json=school_scope()).json()["id"]
         client.post(f"/api/sources/{source_id}/confirm")
+        client.post(f"/api/sources/{source_id}/policy", json={"outcome": "allowed"})
         database = Database(settings)
         historical = datetime(2026, 10, 1, tzinfo=timezone.utc)
         with database.sessions.begin() as db:
@@ -148,6 +157,12 @@ def test_manual_lead_does_not_create_or_authorize_a_scope(tmp_path):
         lead = client.post("/api/leads", json={"title": "BigFuture lead", "url": "https://bigfuture.collegeboard.org/scholarships/example"})
         assert lead.status_code == 201 and lead.json()["status"] == "unverified"
         assert client.get("/api/sources").json() == []
+        prohibited = client.post("/api/sources", json=sponsor_scope(
+            canonical_url="https://bigfuture.collegeboard.org/scholarships",
+            allowed_path_prefix="/scholarships",
+        ))
+        assert prohibited.status_code == 422
+        assert prohibited.json()["detail"]["code"] == "manual_only_source"
 
 
 def test_manual_lead_verification_endpoint_returns_persisted_state(tmp_path, monkeypatch):
@@ -171,12 +186,6 @@ def test_manual_lead_verification_endpoint_returns_persisted_state(tmp_path, mon
         assert response.json()["status"] == "official_verified"
         assert response.json()["official_hostname"] == "sponsor.example"
         assert response.json()["verified_at"] == "2026-11-01T00:00:00Z"
-        prohibited = client.post("/api/sources", json=sponsor_scope(
-            canonical_url="https://bigfuture.collegeboard.org/scholarships",
-            allowed_path_prefix="/scholarships",
-        ))
-        assert prohibited.status_code == 422
-        assert prohibited.json()["detail"]["code"] == "manual_only_source"
 
 
 def test_school_change_deactivates_only_school_owned_scopes(tmp_path):
@@ -263,3 +272,42 @@ def test_kaleidoscope_scope_requires_public_marketplace_root(tmp_path):
             adapter="kaleidoscope", canonical_url="https://apply.mykaleidoscope.com/", allowed_path_prefix="/",
         ))
         assert valid.status_code == 201
+
+
+def test_blocking_policy_requires_evidence_and_clears_queued_scan(tmp_path):
+    app, settings = local_app(tmp_path)
+    with TestClient(app) as client:
+        source_id = client.post("/api/sources", json=sponsor_scope()).json()["id"]
+        client.post(f"/api/sources/{source_id}/confirm")
+        client.post(f"/api/sources/{source_id}/policy", json={"outcome": "allowed"})
+        queued = client.post(f"/api/sources/{source_id}/scan-now").json()
+        assert queued["scan_requested_at"] is not None
+
+        missing = client.post(f"/api/sources/{source_id}/policy", json={"outcome": "blocked"})
+        assert missing.status_code == 422
+        assert missing.json()["detail"]["code"] == "policy_evidence_required"
+        blocked = client.post(f"/api/sources/{source_id}/policy", json={
+            "outcome": "blocked",
+            "evidence_url": "https://scholarships.example.org/terms",
+            "evidence_excerpt": "You may not use automated scripts to access this service.",
+        }).json()
+        assert blocked["status"] == "policy_blocked" and blocked["policy_status"] == "blocked"
+        assert blocked["scan_requested_at"] is None and blocked["next_scan_at"] is None
+        assert client.post(f"/api/sources/{source_id}/scan-now").status_code == 422
+
+        cleared = client.post(f"/api/sources/{source_id}/policy", json={
+            "outcome": "allowed", "evidence_url": "https://scholarships.example.org/terms",
+        }).json()
+        assert cleared["status"] == "paused" and cleared["policy_status"] == "allowed"
+        resumed = client.post(f"/api/sources/{source_id}/resume").json()
+        assert resumed["status"] == "active" and resumed["next_scan_at"] is not None
+        history = client.get(f"/api/sources/{source_id}/policies").json()
+        assert [item["outcome"] for item in history] == ["allowed", "blocked", "allowed"]
+
+    database = Database(settings)
+    with database.sessions() as db:
+        assessment_id = db.scalar(select(SourcePolicyAssessment.id).limit(1))
+    with pytest.raises(DatabaseError):
+        with database.sessions.begin() as db:
+            db.execute(update(SourcePolicyAssessment).where(SourcePolicyAssessment.id == assessment_id).values(outcome="blocked"))
+    database.close()

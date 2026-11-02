@@ -10,8 +10,9 @@ reviews every application and submits it personally.
 > foundation, private profile, strict deterministic matching, accountless UI,
 > bounded source registry, generic directory acquisition, and the
 > AcademicWorks/Blackbaud and Kaleidoscope public adapters are verified. Manual
-> leads can be checked against immutable official sponsor evidence. Saved lists
-> and application-copilot behavior remain in later phases. Follow
+> leads can be checked against immutable official sponsor evidence, and source
+> scans require an immutable policy review. Saved lists and application-copilot
+> behavior remain in later phases. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries

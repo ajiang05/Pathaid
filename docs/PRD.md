@@ -114,6 +114,11 @@ link levels and a strict page budget, reads only public pages, retains snapshots
 and hashes, and skips Gemini when content is unchanged. The scheduler runs daily
 while the Mac is awake and performs a catch-up scan after a missed window.
 
+Source-boundary confirmation and source-policy review are separate actions.
+Unknown or explicitly blocked policies cannot scan. Policy decisions retain
+their official URL and exact prohibition text when automation is blocked;
+clearing a block requires a separate resume before crawling restarts.
+
 ### 7.3 Extraction and validation
 
 Gemini extracts identity, sponsor, award, cycle, deadlines, URLs, hard
