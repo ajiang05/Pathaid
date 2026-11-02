@@ -9,8 +9,8 @@ reviews every application and submits it personally.
 > **Redesign status:** Phases 1–2 are implemented: the local SQLite/Keychain
 > foundation, private profile, strict deterministic matching, accountless UI,
 > bounded source registry, generic directory acquisition, and the
-> AcademicWorks/Blackbaud public adapter are verified. Kaleidoscope, saved
-> lists, and application-copilot behavior remain in later phases. Follow
+> AcademicWorks/Blackbaud and Kaleidoscope public adapters are verified. Saved
+> lists and application-copilot behavior remain in later phases. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries

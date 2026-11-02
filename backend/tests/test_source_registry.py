@@ -216,3 +216,26 @@ def test_academicworks_scope_requires_explicit_root_boundary(tmp_path):
             allowed_path_prefix="/",
         ))
         assert valid.status_code == 201
+
+
+def test_kaleidoscope_scope_requires_public_marketplace_root(tmp_path):
+    app, _settings = local_app(tmp_path)
+    with TestClient(app) as client:
+        wrong_host = client.post("/api/sources", json=sponsor_scope(
+            adapter="kaleidoscope", canonical_url="https://example.org/", allowed_path_prefix="/",
+        ))
+        assert wrong_host.status_code == 422
+        assert wrong_host.json()["detail"]["code"] == "invalid_adapter_boundary"
+        detail_page = client.post("/api/sources", json=sponsor_scope(
+            adapter="kaleidoscope", canonical_url="https://apply.mykaleidoscope.com/program/Example", allowed_path_prefix="/",
+        ))
+        assert detail_page.status_code == 422
+        school_owned = client.post("/api/sources", json=sponsor_scope(
+            adapter="kaleidoscope", ownership="school", institution_unit_id="166629",
+            canonical_url="https://apply.mykaleidoscope.com/", allowed_path_prefix="/",
+        ))
+        assert school_owned.status_code == 422
+        valid = client.post("/api/sources", json=sponsor_scope(
+            adapter="kaleidoscope", canonical_url="https://apply.mykaleidoscope.com/", allowed_path_prefix="/",
+        ))
+        assert valid.status_code == 201

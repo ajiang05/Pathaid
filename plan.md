@@ -57,7 +57,7 @@ security/migration tests.
 - [x] Implement source registry and school-directory confirmation.
 - [x] Implement generic bounded-directory adapter.
 - [x] Implement AcademicWorks/Blackbaud public-listing adapter.
-- [ ] Implement Kaleidoscope public-listing adapter.
+- [x] Implement Kaleidoscope public-listing adapter.
 - [ ] Add manual lead intake and official sponsor verification.
 - [ ] Enforce robots, terms/policy, rate, path, depth, and page budgets.
 - [ ] Replace reviewer publication with deterministic activation after validation.

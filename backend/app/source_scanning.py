@@ -5,6 +5,7 @@ from __future__ import annotations
 from .academicworks import execute_academicworks_scan
 from .database import Database
 from .generic_directory import execute_generic_scan
+from .kaleidoscope import execute_kaleidoscope_scan
 from .models import SourceScope
 from .source_registry import RegistryError
 
@@ -19,4 +20,6 @@ def execute_registered_scan(database: Database, source_id: str):
         return execute_generic_scan(database, source_id)
     if adapter == "academicworks":
         return execute_academicworks_scan(database, source_id)
+    if adapter == "kaleidoscope":
+        return execute_kaleidoscope_scan(database, source_id)
     raise RegistryError("adapter_not_implemented", "The registered source adapter is not implemented yet.")
