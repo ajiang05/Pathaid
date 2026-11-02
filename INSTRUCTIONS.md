@@ -1,9 +1,9 @@
 # PathAid local setup and command guide
 
-Phases 1–2 provide the local macOS backend foundation, private profile,
-deterministic matching, and accountless Profile/Discover interface. Approved
-source discovery, saved-list, and extension behavior arrive in later phases;
-consult [plan.md](plan.md) for authoritative status.
+Phases 1–4 and the initial extension foundation provide the local macOS backend,
+private profile, automated discovery, matching, saved workflow, and an
+authenticated Chrome side panel. Form preview/filling remains under active
+development; consult [plan.md](plan.md) for authoritative status.
 
 ## Prerequisites
 
@@ -11,7 +11,7 @@ consult [plan.md](plan.md) for authoritative status.
 - Git
 - Python 3.14
 - Node.js/npm for the existing frontend development build
-- Google Chrome for the future unpacked extension
+- Google Chrome for the unpacked extension
 
 PostgreSQL, Caddy, administrator credentials, and a hosted domain are no longer
 required.
@@ -35,6 +35,34 @@ By default, local data is placed under:
 ```text
 ~/Library/Application Support/PathAid/
 ```
+
+## Load the Chrome extension
+
+1. Open `chrome://extensions` in Chrome.
+2. Enable **Developer mode**.
+3. Select **Load unpacked** and choose this repository's `extension/` folder.
+4. Copy the extension ID shown by Chrome.
+5. Start the backend with that exact ID so CORS accepts only this extension:
+
+```bash
+cd backend
+export PATHAID_EXTENSION_ID=PASTE_THE_32_CHARACTER_EXTENSION_ID
+.venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+In another terminal, copy the installation token from Keychain directly to the
+macOS clipboard. The command deliberately does not print the token:
+
+```bash
+cd backend
+.venv/bin/python -m app.local_admin copy-extension-token
+```
+
+Click the PathAid toolbar icon, paste the token into the side panel, and select
+**Connect**. After pasting, replace the clipboard contents with something
+non-sensitive. The token stays in Chrome's extension-local storage and is sent
+only to `http://127.0.0.1:8000/api/extension/*`. If the extension ID changes,
+restart the backend with the new ID; requests from any other origin fail closed.
 
 ## Gemini key
 

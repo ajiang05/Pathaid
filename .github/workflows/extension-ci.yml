@@ -1,0 +1,24 @@
+name: Extension CI
+
+on:
+  push:
+    paths: ["extension/**", ".github/workflows/extension-ci.yml"]
+  pull_request:
+    paths: ["extension/**", ".github/workflows/extension-ci.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: extension
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm test

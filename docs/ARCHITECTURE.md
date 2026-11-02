@@ -268,6 +268,14 @@ profile fields are plausible. Preview displays the source profile field and
 marks sensitive values. Filling changes fields only; submission is impossible
 through the adapter API.
 
+The implemented foundation uses an unpacked MV3 service worker and side panel.
+It requests only `activeTab`, `scripting`, `sidePanel`, `storage`, and the exact
+`http://127.0.0.1:8000/*` host. The extension token is copied from Keychain to
+Chrome without terminal output, stored only in extension-local storage, and
+omitted from messages returned to the panel. No persistent content script is
+registered; the current page probe runs only after explicit user activation and
+returns only origin and form count.
+
 ## 10. Documents, essays, and secrets
 
 Generate a random document-encryption key and store it through macOS Keychain.

@@ -1,6 +1,6 @@
 # PathAid local-first redesign plan
 
-**Status:** Phases 1–4 complete and verified; Phase 5 is next
+**Status:** Phases 1–4 complete and verified; Phase 5 is in progress
 **Last updated:** November 2, 2026
 
 This file is the authoritative implementation sequence. Product scope is in
@@ -79,8 +79,8 @@ scholarships without per-record human publication.
 
 ## Phase 5 — Chrome application copilot
 
-- [ ] Create Manifest V3 extension with service worker and side panel.
-- [ ] Add minimal permissions and authenticated loopback connection.
+- [x] Create Manifest V3 extension with service worker and side panel.
+- [x] Add minimal permissions and authenticated loopback connection.
 - [ ] Define adapter contract that cannot submit/certify/sign.
 - [ ] Implement generic HTML form inspection, preview, and fill.
 - [ ] Implement AcademicWorks/Blackbaud adapter.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import subprocess
 from pathlib import Path
 
 from .config import Settings
@@ -26,6 +27,7 @@ def parser() -> argparse.ArgumentParser:
     reset = commands.add_parser("reset", help="delete local PathAid data and secrets")
     reset.add_argument("--yes", action="store_true", help="confirm destructive reset")
     commands.add_parser("set-gemini-key", help="save a Gemini key in macOS Keychain")
+    commands.add_parser("copy-extension-token", help="copy the extension token to the macOS clipboard")
     commands.add_parser("status", help="validate the local database")
     institutions = commands.add_parser("import-institutions", help="import an official NCES IPEDS HD directory CSV")
     institutions.add_argument("source", type=Path)
@@ -60,6 +62,9 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("Gemini API key cannot be empty")
         store.set(GEMINI_API_KEY, value)
         print("Gemini API key saved in macOS Keychain.")
+    elif args.command == "copy-extension-token":
+        copy_extension_token_to_clipboard(store)
+        print("Extension token copied to the clipboard. It was not printed.")
     elif args.command == "status":
         validate_database(settings.database_path)
         print("PathAid database is current and passes its integrity check.")
@@ -98,6 +103,16 @@ def main(argv: list[str] | None = None) -> int:
             database.close()
         print(f"Scheduler cycle processed {count} job(s).")
     return 0
+
+
+def copy_extension_token_to_clipboard(store, *, runner=subprocess.run) -> None:
+    """Transfer the Keychain token without exposing it in terminal output."""
+
+    token = get_or_create_extension_token(store)
+    try:
+        runner(["pbcopy"], input=token, text=True, check=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise SystemExit("Could not copy the extension token with macOS pbcopy") from error
 
 
 if __name__ == "__main__":

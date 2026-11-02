@@ -18,7 +18,8 @@ reviews every application and submits it personally.
 > retained records, and deadlines expire in their configured timezone. Save,
 > Apply, Skip this cycle, the three-state Saved view, automatically considered
 > awards, and verified sweepstakes sections are implemented. The Chrome
-> application-copilot phases remain. Follow
+> extension foundation now connects an unpacked side panel to the authenticated
+> loopback API; form preview and filling remain. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries
