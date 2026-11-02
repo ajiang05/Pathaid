@@ -68,8 +68,8 @@ and import time. A newer HD file safely updates matching Unit IDs.
 ## Run one confirmed source
 
 The Sources screen queues **Scan now** for the future scheduler. During current
-development, run a confirmed generic or AcademicWorks directory immediately with its displayed
-source ID:
+development, run any confirmed generic, AcademicWorks, or Kaleidoscope source
+immediately with its displayed source ID:
 
 ```bash
 cd backend
@@ -85,6 +85,11 @@ For AcademicWorks/Blackbaud, confirm the root path (`/`) because public listings
 may move between `/opportunities` and `/?page=N`. The adapter still follows only
 public listing pagination and numeric `/opportunities/{id}` detail pages; it
 never follows sign-in, application, or external-opportunity routes.
+
+For Kaleidoscope, register `https://apply.mykaleidoscope.com/` with the root
+path (`/`) as a sponsor source. The adapter follows only public
+`/program/{slug}` summaries from the marketplace. It never follows account,
+login, application-form, asset, or off-host routes.
 
 ## Start the local API
 

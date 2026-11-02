@@ -116,6 +116,13 @@ def create_scope_proposal(
         raise RegistryError("invalid_scope", "The source type or adapter is unsupported.")
     if adapter == "academicworks" and (prefix != "/" or urlsplit(validated.url).path.rstrip("/") not in {"", "/opportunities"}):
         raise RegistryError("invalid_adapter_boundary", "AcademicWorks requires an explicitly confirmed root path and public listing URL.")
+    if adapter == "kaleidoscope" and (
+        validated.hostname != "apply.mykaleidoscope.com"
+        or prefix != "/"
+        or urlsplit(validated.url).path.rstrip("/") != ""
+        or ownership != "sponsor"
+    ):
+        raise RegistryError("invalid_adapter_boundary", "Kaleidoscope requires its explicitly confirmed public marketplace root as a sponsor source.")
     profile = db.get(LocalProfile, 1)
     institution = db.get(Institution, institution_unit_id) if institution_unit_id else None
     if ownership == "school":
