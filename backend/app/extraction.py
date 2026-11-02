@@ -24,7 +24,7 @@ the source exactly once in eligibility_tree, using an unsupported node whenever 
 Never omit a mandatory requirement merely because coverage_complete is false. unresolved_conditions may record
 provider confirmation or application-process ambiguity, but they do not replace mandatory eligibility nodes.
 Do not infer missing dates, timezones, amounts, availability, coverage, exceptions, or requirements. This output
-is a proposal for human review and has no publishing authority.
+is an untrusted proposal and has no activation authority. Only deterministic validation may activate it.
 Every eligibility node type must be exactly one of: condition, unsupported, and, or. A condition has field,
 operator, value, evidence, and exceptions_complete; unsupported has description and evidence; and/or has children.
 Condition field must be exactly one of: school, school_id, school_city, school_state, current_city,
@@ -61,7 +61,7 @@ Coverage states must use two-letter postal codes such as MA, never full state na
 must be an IANA name such as America/New_York; use null for labels such as Eastern that are not exact IANA names.
 Keep name at 240 characters or fewer, award_cycle at 120 or fewer, deadline_timezone at 80 or fewer, and
 assistance_amount at 240 or fewer. When an amount passage is longer, give a faithful concise summary and leave
-the complete wording in the retained source for human review; do not truncate mid-sentence or invent a value.
+the complete wording in the retained source evidence; do not truncate mid-sentence or invent a value.
 The input extraction_date is the UTC date when this source was retained. Never label an opportunity open when its
 exact deadline is earlier than extraction_date. If the page also explicitly claims it is open, set availability to
 unknown and add that conflict to unresolved_conditions with a verbatim excerpt; otherwise set it to closed.

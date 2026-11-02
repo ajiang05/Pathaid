@@ -11,8 +11,9 @@ reviews every application and submits it personally.
 > bounded source registry, generic directory acquisition, and the
 > AcademicWorks/Blackbaud and Kaleidoscope public adapters are verified. Manual
 > leads can be checked against immutable official sponsor evidence, and source
-> scans require an immutable policy review. Saved lists and application-copilot
-> behavior remain in later phases. Follow
+> scans require an immutable policy review. Validated extractions activate
+> immutable scholarship versions without a review queue. Saved lists and
+> application-copilot behavior remain in later phases. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries

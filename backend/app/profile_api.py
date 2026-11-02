@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Literal
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .database import Database
-from .models import AppSetting, LocalProfile, ProfileExperience
-from .profile_fields import FIELDS, SECTIONS, ProfileValidationError, completeness, validate_profile_patch
+from .matching import ScholarshipCandidate, evaluate_candidates
+from .models import AppSetting, LocalProfile, ProfileExperience, Scholarship, ScholarshipVersion, SourceSnapshot
+from .profile_fields import FIELDS, MATCH_FIELDS, SECTIONS, ProfileValidationError, completeness, validate_profile_patch
 from .source_registry import deactivate_prior_school_scopes
 
 
@@ -102,6 +104,27 @@ def _profile_payload(profile: LocalProfile, *, school_changed: bool = False) -> 
     }
 
 
+def _deadline(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+
+
+def _match_payload(result, sponsor: str) -> dict:
+    data = result.candidate
+    return {
+        "scholarship_id": data.scholarship_id,
+        "name": data.name,
+        "sponsor": sponsor,
+        "award": getattr(data, "award", None),
+        "deadline": data.deadline,
+        "match_label": result.eligibility.label.value,
+        "key_reasons": [item.reason for item in result.eligibility.criteria],
+        "unknown_fields": list(result.eligibility.unknown_fields),
+    }
+
+
 def create_profile_router(database: Database) -> APIRouter:
     """Build profile routes bound to the application-owned local database."""
 
@@ -185,14 +208,49 @@ def create_profile_router(database: Database) -> APIRouter:
 
     @router.get("/matches")
     def matches(db: Session = Depends(get_db)) -> dict:
-        """Return a valid empty catalog boundary until Phase 3 adds sources."""
+        """Evaluate only deterministically activated scholarship versions."""
 
         profile = singleton(db)
+        rows = db.execute(
+            select(Scholarship, ScholarshipVersion, SourceSnapshot)
+            .join(ScholarshipVersion, ScholarshipVersion.id == Scholarship.active_version_id)
+            .join(SourceSnapshot, SourceSnapshot.id == ScholarshipVersion.source_snapshot_id)
+            .where(Scholarship.status == "active")
+            .order_by(Scholarship.id)
+        ).all()
+        candidates = []
+        sponsors = {}
+        awards = {}
+        for scholarship, version, snapshot in rows:
+            data = version.data
+            availability = {"open": "verified_open", "closed": "closed", "unknown": "unknown"}[data["application_availability"]]
+            candidate = ScholarshipCandidate(
+                scholarship_id=scholarship.id, version_id=version.id, name=data["name"],
+                hard_requirements=data["eligibility_tree"], requirements_complete=data["coverage_complete"],
+                availability=availability, deadline=_deadline(data.get("application_deadline")),
+                source_freshness=snapshot.acquired_at,
+                selection_preferences=tuple(data.get("selection_factors", [])),
+            )
+            candidates.append(candidate)
+            sponsors[scholarship.id] = urlsplit(scholarship.source_url).hostname or scholarship.source_url
+            awards[scholarship.id] = data.get("assistance_amount")
+        profile_inputs = dict(profile.data)
+        profile_inputs["experiences"] = [_experience_payload(item) for item in profile.experiences]
+        evaluated = evaluate_candidates(candidates, profile_inputs, MATCH_FIELDS)
+        results = []
+        not_matches = []
+        for result in evaluated:
+            payload = _match_payload(result, sponsors[result.candidate.scholarship_id])
+            payload["award"] = awards[result.candidate.scholarship_id]
+            if result.ranking_factors is not None:
+                results.append(payload)
+            elif result.eligibility.label.value == "Not a match":
+                not_matches.append(payload)
         return {
-            "results": [],
-            "not_matches": [],
+            "results": results,
+            "not_matches": not_matches,
             "profile_completeness": completeness(profile.data),
-            "catalog_status": "awaiting_approved_sources",
+            "catalog_status": "ready" if rows else "awaiting_approved_sources",
         }
 
     return router

@@ -176,6 +176,12 @@ If validation cannot safely represent a mandatory condition, the scholarship is
 not eligible for Strong results. A prior valid version remains available until
 it expires or its official page becomes unavailable.
 
+Every extraction produces an append-only activation attempt. Valid output
+creates an immutable `ScholarshipVersion` and advances the stable
+`Scholarship.active_version_id` in the same SQLite transaction. Invalid output
+stores deterministic findings but cannot change that pointer. Replaying the same
+snapshot and structured draft is idempotent.
+
 ## 7. Core data model
 
 | Entity | Purpose |
@@ -187,6 +193,7 @@ it expires or its official page becomes unavailable.
 | `ScanRun` | Durable scheduled/manual scan and outcome |
 | `Scholarship` | Stable sponsor/award identity |
 | `ScholarshipVersion` | Cycle-specific extracted and validated facts |
+| `ExtractionActivationAttempt` | Append-only activated/unchanged/failed validation outcome |
 | `Requirement` | Typed hard criterion with evidence |
 | `SelectionPreference` | Non-eligibility factor with evidence |
 | `SavedScholarship` | Not started/In progress/Already applied/internal skip state |

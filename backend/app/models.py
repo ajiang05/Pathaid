@@ -226,3 +226,68 @@ class SourceSnapshot(Base):
     source_byte_count: Mapped[int] = mapped_column(Integer)
     redirect_count: Mapped[int] = mapped_column(Integer)
     depth: Mapped[int] = mapped_column(Integer)
+
+
+class Scholarship(Base):
+    """Stable scholarship identity whose active pointer may advance safely."""
+
+    __tablename__ = "scholarships"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'inactive')", name="ck_scholarship_status"),
+        UniqueConstraint("source_url", name="uq_scholarship_source_url"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_url: Mapped[str] = mapped_column(String(2_000), index=True)
+    # This is intentionally not a database foreign key: scholarship_versions
+    # already points back here, and avoiding a circular FK keeps SQLite backup,
+    # migration, and deletion behavior predictable.
+    active_version_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ScholarshipVersion(Base):
+    """Immutable validated scholarship facts tied to retained source evidence."""
+
+    __tablename__ = "scholarship_versions"
+    __table_args__ = (
+        UniqueConstraint("scholarship_id", "source_snapshot_id", "draft_hash", name="uq_scholarship_version_input"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scholarship_id: Mapped[str] = mapped_column(ForeignKey("scholarships.id"), index=True)
+    source_snapshot_id: Mapped[str] = mapped_column(ForeignKey("source_snapshots.id"), index=True)
+    draft_hash: Mapped[str] = mapped_column(String(64), index=True)
+    data: Mapped[dict] = mapped_column(JSON)
+    validation_findings: Mapped[list] = mapped_column(JSON, default=list)
+    extraction_model: Mapped[str] = mapped_column(String(120))
+    prompt_version: Mapped[str] = mapped_column(String(40))
+    schema_version: Mapped[str] = mapped_column(String(40))
+    provider_request_id: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class ExtractionActivationAttempt(Base):
+    """Append-only result of validating one provider extraction response."""
+
+    __tablename__ = "extraction_activation_attempts"
+    __table_args__ = (
+        CheckConstraint("status IN ('activated', 'unchanged', 'validation_failed')", name="ck_extraction_activation_status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_snapshot_id: Mapped[str] = mapped_column(ForeignKey("source_snapshots.id"), index=True)
+    scholarship_id: Mapped[str | None] = mapped_column(ForeignKey("scholarships.id"), nullable=True, index=True)
+    activated_version_id: Mapped[str | None] = mapped_column(ForeignKey("scholarship_versions.id"), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    draft: Mapped[dict] = mapped_column(JSON)
+    findings: Mapped[list] = mapped_column(JSON, default=list)
+    extraction_model: Mapped[str] = mapped_column(String(120))
+    prompt_version: Mapped[str] = mapped_column(String(40))
+    schema_version: Mapped[str] = mapped_column(String(40))
+    attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
