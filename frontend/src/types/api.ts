@@ -47,6 +47,8 @@ export type MatchResult = {
   match_label: "Strong match" | "Possible match";
   key_reasons: string[];
   unknown_fields: string[];
+  application_url: string;
+  saved_status: SavedStatus | null;
 };
 export type MatchesResponse = {
   results: MatchResult[];
@@ -54,6 +56,23 @@ export type MatchesResponse = {
   profile_completeness: Completeness;
   catalog_status: "ready" | "awaiting_approved_sources";
 };
+
+export type SavedStatus = "not_started" | "in_progress" | "already_applied";
+export type SavedScholarship = {
+  scholarship_id: string;
+  status: SavedStatus;
+  name: string;
+  sponsor: string;
+  award: string | null;
+  deadline: string | null;
+  application_url: string;
+  availability: string;
+  source_status: "active" | "inactive";
+  source_freshness: string;
+  created_at: string;
+  updated_at: string;
+};
+export type SavedResponse = { items: SavedScholarship[] };
 
 export type Institution = {
   unit_id: string;

@@ -205,8 +205,8 @@ snapshot and structured draft is idempotent.
 | `DiscoveryExtractionArtifact` | Persisted Gemini result used by resumable activation |
 | `Requirement` | Typed hard criterion with evidence |
 | `SelectionPreference` | Non-eligibility factor with evidence |
-| `SavedScholarship` | Not started/In progress/Already applied/internal skip state |
-| `SkipFingerprint` | Cycle/material facts used to decide reappearance |
+| `SavedScholarship` | Not started/In progress/Already applied state |
+| `SkippedScholarship` | Stable ID plus material fingerprint used to decide reappearance |
 | `Essay` | Student-authored content and reuse metadata |
 | `Document` | Encrypted-file metadata, type, hash, and current flag |
 | `PortalMapping` | User-corrected field mapping scoped by portal/form signature |

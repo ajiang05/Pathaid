@@ -14,7 +14,7 @@ from .config import Settings
 from .secrets import MANAGED_SECRET_NAMES, SecretStore
 
 
-EXPECTED_MIGRATION = "0009_source_lifecycle"
+EXPECTED_MIGRATION = "0010_saved_scholarships"
 REQUIRED_TABLES = {
     "alembic_version", "app_settings", "local_profile", "profile_experiences",
     "institutions", "source_scopes", "manual_leads",
@@ -23,6 +23,7 @@ REQUIRED_TABLES = {
     "scholarships", "scholarship_versions", "extraction_activation_attempts",
     "discovery_jobs", "discovery_extraction_artifacts",
     "source_page_states",
+    "saved_scholarships", "skipped_scholarships",
 }
 
 

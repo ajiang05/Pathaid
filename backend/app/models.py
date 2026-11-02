@@ -294,6 +294,39 @@ class ScholarshipVersion(Base):
     activated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
+class SavedScholarship(Base):
+    """Minimal local application state for one stable scholarship identity."""
+
+    __tablename__ = "saved_scholarships"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('not_started', 'in_progress', 'already_applied')",
+            name="ck_saved_scholarship_status",
+        ),
+    )
+
+    scholarship_id: Mapped[str] = mapped_column(
+        ForeignKey("scholarships.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(30), default="not_started", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True
+    )
+
+
+class SkippedScholarship(Base):
+    """Cycle-level dismissal that stops applying after a material change."""
+
+    __tablename__ = "skipped_scholarships"
+
+    scholarship_id: Mapped[str] = mapped_column(
+        ForeignKey("scholarships.id", ondelete="CASCADE"), primary_key=True
+    )
+    material_fingerprint: Mapped[str] = mapped_column(String(64), index=True)
+    skipped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ExtractionActivationAttempt(Base):
     """Append-only result of validating one provider extraction response."""
 

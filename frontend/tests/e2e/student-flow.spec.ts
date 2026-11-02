@@ -20,8 +20,8 @@ const registry = {
 };
 const matches = {
   results: [
-    { scholarship_id: "strong-1", name: "Engineering Scholars Award", sponsor: "Example Foundation", award: "$2,500", deadline: "2027-03-15", match_label: "Strong match", key_reasons: ["All known hard requirements pass."], unknown_fields: [] },
-    { scholarship_id: "possible-1", name: "Community Leadership Scholarship", sponsor: "Example University", award: null, deadline: null, match_label: "Possible match", key_reasons: ["Pell status is required but unknown."], unknown_fields: ["pell_eligible"] },
+    { scholarship_id: "strong-1", name: "Engineering Scholars Award", sponsor: "Example Foundation", award: "$2,500", deadline: "2027-03-15", match_label: "Strong match", key_reasons: ["All known hard requirements pass."], unknown_fields: [], application_url: "https://example.org/apply", saved_status: null },
+    { scholarship_id: "possible-1", name: "Community Leadership Scholarship", sponsor: "Example University", award: null, deadline: null, match_label: "Possible match", key_reasons: ["Pell status is required but unknown."], unknown_fields: ["pell_eligible"], application_url: "https://example.edu/apply", saved_status: null },
   ], not_matches: [], profile_completeness: completeness, catalog_status: "ready",
 };
 
@@ -79,12 +79,55 @@ test("discover groups deterministic matches without inline questions", async ({ 
   await page.goto("/discover");
   await expect(page.getByRole("heading", { name: "Discover" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Strong matches" })).toBeVisible();
-  await expect(page.getByText("Engineering Scholars Award")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Engineering Scholars Award", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Possible matches" })).toBeVisible();
   await expect(page.getByText("Community Leadership Scholarship")).toBeVisible();
   await expect(page.getByText("Unknown: Pell Eligible")).toBeVisible();
   await expect(page.locator("form")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
+});
+
+test("save persists a scholarship into the three-state saved workflow", async ({ page }) => {
+  await page.unroute("**/api/**");
+  let savedStatus: "not_started" | "in_progress" | "already_applied" | null = null;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/matches") {
+      return route.fulfill({ json: { ...matches, results: matches.results.map(item => ({ ...item, saved_status: item.scholarship_id === "strong-1" ? savedStatus : null })) } });
+    }
+    if (path === "/api/saved-scholarships/strong-1" && request.method() === "PUT") {
+      savedStatus = request.postDataJSON().status;
+      return route.fulfill({ json: {
+        scholarship_id: "strong-1", status: savedStatus, name: "Engineering Scholars Award",
+        sponsor: "Example Foundation", award: "$2,500", deadline: "2027-03-15",
+        application_url: "https://example.org/apply", availability: "verified_open",
+        source_status: "active", source_freshness: "2026-11-01T12:00:00Z",
+        created_at: "2026-11-02T12:00:00Z", updated_at: "2026-11-02T12:00:00Z",
+      } });
+    }
+    if (path === "/api/saved-scholarships" && request.method() === "GET") {
+      const items = savedStatus ? [{
+        scholarship_id: "strong-1", status: savedStatus, name: "Engineering Scholars Award",
+        sponsor: "Example Foundation", award: "$2,500", deadline: "2027-03-15",
+        application_url: "https://example.org/apply", availability: "verified_open",
+        source_status: "active", source_freshness: "2026-11-01T12:00:00Z",
+        created_at: "2026-11-02T12:00:00Z", updated_at: "2026-11-02T12:00:00Z",
+      }] : [];
+      return route.fulfill({ json: { items } });
+    }
+    return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
+  });
+
+  await page.goto("/discover");
+  await page.locator("article", { hasText: "Engineering Scholars Award" }).getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved as Not started.")).toBeVisible();
+  await page.getByRole("link", { name: "Saved" }).first().click();
+  await expect(page.getByRole("heading", { name: "Saved" })).toBeVisible();
+  await expect(page.locator(".saved-list").getByText("Engineering Scholars Award")).toBeVisible();
+  await page.getByLabel("Status for Engineering Scholars Award").selectOption("already_applied");
+  await page.getByRole("tab", { name: /Already applied/ }).click();
+  await expect(page.locator(".saved-list").getByRole("heading", { name: "Engineering Scholars Award" })).toBeVisible();
 });
 
 test("source registry requires confirmation and keeps manual leads isolated", async ({ page }) => {
