@@ -135,6 +135,14 @@ Valid extraction atomically creates an immutable version and makes it active;
 invalid refreshes retain findings and leave the prior valid version active.
 There is no reviewer or publication state.
 
+A complete source traversal marks previously known but now absent pages as
+disappeared and removes their scholarships from current matches without
+deleting evidence or version history. Truncated and transiently failed scans do
+not infer disappearance. A returning page restores the retained validated
+record, while deadline checks expire records at the correct instant. Each
+version stores a material fingerprint of cycle, deadline, availability, award,
+and eligibility facts for skip/reappearance behavior.
+
 ### 7.4 Matching and ranking
 
 Each hard requirement returns Pass, Fail, or Unknown:

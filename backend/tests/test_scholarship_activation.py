@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,7 +24,8 @@ from app.models import (
     SourceScope,
     SourceSnapshot,
 )
-from app.scholarship_activation import activate_validated_extraction
+from app.profile_api import _current_availability
+from app.scholarship_activation import activate_validated_extraction, material_fingerprint
 from conftest import FakeSecretStore
 
 
@@ -104,12 +106,67 @@ def test_valid_activation_is_idempotent_and_history_is_immutable(tmp_path):
     with database.sessions() as db:
         scholarship = db.get(Scholarship, first.scholarship_id)
         assert scholarship.active_version_id == first.version_id
+        assert db.get(ScholarshipVersion, first.version_id).material_fingerprint == material_fingerprint(
+            proposal("snapshot-1")
+        )
         assert db.scalar(select(func.count()).select_from(ScholarshipVersion)) == 1
         assert db.scalar(select(func.count()).select_from(ExtractionActivationAttempt)) == 2
     with pytest.raises(DatabaseError):
         with database.sessions.begin() as db:
             db.execute(update(ScholarshipVersion).values(data={"name": "tampered"}))
     database.close()
+
+
+def test_material_fingerprint_ignores_cosmetic_and_evidence_changes():
+    """Only changes that affect a student's decision start a new material cycle."""
+
+    original = proposal("snapshot-1")
+    cosmetic = deepcopy(original)
+    cosmetic["description"] = "Reworded marketing copy."
+    cosmetic["eligibility_tree"]["evidence"] = {
+        "snapshot_id": "new-snapshot",
+        "excerpt": "A newly captured source excerpt.",
+    }
+    assert material_fingerprint(cosmetic) == material_fingerprint(original)
+
+    for field, changed_value in (
+        ("award_cycle", "2028"),
+        ("application_deadline", "2028-03-01T17:00:00-05:00"),
+        ("application_availability", "closed"),
+        ("assistance_amount", "$5,000"),
+    ):
+        changed = deepcopy(original)
+        changed[field] = changed_value
+        assert material_fingerprint(changed) != material_fingerprint(original)
+
+    changed_eligibility = deepcopy(original)
+    changed_eligibility["eligibility_tree"]["value"] = 3.5
+    assert material_fingerprint(changed_eligibility) != material_fingerprint(original)
+
+
+def test_current_availability_expires_dates_and_timestamps_at_the_right_boundary():
+    """Date-only deadlines remain open through the sponsor's local calendar day."""
+
+    date_only = {
+        "application_availability": "open",
+        "application_deadline": "2026-11-02",
+        "deadline_timezone": "America/New_York",
+    }
+    assert _current_availability(
+        date_only, now=datetime(2026, 11, 3, 4, 59, tzinfo=timezone.utc)
+    ) == "verified_open"
+    assert _current_availability(
+        date_only, now=datetime(2026, 11, 3, 5, 0, tzinfo=timezone.utc)
+    ) == "expired"
+
+    timestamped = {
+        "application_availability": "open",
+        "application_deadline": "2026-11-02T17:00:00-05:00",
+        "deadline_timezone": "America/New_York",
+    }
+    deadline = datetime(2026, 11, 2, 22, 0, tzinfo=timezone.utc)
+    assert _current_availability(timestamped, now=deadline - timedelta(seconds=1)) == "verified_open"
+    assert _current_availability(timestamped, now=deadline) == "expired"
 
 
 def test_invalid_refresh_records_findings_and_preserves_prior_active_version(tmp_path):

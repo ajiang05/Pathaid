@@ -85,13 +85,13 @@ def traverse_kaleidoscope(
                 raise AcquisitionError("robots_denied", "The source disallows PathAid in robots.txt.")
             acquired = fetcher.fetch(route.url, boundary)
         except AcquisitionError as error:
-            raise TraversalFailure(error, attempted) from error
+            raise TraversalFailure(error, attempted, route.url) from error
 
         links = acquired.discovered_link_candidates
         valid = _marketplace_page(acquired.normalized_text, links) if route.kind == "marketplace" else _program_page(acquired.normalized_text)
         if not valid:
             error = AcquisitionError("adapter_signature_mismatch", f"The page is not a public Kaleidoscope {route.kind} page.")
-            raise TraversalFailure(error, attempted)
+            raise TraversalFailure(error, attempted, route.url)
         pages.append(TraversedPage(route.depth, acquired))
 
         if route.kind != "marketplace" or route.depth >= boundary.max_depth:

@@ -196,9 +196,10 @@ snapshot and structured draft is idempotent.
 | `ProfileExperience` | Activities, work, volunteering, memberships, leadership |
 | `SourceScope` | User-approved host/path and adapter configuration |
 | `SourceSnapshot` | Immutable acquired content/hash/provenance |
+| `SourcePageState` | Current/disappeared presence for a URL within one approved scope |
 | `ScanRun` | Durable scheduled/manual scan and outcome |
 | `Scholarship` | Stable sponsor/award identity |
-| `ScholarshipVersion` | Cycle-specific extracted and validated facts |
+| `ScholarshipVersion` | Cycle-specific validated facts plus a material-change fingerprint |
 | `ExtractionActivationAttempt` | Append-only activated/unchanged/failed validation outcome |
 | `DiscoveryJob` | Daily/manual window, stage, retry state, and worker lease |
 | `DiscoveryExtractionArtifact` | Persisted Gemini result used by resumable activation |
@@ -228,6 +229,15 @@ Availability gates visibility after eligibility: verified open results appear;
 future cycles may appear only in an explicit upcoming section if added later;
 closed, expired, unknown/unverifiable, and disappeared sources do not appear in
 current matches. Stable IDs break ties so repeated runs are reproducible.
+
+Presence is reconciled only after a complete bounded traversal. A truncated or
+transiently failed scan preserves the last known state; a confirmed missing page
+marks the stable scholarship inactive while retaining snapshots and immutable
+versions. Reappearance restores the retained active version even when the page
+bytes are unchanged. Deadline visibility is calculated at read time, including
+the sponsor timezone for date-only deadlines. Material fingerprints include
+cycle, deadline, availability, award, and eligibility semantics but exclude
+marketing copy and evidence-capture metadata.
 
 ## 9. Extension architecture
 

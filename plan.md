@@ -1,7 +1,7 @@
 # PathAid local-first redesign plan
 
-**Status:** Phases 1–2 complete and verified; Phase 3 is next
-**Last updated:** November 1, 2026
+**Status:** Phases 1–3 complete and verified; Phase 4 is next
+**Last updated:** November 2, 2026
 
 This file is the authoritative implementation sequence. Product scope is in
 [docs/MVP.md](docs/MVP.md); implementation should not be inferred from the old
@@ -53,7 +53,7 @@ security/migration tests.
 
 ## Phase 3 — approved sources and automated discovery
 
-- [~] Reuse safe acquisition, snapshots, hashing, and extraction adapters.
+- [x] Reuse safe acquisition, snapshots, hashing, and extraction adapters.
 - [x] Implement source registry and school-directory confirmation.
 - [x] Implement generic bounded-directory adapter.
 - [x] Implement AcademicWorks/Blackbaud public-listing adapter.
@@ -62,7 +62,7 @@ security/migration tests.
 - [x] Enforce robots, terms/policy, rate, path, depth, and page budgets.
 - [x] Replace reviewer publication with deterministic activation after validation.
 - [x] Add daily scheduler plus launch-time catch-up.
-- [ ] Add disappeared/expired source behavior and cycle change detection.
+- [x] Add disappeared/expired source behavior and cycle change detection.
 
 **Exit:** approved fixture sources discover, update, expire, and reactivate
 scholarships without per-record human publication.
@@ -71,7 +71,7 @@ scholarships without per-record human publication.
 
 - [ ] Implement Not started, In progress, and Already applied views.
 - [ ] Implement Save, Apply, and Skip this cycle.
-- [ ] Persist a material-change fingerprint for skipped opportunities.
+- [x] Persist the material-change fingerprint needed by skip behavior.
 - [ ] Add separate automatically considered and verified sweepstakes sections.
 - [ ] Remove award-outcome and general program-tracking concepts.
 

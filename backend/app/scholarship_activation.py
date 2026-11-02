@@ -45,6 +45,34 @@ def _draft_hash(payload: dict) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _eligibility_semantics(value):
+    """Remove provenance-only fields before comparing eligibility meaning."""
+
+    if isinstance(value, dict):
+        return {
+            key: _eligibility_semantics(item)
+            for key, item in sorted(value.items())
+            if key != "evidence"
+        }
+    if isinstance(value, list):
+        return [_eligibility_semantics(item) for item in value]
+    return value
+
+
+def material_fingerprint(payload: dict) -> str:
+    """Hash only changes that should revive a cycle-level skipped record."""
+
+    material = {
+        "award_cycle": payload.get("award_cycle"),
+        "application_deadline": payload.get("application_deadline"),
+        "application_availability": payload.get("application_availability"),
+        "assistance_amount": payload.get("assistance_amount"),
+        "eligibility_tree": _eligibility_semantics(payload.get("eligibility_tree")),
+    }
+    encoded = json.dumps(material, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def activate_validated_extraction(
     database: Database,
     source_snapshot_id: str,
@@ -85,6 +113,7 @@ def activate_validated_extraction(
             db.flush()
 
         digest = _draft_hash(draft)
+        fingerprint = material_fingerprint(draft)
         version = db.scalar(
             select(ScholarshipVersion).where(
                 ScholarshipVersion.scholarship_id == scholarship.id,
@@ -97,7 +126,7 @@ def activate_validated_extraction(
             version = ScholarshipVersion(
                 id=str(uuid4()), scholarship_id=scholarship.id,
                 source_snapshot_id=source_snapshot_id, draft_hash=digest,
-                data=draft, validation_findings=findings,
+                material_fingerprint=fingerprint, data=draft, validation_findings=findings,
                 extraction_model=extraction.model, prompt_version=extraction.prompt_version,
                 schema_version=extraction.schema_version,
                 provider_request_id=extraction.request_id,

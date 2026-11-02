@@ -16,6 +16,12 @@ up at the next PathAid launch.
 - Use short leases/idempotency to recover interrupted local workers.
 - An unchanged page updates freshness and finishes without Gemini.
 - A disappeared official page becomes unavailable and leaves history intact.
+- Infer disappearance only after a complete traversal; a page-budget-truncated
+  scan cannot deactivate an unobserved scholarship.
+- Expire open scholarships at their deadline, using the sponsor timezone for a
+  date-only deadline.
+- Fingerprint cycle, deadline, availability, award, and eligibility semantics
+  so later tracking can distinguish a material new cycle from cosmetic edits.
 
 ## Acceptance criteria
 
@@ -26,3 +32,7 @@ up at the next PathAid launch.
 - SQLite concurrency tests show no long-lived write locks.
 - Persisted extraction artifacts let activation resume without repeating a
   completed Gemini request.
+- A returning byte-identical page reactivates its retained validated version
+  without duplicating its snapshot or calling Gemini.
+- Cosmetic source/evidence changes preserve the material fingerprint; cycle,
+  deadline, availability, award, or eligibility changes replace it.

@@ -6,14 +6,16 @@ requirements with Gemini, evaluates eligibility deterministically against a
 private local profile, and helps fill applications in Chrome. The student
 reviews every application and submits it personally.
 
-> **Redesign status:** Phases 1–2 are implemented: the local SQLite/Keychain
+> **Redesign status:** Phases 1–3 are implemented: the local SQLite/Keychain
 > foundation, private profile, strict deterministic matching, accountless UI,
 > bounded source registry, generic directory acquisition, and the
 > AcademicWorks/Blackbaud and Kaleidoscope public adapters are verified. Manual
 > leads can be checked against immutable official sponsor evidence, and source
 > scans require an immutable policy review. Validated extractions activate
 > immutable scholarship versions without a review queue. A durable daily
-> scheduler performs launch-time catch-up and resumes committed stages. Saved
+> scheduler performs launch-time catch-up and resumes committed stages. Missing
+> pages deactivate results without deleting history, returning pages reactivate
+> retained records, and deadlines expire in their configured timezone. Saved
 > lists and application-copilot behavior remain in later phases. Follow
 > [plan.md](plan.md) for authoritative status.
 
