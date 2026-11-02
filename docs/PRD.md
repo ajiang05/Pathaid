@@ -128,6 +128,9 @@ status, sweepstakes rules, automation/AI restrictions, and exact evidence.
 Deterministic validation rejects malformed dates, unsafe URLs, inconsistent
 cycles, unsupported claims, evidence absent from the retained snapshot, and
 rules that cannot be represented safely. Invalid extraction is not matched.
+Valid extraction atomically creates an immutable version and makes it active;
+invalid refreshes retain findings and leave the prior valid version active.
+There is no reviewer or publication state.
 
 ### 7.4 Matching and ranking
 

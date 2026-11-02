@@ -29,7 +29,7 @@ class SnapshotForValidation(Protocol):
 
 @dataclass(frozen=True)
 class ValidationFinding:
-    """One safe, addressable problem for the ingestion workflow or reviewer."""
+    """One safe, addressable problem retained by the ingestion workflow."""
 
     code: str
     path: str
@@ -39,14 +39,14 @@ class ValidationFinding:
 
 @dataclass(frozen=True)
 class DraftValidationResult:
-    """Validation outcome without mutating or publishing the proposed draft."""
+    """Validation outcome used by the deterministic activation boundary."""
 
     draft: ExtractedProgramDraft
     findings: tuple[ValidationFinding, ...]
 
     @property
     def is_valid(self) -> bool:
-        """Only error findings prevent the proposal from entering review."""
+        """Only error findings prevent creation of an active version."""
 
         return not any(finding.severity == "error" for finding in self.findings)
 
@@ -77,6 +77,8 @@ def validate_extracted_draft(
     _validate_coverage(draft, field_registry, findings)
     _validate_deadline(draft, findings, as_of or datetime.now(timezone.utc))
     _validate_application_url(draft, findings)
+    if draft.categories != ["scholarships"]:
+        findings.append(_error("unsupported_category", "categories", "The local MVP activates scholarship records only."))
 
     if _has_unsupported(draft.eligibility_tree):
         findings.append(
@@ -99,7 +101,7 @@ def validate_extracted_draft(
 
 
 def _evidence_references(draft: ExtractedProgramDraft):
-    """Yield every evidence object with a stable path for review feedback."""
+    """Yield every evidence object with a stable path for validation findings."""
 
     yield from _rule_evidence(draft.eligibility_tree, "eligibility_tree")
     for index, item in enumerate(draft.checklist):
@@ -244,7 +246,7 @@ def _validate_application_url(draft: ExtractedProgramDraft, findings: list[Valid
 
 
 def _has_unsupported(rule: RuleNode) -> bool:
-    """Return whether any mandatory condition needs reviewer interpretation."""
+    """Return whether any mandatory condition needs student interpretation."""
 
     if isinstance(rule, UnsupportedRule):
         return True
@@ -254,12 +256,12 @@ def _has_unsupported(rule: RuleNode) -> bool:
 
 
 def _error(code: str, path: str, message: str) -> ValidationFinding:
-    """Construct a finding that blocks entry into review."""
+    """Construct a finding that blocks deterministic activation."""
 
     return ValidationFinding(code, path, message, "error")
 
 
 def _warning(code: str, path: str, message: str) -> ValidationFinding:
-    """Construct a finding that requires reviewer attention but preserves data."""
+    """Construct a non-blocking finding retained with the active version."""
 
     return ValidationFinding(code, path, message, "warning")

@@ -1,7 +1,7 @@
 """Strict data contract for AI-generated program requirement drafts.
 
-These models describe proposals only. Passing this schema does not approve or
-publish a program revision; later validation and human review remain required.
+These models describe untrusted proposals only. Passing this schema does not
+activate a scholarship; deterministic validation remains required.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ RuleValue: TypeAlias = str | int | float | bool | list[str]
 
 
 class StrictModel(BaseModel):
-    """Reject fields outside the reviewed extraction contract."""
+    """Reject fields outside the versioned extraction contract."""
 
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
 
@@ -94,7 +94,7 @@ class UnresolvedCondition(StrictModel):
 
 
 class ExtractedProgramDraft(StrictModel):
-    """Complete model output proposed for deterministic validation and review."""
+    """Complete model output proposed for deterministic validation."""
 
     name: str = Field(min_length=1, max_length=240)
     description: str = Field(min_length=1)
@@ -102,7 +102,7 @@ class ExtractedProgramDraft(StrictModel):
     coverage: CoverageDraft
     checklist: list[ChecklistItem]
     eligibility_tree: RuleNode
-    # This is the model's proposal. Only an administrator can attest completeness.
+    # This remains an untrusted model claim until deterministic validation.
     coverage_complete: bool
     award_cycle: str | None = Field(max_length=120)
     application_deadline: str | None

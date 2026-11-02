@@ -60,7 +60,7 @@ security/migration tests.
 - [x] Implement Kaleidoscope public-listing adapter.
 - [x] Add manual lead intake and official sponsor verification.
 - [x] Enforce robots, terms/policy, rate, path, depth, and page budgets.
-- [ ] Replace reviewer publication with deterministic activation after validation.
+- [x] Replace reviewer publication with deterministic activation after validation.
 - [ ] Add daily scheduler plus launch-time catch-up.
 - [ ] Add disappeared/expired source behavior and cycle change detection.
 

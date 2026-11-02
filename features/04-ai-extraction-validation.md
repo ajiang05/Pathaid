@@ -19,10 +19,13 @@ deterministic validation decides whether the result is safe to activate.
   claim support, and coverage deterministically.
 - Invalid output records findings and leaves the prior valid version active.
 - Unchanged source hashes skip Gemini entirely.
+- A valid result creates an immutable version and atomically advances the local
+  scholarship's active-version pointer without review or publication state.
 
 ## Acceptance criteria
 
 - Extraction cannot activate a record without validation.
+- Replaying the same snapshot and structured draft does not duplicate a version.
 - Unsupported requirements and fabricated evidence fail validation.
 - Mandatory conditions that cannot be represented prevent Strong matching.
 - Provider timeout/refusal/quota behavior is bounded and visible without leaking
