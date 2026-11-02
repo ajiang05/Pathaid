@@ -291,3 +291,57 @@ class ExtractionActivationAttempt(Base):
     prompt_version: Mapped[str] = mapped_column(String(40))
     schema_version: Mapped[str] = mapped_column(String(40))
     attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class DiscoveryJob(Base):
+    """Durable scheduled source refresh claimed through a short worker lease."""
+
+    __tablename__ = "discovery_jobs"
+    __table_args__ = (
+        CheckConstraint("trigger IN ('scheduled', 'manual')", name="ck_discovery_job_trigger"),
+        CheckConstraint("status IN ('queued', 'running', 'retry_wait', 'succeeded', 'failed', 'cancelled')", name="ck_discovery_job_status"),
+        CheckConstraint("stage IN ('acquisition', 'extraction', 'activation', 'complete')", name="ck_discovery_job_stage"),
+        CheckConstraint("attempt_count >= 0 AND max_attempts >= 1", name="ck_discovery_job_attempts"),
+        UniqueConstraint("source_scope_id", "trigger", "window_start", name="uq_discovery_job_window"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_scope_id: Mapped[str] = mapped_column(ForeignKey("source_scopes.id"), index=True)
+    trigger: Mapped[str] = mapped_column(String(20))
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    stage: Mapped[str] = mapped_column(String(20), index=True)
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    lease_owner: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    scan_run_id: Mapped[str | None] = mapped_column(ForeignKey("source_scan_runs.id"), nullable=True, index=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class DiscoveryExtractionArtifact(Base):
+    """Persisted provider output so activation retries never repeat Gemini work."""
+
+    __tablename__ = "discovery_extraction_artifacts"
+    __table_args__ = (
+        CheckConstraint("status IN ('extracted', 'activated', 'validation_failed', 'skipped')", name="ck_discovery_artifact_status"),
+        UniqueConstraint("discovery_job_id", "source_snapshot_id", name="uq_discovery_artifact_snapshot"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    discovery_job_id: Mapped[str] = mapped_column(ForeignKey("discovery_jobs.id"), index=True)
+    source_snapshot_id: Mapped[str] = mapped_column(ForeignKey("source_snapshots.id"), index=True)
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    draft: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    extraction_model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    schema_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    provider_request_id: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

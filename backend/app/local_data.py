@@ -14,13 +14,14 @@ from .config import Settings
 from .secrets import MANAGED_SECRET_NAMES, SecretStore
 
 
-EXPECTED_MIGRATION = "0007_deterministic_activation"
+EXPECTED_MIGRATION = "0008_scheduled_discovery"
 REQUIRED_TABLES = {
     "alembic_version", "app_settings", "local_profile", "profile_experiences",
     "institutions", "source_scopes", "manual_leads",
     "source_scan_runs", "source_snapshots", "manual_lead_snapshots",
     "source_policy_assessments",
     "scholarships", "scholarship_versions", "extraction_activation_attempts",
+    "discovery_jobs", "discovery_extraction_artifacts",
 }
 
 

@@ -44,6 +44,12 @@ transactional, and serialized through durable job state; enable WAL mode and a
 busy timeout. Do not hold a database transaction open during HTTP or Gemini
 calls.
 
+The local API now starts a scheduler thread at launch. It creates one unique
+daily catch-up job per due source, claims work through an expiring lease, and
+commits acquisition, extracted Gemini output, and activation separately.
+Completed extraction artifacts are reused after restart, transient failures use
+bounded backoff, and jobs for paused or policy-blocked sources are cancelled.
+
 ## 4. Data flow
 
 ### 4.1 Discovery
@@ -194,6 +200,8 @@ snapshot and structured draft is idempotent.
 | `Scholarship` | Stable sponsor/award identity |
 | `ScholarshipVersion` | Cycle-specific extracted and validated facts |
 | `ExtractionActivationAttempt` | Append-only activated/unchanged/failed validation outcome |
+| `DiscoveryJob` | Daily/manual window, stage, retry state, and worker lease |
+| `DiscoveryExtractionArtifact` | Persisted Gemini result used by resumable activation |
 | `Requirement` | Typed hard criterion with evidence |
 | `SelectionPreference` | Non-eligibility factor with evidence |
 | `SavedScholarship` | Not started/In progress/Already applied/internal skip state |

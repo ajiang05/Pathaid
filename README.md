@@ -12,8 +12,9 @@ reviews every application and submits it personally.
 > AcademicWorks/Blackbaud and Kaleidoscope public adapters are verified. Manual
 > leads can be checked against immutable official sponsor evidence, and source
 > scans require an immutable policy review. Validated extractions activate
-> immutable scholarship versions without a review queue. Saved lists and
-> application-copilot behavior remain in later phases. Follow
+> immutable scholarship versions without a review queue. A durable daily
+> scheduler performs launch-time catch-up and resumes committed stages. Saved
+> lists and application-copilot behavior remain in later phases. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries
