@@ -69,13 +69,15 @@ only after deterministic validation; there is no human publication queue.
 ```text
 user pastes listing URL/title
   -> store lead only
-  -> resolve official sponsor URL
+  -> user confirms candidate official sponsor URL
   -> acquire and validate official page
+  -> retain immutable normalized evidence
   -> create scholarship record or mark unverifiable
 ```
 
 BigFuture, Scholarship America, and Bold.org are lead sources, not initial
-automatic crawling scopes. Aggregator prose cannot establish eligibility.
+automatic crawling scopes. Aggregator prose cannot establish eligibility, and
+an aggregator host cannot be confirmed as the official evidence URL.
 
 ### 4.3 Matching
 

@@ -63,10 +63,11 @@ sequenceDiagram
     participant S as Official sponsor
 
     U->>P: Save individual lead URL/title
-    P->>L: Resolve sponsor/application reference
+    U->>P: Confirm candidate official sponsor URL
     P->>S: Acquire current official page
     alt official evidence is valid
-        S-->>P: Current rules and application URL
+        S-->>P: Current scholarship page
+        P->>P: Save immutable normalized evidence
         P-->>U: Show verified scholarship match
     else absent, stale, or unverifiable
         P-->>U: Keep lead history; hide from current matches

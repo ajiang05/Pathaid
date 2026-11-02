@@ -30,4 +30,6 @@ BigFuture, Scholarship America, and Bold.org are manual lead sources only.
 - A path approval cannot silently expand to the whole host.
 - Pause prevents scheduling; resume preserves history.
 - Manual lead creation does not authorize crawling sibling pages.
+- Official verification requires a separately confirmed non-aggregator URL,
+  retains immutable evidence, and still grants no surrounding crawl scope.
 - School-change tests deactivate only school-owned scopes.

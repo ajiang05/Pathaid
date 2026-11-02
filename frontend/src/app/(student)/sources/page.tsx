@@ -14,6 +14,7 @@ export default function SourcesPage() {
   const [error, setError] = useState("");
   const [scope, setScope] = useState({ name: "", ownership: "school", adapter: "generic", canonical_url: "", allowed_path_prefix: "/", max_depth: 1, page_budget: 25, requests_per_minute: 10, scan_interval_hours: 24 });
   const [lead, setLead] = useState({ title: "", url: "" });
+  const [officialUrls, setOfficialUrls] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
@@ -72,6 +73,17 @@ export default function SourcesPage() {
     } catch (caught) { report(caught); }
   }
 
+  async function verifyLead(item: ManualLead) {
+    const officialUrl = officialUrls[item.id]?.trim();
+    if (!officialUrl) { setError("Enter the current official sponsor page before verifying."); return; }
+    try {
+      const verified = await api<ManualLead>(`/api/leads/${item.id}/verify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ official_url: officialUrl }) });
+      setMessage(verified.status === "official_verified" ? "Official sponsor evidence verified and saved." : "The page could not be verified as current official scholarship evidence.");
+      setError(verified.last_error_code ? readable(verified.last_error_code) : "");
+      await load();
+    } catch (caught) { report(caught); }
+  }
+
   const selectedSchool = typeof profile?.fields.school === "string" ? profile.fields.school : "No institution selected";
   const selectedSchoolId = typeof profile?.fields.school_id === "string" ? profile.fields.school_id : null;
 
@@ -107,7 +119,7 @@ export default function SourcesPage() {
 
     <section className="form-card source-section"><div className="form-card-heading"><p className="eyebrow">No crawl permission</p><h2>Manual leads</h2><p className="field-help">Use this for BigFuture, Scholarship America, Bold.org, or any single URL you want verified later.</p></div>
       <form className="inline-form" onSubmit={addLead}><label>Lead title<input value={lead.title} required onChange={event => setLead({ ...lead, title: event.target.value })} /></label><label>Exact URL<input type="url" value={lead.url} required onChange={event => setLead({ ...lead, url: event.target.value })} /></label><button className="button button-outline">Save lead</button></form>
-      {leads.length > 0 && <div className="lead-list">{leads.map(item => <article key={item.id}><div><strong>{item.title}</strong><span>{item.hostname} · {readable(item.status)}</span></div><a className="text-link" href={item.canonical_url} target="_blank" rel="noreferrer">Open URL</a></article>)}</div>}
+      {leads.length > 0 && <div className="lead-list">{leads.map(item => <article key={item.id}><div><strong>{item.title}</strong><span>{item.hostname} · {readable(item.status)}{item.verified_at ? ` · verified ${new Date(item.verified_at).toLocaleDateString()}` : ""}</span>{item.last_error_code && <span className="form-error">{readable(item.last_error_code)}</span>}<label>Official sponsor page<input type="url" placeholder="https://sponsor.org/scholarship" value={officialUrls[item.id] ?? item.official_url ?? ""} onChange={event => setOfficialUrls({ ...officialUrls, [item.id]: event.target.value })} /></label></div><div className="row-actions"><a className="text-link" href={item.canonical_url} target="_blank" rel="noreferrer">Open lead</a><button className="button button-outline" type="button" onClick={() => verifyLead(item)}>Verify official page</button>{item.official_url && <a className="text-link" href={item.official_url} target="_blank" rel="noreferrer">Open official page</a>}</div></article>)}</div>}
     </section>
   </>;
 }
