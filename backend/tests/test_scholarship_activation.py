@@ -29,7 +29,11 @@ from app.scholarship_activation import activate_validated_extraction, material_f
 from conftest import FakeSecretStore
 
 
-SOURCE = "Community Scholars Award. Applicants must have a 3.0 GPA. Submit a transcript."
+SOURCE = (
+    "Community Scholars Award. Applicants must have a 3.0 GPA. Submit a transcript. "
+    "Applicants are automatically considered. Winner selected by random drawing. "
+    "Read the official rules."
+)
 
 
 def proposal(snapshot_id: str, *, name="Community Scholars Award", excerpt="Applicants must have a 3.0 GPA.") -> dict:
@@ -54,6 +58,10 @@ def proposal(snapshot_id: str, *, name="Community Scholars Award", excerpt="Appl
         "assistance_amount": "$2,500",
         "selection_factors": [],
         "application_url": "https://sponsor.example/apply",
+        "application_process": "separate_application",
+        "application_process_evidence": None,
+        "official_rules_url": None,
+        "official_rules_evidence": None,
         "unresolved_conditions": [],
     }
 
@@ -129,6 +137,14 @@ def test_material_fingerprint_ignores_cosmetic_and_evidence_changes():
     }
     assert material_fingerprint(cosmetic) == material_fingerprint(original)
 
+    legacy_standard = deepcopy(original)
+    for field in (
+        "application_process", "application_process_evidence",
+        "official_rules_url", "official_rules_evidence",
+    ):
+        legacy_standard.pop(field)
+    assert material_fingerprint(legacy_standard) == material_fingerprint(original)
+
     for field, changed_value in (
         ("award_cycle", "2028"),
         ("application_deadline", "2028-03-01T17:00:00-05:00"),
@@ -142,6 +158,10 @@ def test_material_fingerprint_ignores_cosmetic_and_evidence_changes():
     changed_eligibility = deepcopy(original)
     changed_eligibility["eligibility_tree"]["value"] = 3.5
     assert material_fingerprint(changed_eligibility) != material_fingerprint(original)
+
+    changed_process = deepcopy(original)
+    changed_process["application_process"] = "automatically_considered"
+    assert material_fingerprint(changed_process) != material_fingerprint(original)
 
 
 def test_current_availability_expires_dates_and_timestamps_at_the_right_boundary():
@@ -256,3 +276,43 @@ def test_saved_status_is_idempotent_persistent_and_skip_tracks_material_cycle(tm
     with TestClient(restarted) as client:
         items = client.get("/api/saved-scholarships").json()["items"]
         assert len(items) == 1 and items[0]["status"] == "already_applied"
+
+
+def test_source_backed_special_processes_use_distinct_result_sections(tmp_path):
+    database, settings = activation_database(tmp_path)
+    automatic = proposal("snapshot-1")
+    automatic.update({
+        "application_process": "automatically_considered",
+        "application_process_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Applicants are automatically considered."
+        },
+    })
+    activated = activate_validated_extraction(database, "snapshot-1", extraction(automatic))
+    database.close()
+
+    app = create_app(settings, FakeSecretStore())
+    with TestClient(app) as client:
+        client.patch("/api/profile", json={"fields": {"gpa": 3.5}})
+        response = client.get("/api/matches").json()
+        assert response["results"] == [] and len(response["automatically_considered"]) == 1
+        rejected = client.put(
+            f"/api/saved-scholarships/{activated.scholarship_id}", json={"status": "not_started"}
+        )
+        assert rejected.status_code == 409
+
+        sweepstakes = proposal("snapshot-1")
+        sweepstakes.update({
+            "application_process": "sweepstakes",
+            "application_process_evidence": {
+                "snapshot_id": "snapshot-1", "excerpt": "Winner selected by random drawing."
+            },
+            "official_rules_url": "https://sponsor.example/official-rules",
+            "official_rules_evidence": {
+                "snapshot_id": "snapshot-1", "excerpt": "Read the official rules."
+            },
+        })
+        activate_validated_extraction(app.state.database, "snapshot-1", extraction(sweepstakes))
+        response = client.get("/api/matches").json()
+        assert response["automatically_considered"] == []
+        assert len(response["sweepstakes"]) == 1
+        assert response["sweepstakes"][0]["official_rules_url"].endswith("/official-rules")

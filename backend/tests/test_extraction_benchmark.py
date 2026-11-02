@@ -30,6 +30,10 @@ def gpa_prediction() -> ExtractedProgramDraft:
             "assistance_amount": None,
             "selection_factors": [],
             "application_url": None,
+            "application_process": "separate_application",
+            "application_process_evidence": None,
+            "official_rules_url": None,
+            "official_rules_evidence": None,
             "unresolved_conditions": []
         }
     )

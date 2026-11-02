@@ -9,7 +9,8 @@ from app.extraction_validation import validate_extracted_draft
 
 SOURCE = (
     "Community Scholars Award. Applicants must have a 3.0 GPA. "
-    "Submit a transcript. Preference is given to volunteers."
+    "Submit a transcript. Preference is given to volunteers. "
+    "Winner selected by random drawing. Read the official rules."
 )
 
 
@@ -57,6 +58,10 @@ def proposal() -> dict:
             }
         ],
         "application_url": "https://example.edu/apply",
+        "application_process": "separate_application",
+        "application_process_evidence": None,
+        "official_rules_url": None,
+        "official_rules_evidence": None,
         "unresolved_conditions": [],
     }
 
@@ -185,6 +190,23 @@ def test_bad_coverage_deadline_and_url_have_explicit_findings():
 
     assert not result.is_valid
     assert {"invalid_state", "invalid_deadline", "invalid_application_url"} <= finding_codes(result)
+
+
+def test_sweepstakes_evidence_and_official_rules_url_are_validated():
+    data = proposal()
+    data.update({
+        "application_process": "sweepstakes",
+        "application_process_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Winner selected by random drawing."
+        },
+        "official_rules_url": "file:///tmp/rules",
+        "official_rules_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Read the official rules."
+        },
+    })
+    result = validate_extracted_draft(ExtractedProgramDraft.model_validate(data), Snapshot())
+    assert not result.is_valid
+    assert "invalid_official_rules_url" in finding_codes(result)
 
 
 def test_missing_named_timezone_is_visible_to_reviewers():

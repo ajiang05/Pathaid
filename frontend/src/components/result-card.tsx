@@ -29,14 +29,18 @@ export function ResultCard({ result, onSave, onApply, onSkip }: ResultCardProps)
   return <article className="result-card">
     <header className="result-top"><p className="result-provider">{result.sponsor}</p><h3>{result.name}</h3></header>
     <dl className="result-facts"><div><dt>Award</dt><dd>{result.award ?? "Not stated"}</dd></div><div><dt>Deadline</dt><dd>{deadline(result.deadline)}</dd></div><div><dt>Eligibility</dt><dd>{result.match_label}</dd></div></dl>
-    <div className="pill-row"><span className={`status-pill ${statusClass}`}>{result.match_label}</span></div>
+    <div className="pill-row"><span className={`status-pill ${statusClass}`}>{result.match_label}</span>{result.application_process === "sweepstakes" && <span className="info-pill">Verified sweepstakes</span>}</div>
     {result.key_reasons.length > 0 && <ul className="missing-note">{result.key_reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}
     {result.unknown_fields.length > 0 && <p className="missing-note">Unknown: {result.unknown_fields.map(readable).join(", ")}</p>}
-    <footer className="result-actions">
-      <button className="button button-outline" disabled={busy} onClick={() => act(onSave, "Saved as Not started.")}>{result.saved_status ? "Saved" : "Save"}</button>
-      <button className="button button-primary" disabled={busy} onClick={() => act(onApply, "Marked In progress and opened the official application.")}>Apply</button>
+    {result.application_process === "automatically_considered" ? <footer className="result-actions automatic-actions">
+      <strong>No separate application required</strong>
       <button className="text-action" disabled={busy} onClick={() => act(onSkip, "Hidden until this scholarship materially changes.")}>Skip this cycle</button>
-    </footer>
+    </footer> : <footer className="result-actions">
+      <button className="button button-outline" disabled={busy} onClick={() => act(onSave, "Saved as Not started.")}>{result.saved_status ? "Saved" : "Save"}</button>
+      <button className="button button-primary" disabled={busy} onClick={() => act(onApply, result.application_process === "sweepstakes" ? "Marked In progress and opened the official entry page." : "Marked In progress and opened the official application.")}>{result.application_process === "sweepstakes" ? "Enter" : "Apply"}</button>
+      {result.official_rules_url && <a className="text-action" href={result.official_rules_url} target="_blank" rel="noreferrer">Official rules</a>}
+      <button className="text-action" disabled={busy} onClick={() => act(onSkip, "Hidden until this scholarship materially changes.")}>Skip this cycle</button>
+    </footer>}
     <p className="action-message" role="status" aria-live="polite">{message}</p>
   </article>;
 }

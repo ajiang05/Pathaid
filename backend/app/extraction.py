@@ -11,7 +11,7 @@ from typing import Any, Mapping, Protocol
 from .extraction_schemas import EXTRACTION_SCHEMA_VERSION, ExtractedProgramDraft
 
 
-PROMPT_VERSION = "2.0.0"
+PROMPT_VERSION = "2.1.0"
 DEFAULT_EXTRACTION_MODEL = "gpt-6-luna"
 DEFAULT_GEMINI_EXTRACTION_MODEL = "gemini-3.5-flash-lite"
 
@@ -25,6 +25,11 @@ Never omit a mandatory requirement merely because coverage_complete is false. un
 provider confirmation or application-process ambiguity, but they do not replace mandatory eligibility nodes.
 Do not infer missing dates, timezones, amounts, availability, coverage, exceptions, or requirements. This output
 is an untrusted proposal and has no activation authority. Only deterministic validation may activate it.
+Set application_process to automatically_considered only when the source explicitly says no separate application
+is required, and include that exact statement in application_process_evidence. Set it to sweepstakes only when
+the source explicitly describes a random drawing or sweepstakes and provides a public official-rules URL; retain
+exact evidence for both the classification and rules link. Otherwise use separate_application. Never classify an
+award from its title, ease of entry, or missing checklist alone.
 Every eligibility node type must be exactly one of: condition, unsupported, and, or. A condition has field,
 operator, value, evidence, and exceptions_complete; unsupported has description and evidence; and/or has children.
 Condition field must be exactly one of: school, school_id, school_city, school_state, current_city,

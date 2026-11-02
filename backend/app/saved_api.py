@@ -83,6 +83,8 @@ def create_saved_router(database: Database) -> APIRouter:
         db: Session = Depends(get_db),
     ) -> dict:
         scholarship, version, snapshot = _active_record(db, scholarship_id)
+        if version.data.get("application_process") == "automatically_considered":
+            raise HTTPException(409, detail="Automatically considered scholarships do not have an application status")
         saved = db.get(SavedScholarship, scholarship_id)
         if saved is None:
             saved = SavedScholarship(scholarship_id=scholarship_id, status=body.status)

@@ -47,6 +47,8 @@ def draft(snapshot_id="snapshot-1") -> ExtractedProgramDraft:
         "application_deadline": "2027-03-01", "deadline_timezone": "America/New_York",
         "application_availability": "open", "assistance_amount": "$2,500",
         "selection_factors": [], "application_url": "https://sponsor.example/apply",
+        "application_process": "separate_application", "application_process_evidence": None,
+        "official_rules_url": None, "official_rules_evidence": None,
         "unresolved_conditions": [],
     })
 

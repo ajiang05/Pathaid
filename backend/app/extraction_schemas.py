@@ -11,7 +11,7 @@ from typing import Annotated, Literal, TypeAlias
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-EXTRACTION_SCHEMA_VERSION = "1.0.0"
+EXTRACTION_SCHEMA_VERSION = "1.1.0"
 Category = Literal["scholarships", "grants", "food", "emergency", "housing"]
 Operator = Literal["eq", "in", "contains", "gt", "gte", "lt", "lte"]
 RuleValue: TypeAlias = str | int | float | bool | list[str]
@@ -111,6 +111,12 @@ class ExtractedProgramDraft(StrictModel):
     assistance_amount: str | None = Field(max_length=240)
     selection_factors: list[SelectionFactor]
     application_url: str | None
+    # Existing stored 1.0 records safely default at read time. Every new 1.1
+    # extraction must explicitly classify its application process.
+    application_process: Literal["separate_application", "automatically_considered", "sweepstakes"]
+    application_process_evidence: EvidenceReference | None
+    official_rules_url: str | None
+    official_rules_evidence: EvidenceReference | None
     unresolved_conditions: list[UnresolvedCondition]
 
     @field_validator("categories")
@@ -128,6 +134,18 @@ class ExtractedProgramDraft(StrictModel):
 
         if not self.coverage_complete and not self.unresolved_conditions and not _has_unsupported(self.eligibility_tree):
             raise ValueError("incomplete coverage requires an unresolved or unsupported condition")
+        return self
+
+    @model_validator(mode="after")
+    def require_process_evidence(self) -> "ExtractedProgramDraft":
+        """Prevent special result sections from relying on an unsupported label."""
+
+        if self.application_process != "separate_application" and self.application_process_evidence is None:
+            raise ValueError("special application process requires evidence")
+        if self.application_process == "sweepstakes" and (
+            self.official_rules_url is None or self.official_rules_evidence is None
+        ):
+            raise ValueError("sweepstakes require an official rules URL and evidence")
         return self
 
 

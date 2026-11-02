@@ -32,3 +32,6 @@ deterministic validation decides whether the result is safe to activate.
   prompts, source secrets, or keys.
 - Saved benchmark fixtures cover common academic, location, demographic,
   membership, experience, deadline, and policy language.
+- Automatic consideration requires exact retained evidence. Sweepstakes also
+  require a validated public official-rules URL and exact rules-link evidence;
+  neither classification may be inferred from an opportunity's title.

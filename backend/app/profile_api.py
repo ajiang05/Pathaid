@@ -251,6 +251,8 @@ def create_profile_router(database: Database) -> APIRouter:
         sponsors = {}
         awards = {}
         application_urls = {}
+        application_processes = {}
+        official_rules_urls = {}
         versions = {}
         for scholarship, version, snapshot in rows:
             data = version.data
@@ -266,6 +268,8 @@ def create_profile_router(database: Database) -> APIRouter:
             sponsors[scholarship.id] = urlsplit(scholarship.source_url).hostname or scholarship.source_url
             awards[scholarship.id] = data.get("assistance_amount")
             application_urls[scholarship.id] = data.get("application_url") or scholarship.source_url
+            application_processes[scholarship.id] = data.get("application_process", "separate_application")
+            official_rules_urls[scholarship.id] = data.get("official_rules_url")
             versions[scholarship.id] = version
         saved_states = {
             item.scholarship_id: item.status for item in db.scalars(select(SavedScholarship))
@@ -277,6 +281,8 @@ def create_profile_router(database: Database) -> APIRouter:
         profile_inputs["experiences"] = [_experience_payload(item) for item in profile.experiences]
         evaluated = evaluate_candidates(candidates, profile_inputs, MATCH_FIELDS)
         results = []
+        automatically_considered = []
+        sweepstakes = []
         not_matches = []
         for result in evaluated:
             scholarship_id = result.candidate.scholarship_id
@@ -288,13 +294,22 @@ def create_profile_router(database: Database) -> APIRouter:
             payload = _match_payload(result, sponsors[result.candidate.scholarship_id])
             payload["award"] = awards[result.candidate.scholarship_id]
             payload["application_url"] = application_urls[scholarship_id]
+            payload["application_process"] = application_processes[scholarship_id]
+            payload["official_rules_url"] = official_rules_urls[scholarship_id]
             payload["saved_status"] = saved_states.get(scholarship_id)
             if result.ranking_factors is not None:
-                results.append(payload)
+                if application_processes[scholarship_id] == "automatically_considered":
+                    automatically_considered.append(payload)
+                elif application_processes[scholarship_id] == "sweepstakes":
+                    sweepstakes.append(payload)
+                else:
+                    results.append(payload)
             elif result.eligibility.label.value == "Not a match":
                 not_matches.append(payload)
         return {
             "results": results,
+            "automatically_considered": automatically_considered,
+            "sweepstakes": sweepstakes,
             "not_matches": not_matches,
             "profile_completeness": completeness(profile.data),
             "catalog_status": "ready" if rows else "awaiting_approved_sources",
