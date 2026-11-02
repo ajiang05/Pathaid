@@ -1,9 +1,11 @@
 import { API_BASE, parseMessage, publicConnectionState } from "./lib/protocol.js";
 import { buildFillPlan } from "./lib/adapter-contract.js";
-import { mapGenericFields } from "./lib/generic-adapter.js";
+import { genericAdapter } from "./lib/generic-adapter.js";
+import { academicWorksAdapter } from "./lib/academicworks-adapter.js";
 
 const STORAGE_KEYS = ["token", "connected", "lastCheckedAt"];
 const activePreviews = new Map();
+const adapters = Object.freeze([academicWorksAdapter, genericAdapter]);
 
 chrome.runtime.onInstalled.addListener(() => {
   // Chrome opens the panel only after the student clicks the toolbar action.
@@ -56,7 +58,8 @@ async function inspectActivePage() {
   }
   const context = await portalContext(page.origin);
   if (context.state !== "supported") return context;
-  if (context.adapter !== "generic") {
+  const adapter = adapters.find(candidate => candidate.matches(context));
+  if (!adapter) {
     return { state: "unsupported", reason: `The ${context.adapter} adapter is not implemented yet.` };
   }
   await chrome.scripting.executeScript({ target: { tabId: page.tab.id }, files: ["content/generic-runtime.js"] });
@@ -66,7 +69,7 @@ async function inspectActivePage() {
     portal_origin: page.origin, scholarship_id: context.scholarship_id,
   });
   const descriptors = inspection.descriptors.slice(0, 200);
-  const mappings = mapGenericFields(descriptors, profile.fields);
+  const mappings = adapter.map(descriptors, profile.fields);
   const previewId = crypto.randomUUID();
   activePreviews.set(previewId, {
     tabId: page.tab.id, portalOrigin: page.origin, scholarshipId: context.scholarship_id,

@@ -294,6 +294,13 @@ in service-worker memory, expire after 15 minutes, and are revalidated against
 the active tab and backend context before value/input/change operations. The
 runtime never clicks any element or submits a form.
 
+AcademicWorks/Blackbaud uses the same isolated runtime and central fill-plan
+validator. Its dedicated mapper recognizes only a narrow set of exact common
+Award Management questions and applies explicit yes/no translations for fields
+such as full-time enrollment. Since each institution defines its own General
+Application, custom questions and essays remain untouched unless a later learned
+mapping has been reviewed by the student.
+
 ## 10. Documents, essays, and secrets
 
 Generate a random document-encryption key and store it through macOS Keychain.

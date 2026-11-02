@@ -1,6 +1,12 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
+type RuntimeListener = (
+  message: unknown,
+  sender: unknown,
+  respond: (response: Record<string, unknown>) => void,
+) => void;
+
 test("generic extension runtime fills only approved safe fields and never submits", async ({ page }) => {
   await page.setContent(`
     <form id="application">
@@ -18,13 +24,13 @@ test("generic extension runtime fills only approved safe fields and never submit
     <script>window.submitCount = 0; document.querySelector('#application').addEventListener('submit', event => { event.preventDefault(); window.submitCount += 1; });</script>
   `);
   await page.evaluate(() => {
-    const target = globalThis as typeof globalThis & { pathAidListener?: Function; chrome?: unknown };
-    target.chrome = { runtime: { onMessage: { addListener(listener: Function) { target.pathAidListener = listener; } } } };
+    const target = globalThis as typeof globalThis & { pathAidListener?: RuntimeListener; chrome?: unknown };
+    target.chrome = { runtime: { onMessage: { addListener(listener: RuntimeListener) { target.pathAidListener = listener; } } } };
   });
   await page.addScriptTag({ path: path.resolve(process.cwd(), "../extension/content/generic-runtime.js") });
 
   const inspection = await page.evaluate(async () => {
-    const target = globalThis as typeof globalThis & { pathAidListener: Function };
+    const target = globalThis as typeof globalThis & { pathAidListener: RuntimeListener };
     return new Promise<Record<string, unknown>>(resolve => target.pathAidListener({ type: "PATHAID_INSPECT_GENERIC" }, {}, resolve));
   });
   expect(inspection.ok).toBe(true);
@@ -33,7 +39,7 @@ test("generic extension runtime fills only approved safe fields and never submit
   const byName = Object.fromEntries(descriptors.map(item => [item.name, item]));
 
   const fillResult = await page.evaluate(async ({ descriptorsByName }) => {
-    const target = globalThis as typeof globalThis & { pathAidListener: Function };
+    const target = globalThis as typeof globalThis & { pathAidListener: RuntimeListener };
     const plan = [
       { fieldId: descriptorsByName.first_name.fieldId, control: "text", value: "Aidan" },
       { fieldId: descriptorsByName.email.fieldId, control: "email", value: "aidan@example.com" },

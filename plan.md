@@ -83,7 +83,7 @@ scholarships without per-record human publication.
 - [x] Add minimal permissions and authenticated loopback connection.
 - [x] Define adapter contract that cannot submit/certify/sign.
 - [x] Implement generic HTML form inspection, preview, and fill.
-- [ ] Implement AcademicWorks/Blackbaud adapter.
+- [x] Implement AcademicWorks/Blackbaud adapter.
 - [ ] Implement Kaleidoscope adapter.
 - [x] Mark sensitive mappings and skip ambiguous fields.
 - [ ] Learn corrected portal mappings.
