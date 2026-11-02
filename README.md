@@ -19,7 +19,8 @@ reviews every application and submits it personally.
 > Apply, Skip this cycle, the three-state Saved view, automatically considered
 > awards, and verified sweepstakes sections are implemented. The Chrome
 > extension foundation now connects an unpacked side panel to the authenticated
-> loopback API; form preview and filling remain. Follow
+> loopback API, and the generic adapter previews and fills explicitly approved
+> safe fields. Dedicated portal adapters remain. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries

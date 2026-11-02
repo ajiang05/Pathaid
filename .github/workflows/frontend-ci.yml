@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "frontend/**"
+      - "extension/**"
       - ".github/workflows/frontend-ci.yml"
   pull_request:
     paths:
       - "frontend/**"
+      - "extension/**"
       - ".github/workflows/frontend-ci.yml"
 
 concurrency:

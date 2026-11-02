@@ -284,6 +284,16 @@ neither state releases profile data. The adapter interface exposes only
 future fill plans from visible, supported, exact, explicitly approved mappings.
 Attachments remain a separate explicit-action contract.
 
+For generic forms, the on-demand isolated runtime records opaque references to
+visible value-bearing controls and returns metadata without current field
+values. The authenticated profile-values endpoint returns known fields only,
+uses `Cache-Control: no-store`, and requires the same scholarship/origin
+context. Exact mappings are previewed in the side panel, with sensitive values
+marked; ambiguous and unknown mappings are excluded. Approved plans remain only
+in service-worker memory, expire after 15 minutes, and are revalidated against
+the active tab and backend context before value/input/change operations. The
+runtime never clicks any element or submits a form.
+
 ## 10. Documents, essays, and secrets
 
 Generate a random document-encryption key and store it through macOS Keychain.

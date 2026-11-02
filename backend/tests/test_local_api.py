@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.local_data import upgrade_database
 from app.main import create_app
-from app.models import SavedScholarship, Scholarship, ScholarshipVersion, SourceScanRun, SourceScope, SourceSnapshot
+from app.models import LocalProfile, SavedScholarship, Scholarship, ScholarshipVersion, SourceScanRun, SourceScope, SourceSnapshot
 from app.secrets import EXTENSION_TOKEN
 from conftest import FakeSecretStore
 
@@ -139,6 +139,42 @@ def test_extension_context_requires_exact_in_progress_portal_origin(tmp_path):
             params={"portal_origin": "https://example.academicworks.com"},
         )
         assert unauthenticated.status_code == 403
+
+
+def test_extension_profile_values_require_context_and_omit_unknowns(tmp_path):
+    app, settings, _secrets = configured_app(tmp_path)
+    scholarship_id = add_in_progress_scholarship(app)
+    with app.state.database.sessions.begin() as db:
+        db.get(LocalProfile, 1).data = {
+            "first_name": "Aidan", "email": "aidan@example.com",
+            "gpa": 3.8, "pell_eligible": {"status": "unknown"},
+        }
+    headers = {"Origin": settings.extension_origin, "X-PathAid-Token": "correct-token"}
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/extension/profile-values",
+            params={
+                "portal_origin": "https://example.academicworks.com",
+                "scholarship_id": scholarship_id,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        assert response.json() == {
+            "scholarship_id": scholarship_id,
+            "fields": [
+                {"name": "first_name", "label": "First name", "value": "Aidan", "sensitive": False},
+                {"name": "email", "label": "Email address", "value": "aidan@example.com", "sensitive": True},
+                {"name": "gpa", "label": "GPA", "value": 3.8, "sensitive": False},
+            ],
+        }
+        denied = client.get(
+            "/api/extension/profile-values",
+            params={"portal_origin": "https://other.example", "scholarship_id": scholarship_id},
+            headers=headers,
+        )
+        assert denied.status_code == 409
 
 
 def test_unconfigured_extension_fails_closed(tmp_path):
