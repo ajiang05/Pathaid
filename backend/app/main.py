@@ -18,6 +18,7 @@ from .config import Settings
 from .database import Database
 from .local_data import EXPECTED_MIGRATION, REQUIRED_TABLES
 from .profile_api import create_profile_router
+from .saved_api import create_saved_router
 from .scheduler import SchedulerThread
 from .secrets import KeychainSecretStore, SecretStore, SecretStoreError, get_or_create_extension_token
 from .source_api import create_source_router
@@ -57,6 +58,7 @@ def create_app(settings: Settings | None = None, secret_store: SecretStore | Non
         allow_headers=["X-PathAid-Token", "Content-Type"],
     )
     application.include_router(create_profile_router(database))
+    application.include_router(create_saved_router(database))
     application.include_router(create_source_router(database))
 
     def get_db() -> Session:

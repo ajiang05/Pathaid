@@ -15,7 +15,11 @@ from sqlalchemy.orm import Session
 
 from .database import Database
 from .matching import ScholarshipCandidate, evaluate_candidates
-from .models import AppSetting, LocalProfile, ProfileExperience, Scholarship, ScholarshipVersion, SourceSnapshot
+from .models import (
+    AppSetting, LocalProfile, ProfileExperience, SavedScholarship, Scholarship,
+    ScholarshipVersion, SkippedScholarship, SourceSnapshot,
+)
+from .scholarship_activation import material_fingerprint
 from .profile_fields import FIELDS, MATCH_FIELDS, SECTIONS, ProfileValidationError, completeness, validate_profile_patch
 from .source_registry import deactivate_prior_school_scopes
 
@@ -246,6 +250,8 @@ def create_profile_router(database: Database) -> APIRouter:
         candidates = []
         sponsors = {}
         awards = {}
+        application_urls = {}
+        versions = {}
         for scholarship, version, snapshot in rows:
             data = version.data
             availability = _current_availability(data)
@@ -259,14 +265,30 @@ def create_profile_router(database: Database) -> APIRouter:
             candidates.append(candidate)
             sponsors[scholarship.id] = urlsplit(scholarship.source_url).hostname or scholarship.source_url
             awards[scholarship.id] = data.get("assistance_amount")
+            application_urls[scholarship.id] = data.get("application_url") or scholarship.source_url
+            versions[scholarship.id] = version
+        saved_states = {
+            item.scholarship_id: item.status for item in db.scalars(select(SavedScholarship))
+        }
+        skipped = {
+            item.scholarship_id: item.material_fingerprint for item in db.scalars(select(SkippedScholarship))
+        }
         profile_inputs = dict(profile.data)
         profile_inputs["experiences"] = [_experience_payload(item) for item in profile.experiences]
         evaluated = evaluate_candidates(candidates, profile_inputs, MATCH_FIELDS)
         results = []
         not_matches = []
         for result in evaluated:
+            scholarship_id = result.candidate.scholarship_id
+            version = versions[scholarship_id]
+            current_fingerprint = version.material_fingerprint or material_fingerprint(version.data)
+            # A skip applies only while the exact material cycle remains active.
+            if skipped.get(scholarship_id) == current_fingerprint:
+                continue
             payload = _match_payload(result, sponsors[result.candidate.scholarship_id])
             payload["award"] = awards[result.candidate.scholarship_id]
+            payload["application_url"] = application_urls[scholarship_id]
+            payload["saved_status"] = saved_states.get(scholarship_id)
             if result.ranking_factors is not None:
                 results.append(payload)
             elif result.eligibility.label.value == "Not a match":

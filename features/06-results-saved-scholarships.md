@@ -27,3 +27,11 @@ without maintaining a complex application-management system.
 - Any defined material change revives the record once.
 - Disappeared or expired records are removed from current matches, not deleted.
 - No award-result tracking or skip-reason questionnaire is present.
+
+## Implementation status
+
+The local API and web app now implement idempotent Save/Apply actions, the three
+visible status views, removal, and cycle-level skipping. Saved state lives in
+SQLite and survives restart. Skip comparison uses the active version's material
+fingerprint, so cosmetic extraction changes remain hidden and material changes
+return the opportunity to Discover.

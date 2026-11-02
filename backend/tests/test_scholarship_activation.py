@@ -212,3 +212,47 @@ def test_activated_version_drives_local_matches_without_publication(tmp_path):
         assert result["name"] == "Community Scholars Award"
         assert result["award"] == "$2,500"
         assert result["match_label"] == "Strong match"
+
+
+def test_saved_status_is_idempotent_persistent_and_skip_tracks_material_cycle(tmp_path):
+    """Cosmetic edits stay skipped, while a changed award revives the result."""
+
+    database, settings = activation_database(tmp_path)
+    activated = activate_validated_extraction(
+        database, "snapshot-1", extraction(proposal("snapshot-1"))
+    )
+    database.close()
+
+    app = create_app(settings, FakeSecretStore())
+    with TestClient(app) as client:
+        client.patch("/api/profile", json={"fields": {"gpa": 3.5}})
+        save_path = f"/api/saved-scholarships/{activated.scholarship_id}"
+        first = client.put(save_path, json={"status": "not_started"})
+        repeated = client.put(save_path, json={"status": "not_started"})
+        assert first.status_code == repeated.status_code == 200
+        assert client.get("/api/saved-scholarships").json()["items"][0]["status"] == "not_started"
+
+        progressed = client.put(save_path, json={"status": "in_progress"})
+        assert progressed.json()["status"] == "in_progress"
+        skipped = client.put(f"/api/scholarships/{activated.scholarship_id}/skip")
+        assert skipped.json()["status"] == "skipped_this_cycle"
+        assert client.get("/api/saved-scholarships").json()["items"] == []
+        assert client.get("/api/matches").json()["results"] == []
+
+        cosmetic = proposal("snapshot-1")
+        cosmetic["description"] = "Updated promotional wording only."
+        activate_validated_extraction(app.state.database, "snapshot-1", extraction(cosmetic))
+        assert client.get("/api/matches").json()["results"] == []
+
+        changed_award = proposal("snapshot-1")
+        changed_award["assistance_amount"] = "$5,000"
+        activate_validated_extraction(app.state.database, "snapshot-1", extraction(changed_award))
+        revived = client.get("/api/matches").json()["results"]
+        assert len(revived) == 1 and revived[0]["award"] == "$5,000"
+        client.put(save_path, json={"status": "already_applied"})
+
+    # The tracker is SQLite-backed rather than browser or process memory.
+    restarted = create_app(settings, FakeSecretStore())
+    with TestClient(restarted) as client:
+        items = client.get("/api/saved-scholarships").json()["items"]
+        assert len(items) == 1 and items[0]["status"] == "already_applied"

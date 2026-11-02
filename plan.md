@@ -1,6 +1,6 @@
 # PathAid local-first redesign plan
 
-**Status:** Phases 1–3 complete and verified; Phase 4 is next
+**Status:** Phases 1–3 complete and verified; Phase 4 is in progress
 **Last updated:** November 2, 2026
 
 This file is the authoritative implementation sequence. Product scope is in
@@ -69,8 +69,8 @@ scholarships without per-record human publication.
 
 ## Phase 4 — saved scholarships and minimal tracking
 
-- [ ] Implement Not started, In progress, and Already applied views.
-- [ ] Implement Save, Apply, and Skip this cycle.
+- [x] Implement Not started, In progress, and Already applied views.
+- [x] Implement Save, Apply, and Skip this cycle.
 - [x] Persist the material-change fingerprint needed by skip behavior.
 - [ ] Add separate automatically considered and verified sweepstakes sections.
 - [ ] Remove award-outcome and general program-tracking concepts.

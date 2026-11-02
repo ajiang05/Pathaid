@@ -15,8 +15,9 @@ reviews every application and submits it personally.
 > immutable scholarship versions without a review queue. A durable daily
 > scheduler performs launch-time catch-up and resumes committed stages. Missing
 > pages deactivate results without deleting history, returning pages reactivate
-> retained records, and deadlines expire in their configured timezone. Saved
-> lists and application-copilot behavior remain in later phases. Follow
+> retained records, and deadlines expire in their configured timezone. Save,
+> Apply, Skip this cycle, and the three-state Saved view are implemented;
+> specialized result sections and application-copilot behavior remain. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries
