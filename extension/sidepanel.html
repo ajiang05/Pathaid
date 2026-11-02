@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>PathAid</title>
+    <link rel="stylesheet" href="sidepanel.css">
+  </head>
+  <body>
+    <header><p class="eyebrow">Application copilot</p><h1>PathAid</h1></header>
+    <main>
+      <section class="card" aria-labelledby="connection-heading">
+        <div class="heading"><div><p class="eyebrow">Local connection</p><h2 id="connection-heading">Disconnected</h2></div><span id="connection-dot" class="dot" aria-hidden="true"></span></div>
+        <p id="connection-detail">Paste the installation token copied from PathAid on this Mac.</p>
+        <form id="token-form">
+          <label for="token">Installation token</label>
+          <input id="token" name="token" type="password" autocomplete="off" required>
+          <button type="submit">Connect</button>
+        </form>
+        <div class="actions"><button id="retry" type="button" class="secondary" hidden>Retry connection</button><button id="disconnect" type="button" class="quiet" hidden>Forget token</button></div>
+      </section>
+      <section class="card" aria-labelledby="page-heading">
+        <p class="eyebrow">Current page</p><h2 id="page-heading">Not checked</h2>
+        <p id="page-detail">PathAid inspects a page only after you click below.</p>
+        <button id="inspect" type="button" disabled>Check current page</button>
+      </section>
+      <aside class="safety"><strong>You stay in control.</strong><p>This extension cannot submit, sign, certify, accept terms, or bypass CAPTCHA or MFA. Review and submit every application yourself.</p></aside>
+      <p id="status" role="status" aria-live="polite"></p>
+    </main>
+    <script src="sidepanel.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "pathaid-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --check service-worker.js && node --check sidepanel.js && node --test" }
+}

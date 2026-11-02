@@ -25,3 +25,11 @@ and shows a user-activated application side panel.
 - The content script runs only after explicit user activation on the active tab.
 - Service-worker restarts restore non-sensitive connection state safely.
 - The extension has no API capable of submitting or certifying an application.
+
+## Implementation status
+
+The Manifest V3 shell, service worker, accessible side panel, minimal permission
+set, exact loopback host access, Keychain-token clipboard bridge, authenticated
+ping, restart-safe public connection state, and explicitly activated page probe
+are implemented. Scholarship/portal context and policy-blocked state validation
+will be added with the adapter contract before any field data can be read.

@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "PathAid Application Copilot",
+  "version": "0.1.0",
+  "description": "Preview scholarship application support from your local PathAid profile.",
+  "permissions": ["activeTab", "scripting", "sidePanel", "storage"],
+  "host_permissions": ["http://127.0.0.1:8000/*"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open PathAid"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}

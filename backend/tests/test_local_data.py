@@ -8,6 +8,7 @@ import pytest
 
 from app.config import Settings
 from app.local_data import LocalDataError, backup_database, reset_local_data, restore_database, upgrade_database, validate_database
+from app.local_admin import copy_extension_token_to_clipboard
 from app.secrets import (
     DOCUMENT_KEY,
     EXTENSION_TOKEN,
@@ -41,6 +42,20 @@ def test_extension_and_document_secrets_are_created_once():
     assert len(first_key) >= 32
     assert store.values[EXTENSION_TOKEN] == first_token
     assert store.values[DOCUMENT_KEY] == first_key
+
+
+def test_extension_token_can_be_copied_without_being_returned_or_logged():
+    store = FakeSecretStore({EXTENSION_TOKEN: "private-extension-token"})
+    captured = {}
+
+    def runner(command, **kwargs):
+        captured.update(command=command, **kwargs)
+
+    assert copy_extension_token_to_clipboard(store, runner=runner) is None
+    assert captured == {
+        "command": ["pbcopy"], "input": "private-extension-token",
+        "text": True, "check": True,
+    }
 
 
 def test_keychain_adapter_uses_service_scoped_password_api(monkeypatch):
