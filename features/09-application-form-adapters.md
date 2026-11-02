@@ -44,3 +44,9 @@ panel marks sensitive fields and leaves ambiguous, unknown, protected, hidden,
 and unsupported fields unchecked. One **Fill approved fields** action rechecks
 the tab and scholarship context, then changes only the reviewed in-memory plan;
 the runtime has no click or submit path.
+
+The AcademicWorks/Blackbaud adapter reuses that runtime and central fill-plan
+validator. It adds exact mappings for common Award Management academic questions
+and explicit boolean translations such as full-time enrollment and Pell status.
+Institution-defined custom questions, essays, and unclear wording remain
+untouched; the adapter cannot submit the General Application or an opportunity.

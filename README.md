@@ -19,8 +19,9 @@ reviews every application and submits it personally.
 > Apply, Skip this cycle, the three-state Saved view, automatically considered
 > awards, and verified sweepstakes sections are implemented. The Chrome
 > extension foundation now connects an unpacked side panel to the authenticated
-> loopback API, and the generic adapter previews and fills explicitly approved
-> safe fields. Dedicated portal adapters remain. Follow
+> loopback API; generic forms and AcademicWorks/Blackbaud applications preview
+> and fill explicitly approved safe fields. The Kaleidoscope adapter remains.
+> Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries
@@ -115,7 +116,7 @@ API keys, encryption keys, and credentials.
 ```text
 backend/       Local FastAPI foundation plus retained domain modules
 frontend/      Accountless local Next.js profile and discovery interface
-extension/     Planned Chrome application copilot
+extension/     Manifest V3 application copilot and safe form adapters
 docs/          Product, architecture, UX, and setup specifications
 features/      Ordered feature contracts and acceptance criteria
 plan.md        Redesign implementation plan and status

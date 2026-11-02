@@ -11,7 +11,10 @@ match an **In progress** scholarship before inspection proceeds.
 The generic adapter shows exact mappings in one ordinary/sensitive preview and
 fills explicitly approved values. It skips ambiguous, unknown, hidden, action,
 credential, certification, consent, signature, CAPTCHA, and MFA controls.
-AcademicWorks and Kaleidoscope remain unsupported pending dedicated adapters.
+AcademicWorks/Blackbaud application forms use a dedicated conservative mapping
+adapter. Because each institution configures its own questions, PathAid fills
+only exact supported wording and otherwise leaves the question untouched.
+Kaleidoscope remains unsupported pending its dedicated adapter.
 
 Run its dependency-free checks with:
 
