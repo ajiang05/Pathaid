@@ -36,7 +36,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Due[Daily due scan or launch catch-up] --> Scope{Approved scope and policy?}
+    Due[Daily due scan or launch catch-up] --> Scope{Confirmed scope and allowed policy?}
     Scope -- No --> Stop[Do not automate]
     Scope -- Yes --> Fetch[Bounded public fetch]
     Fetch --> Changed{Normalized content changed?}

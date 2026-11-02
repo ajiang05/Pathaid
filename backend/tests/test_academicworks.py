@@ -79,7 +79,7 @@ def database_with_scope(tmp_path, adapter="academicworks"):
             id="academic-1", name="School opportunities", ownership="school", adapter=adapter,
             canonical_url="https://school.academicworks.com/opportunities", hostname="school.academicworks.com", allowed_path_prefix="/",
             status="active", confirmed_at=datetime(2026, 11, 1, tzinfo=timezone.utc),
-            max_depth=1, page_budget=10, requests_per_minute=60, scan_interval_hours=24, policy_status="unknown",
+            max_depth=1, page_budget=10, requests_per_minute=60, scan_interval_hours=24, policy_status="allowed",
         ))
     return database
 

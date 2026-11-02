@@ -80,7 +80,7 @@ def database_with_scope(tmp_path, adapter="kaleidoscope") -> Database:
             canonical_url="https://apply.mykaleidoscope.com/", hostname="apply.mykaleidoscope.com",
             allowed_path_prefix="/", status="active", confirmed_at=datetime(2026, 11, 1, tzinfo=timezone.utc),
             max_depth=1, page_budget=10, requests_per_minute=60, scan_interval_hours=24,
-            policy_status="unknown",
+            policy_status="allowed",
         ))
     return database
 

@@ -82,7 +82,7 @@ def database_with_scope(tmp_path, **overrides):
         "canonical_url": "https://example.edu/aid", "hostname": "example.edu", "allowed_path_prefix": "/aid",
         "institution_unit_id": None, "school_revision": None, "status": "active",
         "confirmed_at": datetime(2026, 11, 1, tzinfo=timezone.utc), "max_depth": 1, "page_budget": 10,
-        "requests_per_minute": 60, "scan_interval_hours": 24, "policy_status": "unknown",
+        "requests_per_minute": 60, "scan_interval_hours": 24, "policy_status": "allowed",
     }
     values.update(overrides)
     with database.sessions.begin() as db:
@@ -190,18 +190,19 @@ def test_snapshot_rows_reject_update_and_delete(tmp_path):
     database.close()
 
 
-def test_unconfirmed_paused_non_generic_and_policy_blocked_scopes_never_scan(tmp_path):
+def test_unconfirmed_paused_incompatible_and_policy_gated_scopes_never_scan(tmp_path):
     cases = [
         {"status": "proposed", "confirmed_at": None},
         {"status": "paused"},
         {"adapter": "academicworks"},
         {"policy_status": "blocked"},
+        {"policy_status": "unknown"},
     ]
     for index, values in enumerate(cases):
         database = database_with_scope(tmp_path / str(index), **values)
         with pytest.raises(RegistryError) as captured:
             execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher({}), robots=FixtureRobots(), sleeper=lambda _delay: None)
-        assert getattr(captured.value, "code", None) in {"source_not_scannable", "policy_blocked"}
+        assert getattr(captured.value, "code", None) in {"source_not_scannable", "policy_blocked", "policy_unchecked"}
         with database.sessions() as db:
             assert db.scalar(select(func.count()).select_from(SourceScanRun)) == 0
         database.close()

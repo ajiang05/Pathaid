@@ -15,6 +15,7 @@ export default function SourcesPage() {
   const [scope, setScope] = useState({ name: "", ownership: "school", adapter: "generic", canonical_url: "", allowed_path_prefix: "/", max_depth: 1, page_budget: 25, requests_per_minute: 10, scan_interval_hours: 24 });
   const [lead, setLead] = useState({ title: "", url: "" });
   const [officialUrls, setOfficialUrls] = useState<Record<string, string>>({});
+  const [policyInputs, setPolicyInputs] = useState<Record<string, { outcome: "allowed" | "blocked"; evidence_url: string; evidence_excerpt: string }>>({});
 
   const load = useCallback(async () => {
     try {
@@ -62,6 +63,15 @@ export default function SourcesPage() {
       await api(`/api/sources/${item.id}/${action}`, { method: "POST" });
       setMessage(action === "scan-now" ? "The source is queued for its next scan." : `Source ${action === "confirm" ? "confirmed" : `${action}d`}.`);
       await load();
+    } catch (caught) { report(caught); }
+  }
+
+  async function reviewPolicy(item: SourceScope) {
+    const input = policyInputs[item.id] ?? { outcome: "allowed", evidence_url: "", evidence_excerpt: "" };
+    try {
+      await api(`/api/sources/${item.id}/policy`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ outcome: input.outcome, evidence_url: input.evidence_url || null, evidence_excerpt: input.evidence_excerpt || null }) });
+      setMessage(input.outcome === "blocked" ? "Automation prohibition recorded. This source cannot scan." : "Policy review recorded. Scanning is allowed by the current decision.");
+      setError(""); await load();
     } catch (caught) { report(caught); }
   }
 
@@ -114,7 +124,7 @@ export default function SourcesPage() {
     </section>
 
     <section className="source-section"><div className="section-heading"><h2>Registered boundaries</h2><span>{sources.length}</span></div>
-      {sources.length === 0 ? <div className="empty-panel"><h3>No directory scopes</h3><p>Add a proposed source, then explicitly confirm it.</p></div> : <div className="source-list">{sources.map(item => <article className="source-card" key={item.id}><div><div className="pill-row"><span className="info-pill">{readable(item.status)}</span><span className="info-pill">{readable(item.adapter)}</span><span className="info-pill">{readable(item.ownership)}</span></div><h3>{item.name}</h3><p>{item.hostname}<strong>{item.allowed_path_prefix}</strong></p><dl><div><dt>Depth / pages</dt><dd>{item.max_depth} / {item.page_budget}</dd></div><div><dt>Rate</dt><dd>{item.requests_per_minute}/minute</dd></div><div><dt>Interval</dt><dd>{item.scan_interval_hours} hours</dd></div><div><dt>Next scan</dt><dd>{item.next_scan_at ? new Date(item.next_scan_at).toLocaleString() : "Not scheduled"}</dd></div></dl></div><div className="row-actions">{item.status === "proposed" && <button className="button button-primary" onClick={() => sourceAction(item, "confirm")}>Confirm boundary</button>}{item.status === "active" && <><button className="button button-outline" onClick={() => sourceAction(item, "scan-now")}>Scan now</button><button className="button button-outline" onClick={() => sourceAction(item, "pause")}>Pause</button></>}{item.status === "paused" && <button className="button button-primary" onClick={() => sourceAction(item, "resume")}>Resume</button>}</div></article>)}</div>}
+      {sources.length === 0 ? <div className="empty-panel"><h3>No directory scopes</h3><p>Add a proposed source, then explicitly confirm it.</p></div> : <div className="source-list">{sources.map(item => { const policy = policyInputs[item.id] ?? { outcome: "allowed" as const, evidence_url: "", evidence_excerpt: "" }; return <article className="source-card" key={item.id}><div><div className="pill-row"><span className="info-pill">{readable(item.status)}</span><span className="info-pill">{readable(item.adapter)}</span><span className="info-pill">Policy: {readable(item.policy_status)}</span></div><h3>{item.name}</h3><p>{item.hostname}<strong>{item.allowed_path_prefix}</strong></p><dl><div><dt>Depth / pages</dt><dd>{item.max_depth} / {item.page_budget}</dd></div><div><dt>Rate</dt><dd>{item.requests_per_minute}/minute</dd></div><div><dt>Interval</dt><dd>{item.scan_interval_hours} hours</dd></div><div><dt>Next scan</dt><dd>{item.next_scan_at ? new Date(item.next_scan_at).toLocaleString() : "Not scheduled"}</dd></div></dl>{item.status !== "proposed" && item.status !== "inactive" && <div className="source-form"><label>Automation policy<select value={policy.outcome} onChange={event => setPolicyInputs({ ...policyInputs, [item.id]: { ...policy, outcome: event.target.value as "allowed" | "blocked" } })}><option value="allowed">No explicit prohibition found</option><option value="blocked">Automation explicitly prohibited</option></select></label><label>Official policy URL<input type="url" value={policy.evidence_url} onChange={event => setPolicyInputs({ ...policyInputs, [item.id]: { ...policy, evidence_url: event.target.value } })} /></label><label className="full-field">Exact policy text<textarea value={policy.evidence_excerpt} onChange={event => setPolicyInputs({ ...policyInputs, [item.id]: { ...policy, evidence_excerpt: event.target.value } })} /><small>Required when blocking automation. Do not paraphrase the prohibition.</small></label><button className="button button-outline" type="button" onClick={() => reviewPolicy(item)}>Record policy review</button></div>}</div><div className="row-actions">{item.status === "proposed" && <button className="button button-primary" onClick={() => sourceAction(item, "confirm")}>Confirm boundary</button>}{item.status === "active" && <><button className="button button-outline" disabled={item.policy_status !== "allowed"} onClick={() => sourceAction(item, "scan-now")}>Scan now</button><button className="button button-outline" onClick={() => sourceAction(item, "pause")}>Pause</button></>}{item.status === "paused" && <button className="button button-primary" disabled={item.policy_status !== "allowed"} onClick={() => sourceAction(item, "resume")}>Resume</button>}</div></article>; })}</div>}
     </section>
 
     <section className="form-card source-section"><div className="form-card-heading"><p className="eyebrow">No crawl permission</p><h2>Manual leads</h2><p className="field-help">Use this for BigFuture, Scholarship America, Bold.org, or any single URL you want verified later.</p></div>

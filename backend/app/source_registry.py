@@ -12,7 +12,7 @@ from uuid import uuid4
 from sqlalchemy import Text, or_, select, update
 from sqlalchemy.orm import Session
 
-from .models import Institution, LocalProfile, ManualLead, SourceScope
+from .models import Institution, LocalProfile, ManualLead, SourcePolicyAssessment, SourceScope
 from .source_acquisition import AcquisitionError, ValidatedUrl, validate_source_url
 
 
@@ -154,7 +154,8 @@ def confirm_scope(scope: SourceScope, *, now: datetime | None = None) -> None:
     moment = now or utcnow()
     scope.status = "active"
     scope.confirmed_at = moment
-    scope.next_scan_at = moment
+    # Boundary approval and policy approval are deliberately separate gates.
+    scope.next_scan_at = moment if scope.policy_status == "allowed" else None
 
 
 def pause_scope(scope: SourceScope) -> None:
@@ -167,6 +168,8 @@ def pause_scope(scope: SourceScope) -> None:
 def resume_scope(scope: SourceScope, *, now: datetime | None = None) -> None:
     if scope.status != "paused":
         raise RegistryError("invalid_transition", "Only a paused source can be resumed.")
+    if scope.policy_status != "allowed":
+        raise RegistryError("policy_unchecked", "Review the source automation policy before resuming scans.")
     scope.status = "active"
     scope.next_scan_at = now or utcnow()
 
@@ -174,9 +177,55 @@ def resume_scope(scope: SourceScope, *, now: datetime | None = None) -> None:
 def request_scan(scope: SourceScope, *, now: datetime | None = None) -> None:
     if scope.status != "active" or scope.confirmed_at is None:
         raise RegistryError("source_not_schedulable", "Only a confirmed active source can be scanned.")
+    if scope.policy_status != "allowed":
+        code = "policy_blocked" if scope.policy_status == "blocked" else "policy_unchecked"
+        raise RegistryError(code, "Review and allow the source automation policy before scanning.")
     moment = now or utcnow()
     scope.scan_requested_at = moment
     scope.next_scan_at = moment
+
+
+def record_source_policy(
+    db: Session,
+    scope: SourceScope,
+    *,
+    outcome: str,
+    evidence_url: str | None,
+    evidence_excerpt: str | None,
+    now: datetime | None = None,
+) -> SourcePolicyAssessment:
+    """Append a policy decision and apply its safe source-state transition."""
+
+    if scope.confirmed_at is None or scope.status not in {"active", "paused", "policy_blocked"}:
+        raise RegistryError("source_not_confirmed", "Confirm the source boundary before reviewing its policy.")
+    if outcome not in {"allowed", "blocked"}:
+        raise RegistryError("invalid_policy", "The source policy outcome is unsupported.")
+    cleaned_excerpt = evidence_excerpt.strip() if evidence_excerpt else None
+    cleaned_url = _validated(evidence_url).url if evidence_url else None
+    if outcome == "blocked" and (cleaned_url is None or not cleaned_excerpt):
+        raise RegistryError("policy_evidence_required", "A blocking policy requires its official URL and exact prohibition text.")
+
+    moment = now or utcnow()
+    assessment = SourcePolicyAssessment(
+        id=str(uuid4()), source_scope_id=scope.id, outcome=outcome,
+        evidence_url=cleaned_url, evidence_excerpt=cleaned_excerpt,
+        checked_at=moment,
+    )
+    db.add(assessment)
+    scope.policy_status = outcome
+    scope.policy_checked_at = moment
+    if outcome == "blocked":
+        scope.status = "policy_blocked"
+        scope.next_scan_at = None
+        scope.scan_requested_at = None
+        scope.last_error_code = "policy_blocked"
+    else:
+        # Clearing a prohibition never resumes crawling automatically.
+        if scope.status == "policy_blocked":
+            scope.status = "paused"
+        scope.next_scan_at = moment if scope.status == "active" else None
+        scope.last_error_code = None
+    return assessment
 
 
 def deactivate_prior_school_scopes(db: Session, *, current_revision: int) -> int:

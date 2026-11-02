@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import Database
-from .models import AppSetting, Institution, LocalProfile, ManualLead, SourceScope
+from .models import AppSetting, Institution, LocalProfile, ManualLead, SourcePolicyAssessment, SourceScope
 from .lead_verification import verify_manual_lead
 from .source_registry import (
     RegistryError,
@@ -21,6 +21,7 @@ from .source_registry import (
     deactivate_prior_school_scopes,
     pause_scope,
     request_scan,
+    record_source_policy,
     resume_scope,
     search_institutions,
 )
@@ -65,6 +66,13 @@ class LeadVerificationInput(BaseModel):
     official_url: str = Field(min_length=1, max_length=2_000)
 
 
+class SourcePolicyInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    outcome: Literal["allowed", "blocked"]
+    evidence_url: str | None = Field(default=None, max_length=2_000)
+    evidence_excerpt: str | None = Field(default=None, max_length=2_000)
+
+
 def _institution_payload(item: Institution) -> dict:
     return {
         "unit_id": item.unit_id, "name": item.name, "aliases": item.aliases,
@@ -94,6 +102,14 @@ def _lead_payload(item: ManualLead) -> dict:
         "hostname": item.hostname, "status": item.status, "official_url": item.official_url,
         "official_hostname": item.official_hostname, "last_attempt_at": item.last_attempt_at,
         "verified_at": item.verified_at, "last_error_code": item.last_error_code,
+    }
+
+
+def _policy_payload(item: SourcePolicyAssessment) -> dict:
+    return {
+        "id": item.id, "source_scope_id": item.source_scope_id, "outcome": item.outcome,
+        "evidence_url": item.evidence_url, "evidence_excerpt": item.evidence_excerpt,
+        "checked_at": item.checked_at,
     }
 
 
@@ -195,6 +211,27 @@ def create_source_router(database: Database) -> APIRouter:
         try:
             request_scan(item)
         except RegistryError as error:
+            raise registry_error(error) from error
+        db.commit()
+        return _scope_payload(item)
+
+    @router.get("/sources/{source_id}/policies")
+    def policy_history(source_id: str, db: Session = Depends(get_db)) -> list[dict]:
+        source_or_404(source_id, db)
+        items = db.scalars(
+            select(SourcePolicyAssessment)
+            .where(SourcePolicyAssessment.source_scope_id == source_id)
+            .order_by(SourcePolicyAssessment.checked_at.desc(), SourcePolicyAssessment.id.desc())
+        ).all()
+        return [_policy_payload(item) for item in items]
+
+    @router.post("/sources/{source_id}/policy")
+    def review_policy(source_id: str, body: SourcePolicyInput, db: Session = Depends(get_db)) -> dict:
+        item = source_or_404(source_id, db)
+        try:
+            record_source_policy(db, item, **body.model_dump())
+        except RegistryError as error:
+            db.rollback()
             raise registry_error(error) from error
         db.commit()
         return _scope_payload(item)
