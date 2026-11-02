@@ -15,7 +15,7 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from .database import Database
-from .models import SourceScanRun, SourceScope, SourceSnapshot
+from .models import Scholarship, ScholarshipVersion, SourcePageState, SourceScanRun, SourceScope, SourceSnapshot
 from .source_acquisition import (
     AcquisitionConfig,
     AcquisitionError,
@@ -73,9 +73,10 @@ class TraversalResult:
 
 
 class TraversalFailure(AcquisitionError):
-    def __init__(self, source: AcquisitionError, pages_attempted: int):
+    def __init__(self, source: AcquisitionError, pages_attempted: int, failed_url: str):
         super().__init__(source.code, source.safe_message, retryable=source.retryable)
         self.pages_attempted = pages_attempted
+        self.failed_url = failed_url
 
 
 class SafePageFetcher:
@@ -163,7 +164,7 @@ def traverse_generic_directory(
                 raise AcquisitionError("robots_denied", "The source disallows PathAid in robots.txt.")
             acquired = fetcher.fetch(url, boundary)
         except AcquisitionError as error:
-            raise TraversalFailure(error, attempted) from error
+            raise TraversalFailure(error, attempted, url) from error
         pages.append(TraversedPage(depth, acquired))
         if depth >= boundary.max_depth:
             continue
@@ -188,6 +189,88 @@ def _boundary(scope: SourceScope) -> ScopeBoundary:
         page_budget=scope.page_budget, requests_per_minute=scope.requests_per_minute,
         scan_interval_hours=scope.scan_interval_hours,
     )
+
+
+def _scope_scholarships(db, source_id: str) -> list[Scholarship]:
+    """Return stable scholarships whose active evidence belongs to one scope."""
+
+    return list(db.scalars(
+        select(Scholarship)
+        .join(ScholarshipVersion, ScholarshipVersion.id == Scholarship.active_version_id)
+        .join(SourceSnapshot, SourceSnapshot.id == ScholarshipVersion.source_snapshot_id)
+        .where(SourceSnapshot.source_scope_id == source_id)
+    ))
+
+
+def _page_state(db, source_id: str, url: str) -> SourcePageState | None:
+    return db.scalar(select(SourcePageState).where(
+        SourcePageState.source_scope_id == source_id,
+        SourcePageState.canonical_url == url,
+    ))
+
+
+def _mark_disappeared(db, source_id: str, url: str, moment: datetime, *, entire_scope: bool = False) -> None:
+    """Hide affected scholarships while retaining every snapshot and version."""
+
+    state = _page_state(db, source_id, url)
+    if state is None:
+        state = SourcePageState(
+            id=str(uuid4()), source_scope_id=source_id, canonical_url=url,
+            status="disappeared", missing_since=moment, missed_scan_count=1,
+        )
+        db.add(state)
+    else:
+        state.status = "disappeared"
+        state.missing_since = state.missing_since or moment
+        state.missed_scan_count += 1
+    for scholarship in _scope_scholarships(db, source_id):
+        if entire_scope or scholarship.source_url == url:
+            scholarship.status = "inactive"
+
+
+def _reconcile_page_presence(
+    db,
+    source_id: str,
+    pages: tuple[TraversedPage, ...],
+    changed_urls: set[str],
+    moment: datetime,
+    *,
+    complete: bool,
+) -> None:
+    """Update current presence only after a successful, complete observation."""
+
+    observed = {page.acquired.original_url for page in pages}
+    scholarships = _scope_scholarships(db, source_id)
+    states = {
+        item.canonical_url: item
+        for item in db.scalars(select(SourcePageState).where(SourcePageState.source_scope_id == source_id))
+    }
+    for url in observed:
+        state = states.get(url)
+        if state is None:
+            state = SourcePageState(
+                id=str(uuid4()), source_scope_id=source_id, canonical_url=url,
+                status="current", first_seen_at=moment, last_seen_at=moment,
+                last_changed_at=moment if url in changed_urls else None,
+                missed_scan_count=0,
+            )
+            db.add(state)
+            states[url] = state
+        else:
+            state.status = "current"
+            state.last_seen_at = moment
+            state.missing_since = None
+            state.missed_scan_count = 0
+            if url in changed_urls:
+                state.last_changed_at = moment
+        for scholarship in scholarships:
+            if scholarship.source_url == url:
+                scholarship.status = "active"
+    if not complete:
+        return
+    known_urls = set(states).union(scholarship.source_url for scholarship in scholarships)
+    for url in known_urls.difference(observed):
+        _mark_disappeared(db, source_id, url, moment)
 
 
 def execute_generic_scan(
@@ -253,6 +336,11 @@ def execute_bounded_scan(
             scope.last_attempt_at = finished
             scope.last_error_code = error.code
             scope.scan_requested_at = None
+            if error.code == "source_not_found":
+                _mark_disappeared(
+                    db, source_id, error.failed_url, finished,
+                    entire_scope=error.failed_url.rstrip("/") == scope.canonical_url.rstrip("/"),
+                )
         return run
 
     finished = now()
@@ -261,6 +349,7 @@ def execute_bounded_scan(
         scope = db.get(SourceScope, source_id)
         created = 0
         unchanged = 0
+        changed_urls: set[str] = set()
         for page in traversal.pages:
             acquired = page.acquired
             previous = db.scalar(
@@ -280,6 +369,11 @@ def execute_bounded_scan(
                 redirect_count=acquired.redirect_count, depth=page.depth,
             ))
             created += 1
+            changed_urls.add(acquired.original_url)
+        _reconcile_page_presence(
+            db, source_id, traversal.pages, changed_urls, finished,
+            complete=not traversal.truncated,
+        )
         run.status = "succeeded"
         run.finished_at = finished
         run.pages_attempted = len(traversal.pages)

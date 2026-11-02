@@ -228,6 +228,27 @@ class SourceSnapshot(Base):
     depth: Mapped[int] = mapped_column(Integer)
 
 
+class SourcePageState(Base):
+    """Mutable current-presence state backed by immutable snapshot history."""
+
+    __tablename__ = "source_page_states"
+    __table_args__ = (
+        CheckConstraint("status IN ('current', 'disappeared')", name="ck_source_page_state_status"),
+        CheckConstraint("missed_scan_count >= 0", name="ck_source_page_state_missed_scans"),
+        UniqueConstraint("source_scope_id", "canonical_url", name="uq_source_page_state_url"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_scope_id: Mapped[str] = mapped_column(ForeignKey("source_scopes.id"), index=True)
+    canonical_url: Mapped[str] = mapped_column(String(2_000), index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    first_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    last_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    missing_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    missed_scan_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Scholarship(Base):
     """Stable scholarship identity whose active pointer may advance safely."""
 
@@ -260,6 +281,7 @@ class ScholarshipVersion(Base):
     scholarship_id: Mapped[str] = mapped_column(ForeignKey("scholarships.id"), index=True)
     source_snapshot_id: Mapped[str] = mapped_column(ForeignKey("source_snapshots.id"), index=True)
     draft_hash: Mapped[str] = mapped_column(String(64), index=True)
+    material_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     data: Mapped[dict] = mapped_column(JSON)
     validation_findings: Mapped[list] = mapped_column(JSON, default=list)
     extraction_model: Mapped[str] = mapped_column(String(120))

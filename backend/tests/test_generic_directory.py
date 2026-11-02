@@ -12,7 +12,7 @@ from app.config import Settings
 from app.database import Database
 from app.generic_directory import RobotsTxtPolicy, ScopeBoundary, TraversalFailure, execute_generic_scan, traverse_generic_directory
 from app.local_data import upgrade_database
-from app.models import SourceScanRun, SourceScope, SourceSnapshot
+from app.models import Scholarship, ScholarshipVersion, SourcePageState, SourceScanRun, SourceScope, SourceSnapshot
 from app.source_acquisition import AcquisitionError, AcquiredSource, DiscoveredLink, hash_text
 from app.source_registry import RegistryError
 
@@ -206,3 +206,90 @@ def test_unconfirmed_paused_incompatible_and_policy_gated_scopes_never_scan(tmp_
         with database.sessions() as db:
             assert db.scalar(select(func.count()).select_from(SourceScanRun)) == 0
         database.close()
+
+
+def _attach_scholarship(database, source_url: str):
+    """Attach a minimal active version to one previously acquired detail URL."""
+
+    with database.sessions.begin() as db:
+        snapshot = db.scalar(select(SourceSnapshot).where(SourceSnapshot.canonical_url == source_url))
+        scholarship = Scholarship(id="scholarship-1", source_url=source_url, status="active")
+        db.add(scholarship); db.flush()
+        version = ScholarshipVersion(
+            id="version-1", scholarship_id=scholarship.id, source_snapshot_id=snapshot.id,
+            draft_hash="b" * 64, material_fingerprint="c" * 64, data={}, validation_findings=[],
+            extraction_model="fixture", prompt_version="2.0.0", schema_version="1.0.0",
+            activated_at=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        )
+        db.add(version); db.flush()
+        scholarship.active_version_id = version.id
+
+
+def test_complete_scan_marks_missing_page_inactive_and_identical_return_reactivates(tmp_path):
+    database = database_with_scope(tmp_path)
+    root, detail = "https://example.edu/aid", "https://example.edu/aid/scholarship-one"
+    first_pages = {
+        root: acquired(root, "Directory v1", (DiscoveredLink(detail, "Scholarship"),)),
+        detail: acquired(detail, "Scholarship details"),
+    }
+    moments = iter([datetime(2026, 11, 1, tzinfo=timezone.utc), datetime(2026, 11, 1, 0, 1, tzinfo=timezone.utc)])
+    execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher(first_pages), robots=FixtureRobots(), sleeper=lambda _: None, now=lambda: next(moments))
+    _attach_scholarship(database, detail)
+
+    moments = iter([datetime(2026, 11, 2, tzinfo=timezone.utc), datetime(2026, 11, 2, 0, 1, tzinfo=timezone.utc)])
+    execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher({root: acquired(root, "Directory v2")}), robots=FixtureRobots(), sleeper=lambda _: None, now=lambda: next(moments))
+    with database.sessions() as db:
+        state = db.scalar(select(SourcePageState).where(SourcePageState.canonical_url == detail))
+        assert state.status == "disappeared" and state.missed_scan_count == 1
+        assert db.get(Scholarship, "scholarship-1").status == "inactive"
+
+    # The detail content is byte-identical to its retained snapshot, but its
+    # observed presence is enough to restore the prior validated scholarship.
+    moments = iter([datetime(2026, 11, 3, tzinfo=timezone.utc), datetime(2026, 11, 3, 0, 1, tzinfo=timezone.utc)])
+    returned = {
+        root: acquired(root, "Directory v3", (DiscoveredLink(detail, "Scholarship"),)),
+        detail: acquired(detail, "Scholarship details"),
+    }
+    run = execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher(returned), robots=FixtureRobots(), sleeper=lambda _: None, now=lambda: next(moments))
+    assert run.unchanged_pages == 1
+    with database.sessions() as db:
+        state = db.scalar(select(SourcePageState).where(SourcePageState.canonical_url == detail))
+        assert state.status == "current" and state.missed_scan_count == 0 and state.missing_since is None
+        assert db.get(Scholarship, "scholarship-1").status == "active"
+    database.close()
+
+
+def test_truncated_scan_does_not_infer_disappearance(tmp_path):
+    database = database_with_scope(tmp_path)
+    root, detail = "https://example.edu/aid", "https://example.edu/aid/scholarship-one"
+    pages = {root: acquired(root, "Directory", (DiscoveredLink(detail, "Scholarship"),)), detail: acquired(detail, "Details")}
+    moments = iter([datetime(2026, 11, 1, tzinfo=timezone.utc), datetime(2026, 11, 1, 0, 1, tzinfo=timezone.utc)])
+    execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher(pages), robots=FixtureRobots(), sleeper=lambda _: None, now=lambda: next(moments))
+    _attach_scholarship(database, detail)
+    with database.sessions.begin() as db:
+        db.get(SourceScope, "scope-1").page_budget = 1
+    moments = iter([datetime(2026, 11, 2, tzinfo=timezone.utc), datetime(2026, 11, 2, 0, 1, tzinfo=timezone.utc)])
+    run = execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher({root: acquired(root, "Directory changed", (DiscoveredLink(detail, "Scholarship"),))}), robots=FixtureRobots(), sleeper=lambda _: None, now=lambda: next(moments))
+    assert run.traversal_truncated is True
+    with database.sessions() as db:
+        assert db.get(Scholarship, "scholarship-1").status == "active"
+        assert db.scalar(select(SourcePageState.status).where(SourcePageState.canonical_url == detail)) == "current"
+    database.close()
+
+
+def test_confirmed_not_found_detail_disappears_but_history_remains(tmp_path):
+    database = database_with_scope(tmp_path)
+    root, detail = "https://example.edu/aid", "https://example.edu/aid/scholarship-one"
+    pages = {root: acquired(root, "Directory", (DiscoveredLink(detail, "Scholarship"),)), detail: acquired(detail, "Details")}
+    moments = iter([datetime(2026, 11, 1, tzinfo=timezone.utc), datetime(2026, 11, 1, 0, 1, tzinfo=timezone.utc)])
+    execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher(pages), robots=FixtureRobots(), sleeper=lambda _: None, now=lambda: next(moments))
+    _attach_scholarship(database, detail)
+    missing = {root: pages[root], detail: AcquisitionError("source_not_found", "Not found")}
+    moments = iter([datetime(2026, 11, 2, tzinfo=timezone.utc), datetime(2026, 11, 2, 0, 1, tzinfo=timezone.utc)])
+    run = execute_generic_scan(database, "scope-1", fetcher=FixtureFetcher(missing), robots=FixtureRobots(), sleeper=lambda _: None, now=lambda: next(moments))
+    assert run.status == "failed" and run.error_code == "source_not_found"
+    with database.sessions() as db:
+        assert db.get(Scholarship, "scholarship-1").status == "inactive"
+        assert db.scalar(select(func.count()).select_from(SourceSnapshot)) == 2
+        assert db.scalar(select(func.count()).select_from(ScholarshipVersion)) == 1
+    database.close()

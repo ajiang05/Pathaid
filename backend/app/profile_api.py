@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Literal
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -109,6 +110,30 @@ def _deadline(value: str | None) -> datetime | None:
         return None
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+
+
+def _current_availability(data: dict, *, now: datetime | None = None) -> str:
+    """Derive current availability so old open labels expire without Gemini."""
+
+    stated = data["application_availability"]
+    if stated != "open":
+        return stated
+    raw = data.get("application_deadline")
+    if not raw:
+        return "verified_open"
+    moment = now or datetime.now(timezone.utc)
+    try:
+        zone = ZoneInfo(data["deadline_timezone"]) if data.get("deadline_timezone") else timezone.utc
+    except ZoneInfoNotFoundError:
+        zone = timezone.utc
+    deadline = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    if "T" not in raw:
+        expired = moment.astimezone(zone).date() > deadline.date()
+    else:
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=zone)
+        expired = moment.astimezone(deadline.tzinfo) >= deadline
+    return "expired" if expired else "verified_open"
 
 
 def _match_payload(result, sponsor: str) -> dict:
@@ -223,7 +248,7 @@ def create_profile_router(database: Database) -> APIRouter:
         awards = {}
         for scholarship, version, snapshot in rows:
             data = version.data
-            availability = {"open": "verified_open", "closed": "closed", "unknown": "unknown"}[data["application_availability"]]
+            availability = _current_availability(data)
             candidate = ScholarshipCandidate(
                 scholarship_id=scholarship.id, version_id=version.id, name=data["name"],
                 hard_requirements=data["eligibility_tree"], requirements_complete=data["coverage_complete"],

@@ -89,11 +89,11 @@ def traverse_academicworks(
                 raise AcquisitionError("robots_denied", "The source disallows PathAid in robots.txt.")
             acquired = fetcher.fetch(route.url, boundary)
         except AcquisitionError as error:
-            raise TraversalFailure(error, attempted) from error
+            raise TraversalFailure(error, attempted, route.url) from error
         links = acquired.discovered_link_candidates
         if route.kind == "listing" and not _platform_listing(acquired.normalized_text, links):
             error = AcquisitionError("adapter_signature_mismatch", "The page is not a public AcademicWorks opportunity listing.")
-            raise TraversalFailure(error, attempted)
+            raise TraversalFailure(error, attempted, route.url)
         pages.append(TraversedPage(route.depth, acquired))
         if route.kind != "listing":
             continue
