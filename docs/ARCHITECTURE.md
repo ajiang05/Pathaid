@@ -276,6 +276,14 @@ omitted from messages returned to the panel. No persistent content script is
 registered; the current page probe runs only after explicit user activation and
 returns only origin and form count.
 
+Before inspection can advance, `/api/extension/context` validates the exact
+public portal origin against the active application URL of an **In progress**
+saved scholarship. No match is unsupported and multiple matches are ambiguous;
+neither state releases profile data. The adapter interface exposes only
+`matches`, `inspect`, and `map`. A central validator—not a portal adapter—builds
+future fill plans from visible, supported, exact, explicitly approved mappings.
+Attachments remain a separate explicit-action contract.
+
 ## 10. Documents, essays, and secrets
 
 Generate a random document-encryption key and store it through macOS Keychain.

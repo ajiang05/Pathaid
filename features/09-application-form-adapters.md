@@ -27,3 +27,13 @@ judgment, attachments, certification, and submission with the student.
 - Submit/certification controls remain untouched in adversarial fixtures.
 - Smoke tests pass for a generic form and representative AcademicWorks and
   Kaleidoscope pages without submitting anything.
+
+## Implementation status
+
+The shared adapter contract and portal-context boundary are implemented.
+Adapters may expose only `matches`, `inspect`, and `map`; action-like methods are
+rejected. The central fill-plan validator admits only visible, supported,
+exactly mapped, explicitly preview-approved scalar values and blocks protected
+semantics. File controls use a separate résumé/transcript/essay descriptor that
+always requires an explicit attachment action. DOM inspection and filling are
+not implemented yet.

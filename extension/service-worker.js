@@ -19,6 +19,16 @@ async function ping() {
   return publicConnectionState({ ...stored, connected: true, lastCheckedAt: checked });
 }
 
+async function portalContext(origin) {
+  const stored = await chrome.storage.local.get(STORAGE_KEYS);
+  if (!stored.token) throw new Error("PathAid is not configured");
+  const url = new URL(`${API_BASE}/api/extension/context`);
+  url.searchParams.set("portal_origin", origin);
+  const response = await fetch(url, { headers: { "X-PathAid-Token": stored.token } });
+  if (!response.ok) throw new Error("PathAid rejected the portal context");
+  return response.json();
+}
+
 async function inspectActivePage() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !/^https?:/.test(tab.url || "")) {
@@ -30,7 +40,9 @@ async function inspectActivePage() {
     // and page text are neither read nor persisted by the foundation feature.
     func: () => ({ origin: location.origin, formCount: document.forms.length }),
   });
-  return { state: "supported", origin: injection.result.origin, formCount: injection.result.formCount };
+  const context = await portalContext(injection.result.origin);
+  if (context.state !== "supported") return context;
+  return { ...context, formCount: injection.result.formCount };
 }
 
 chrome.runtime.onMessage.addListener((raw, _sender, sendResponse) => {

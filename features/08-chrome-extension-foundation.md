@@ -31,5 +31,6 @@ and shows a user-activated application side panel.
 The Manifest V3 shell, service worker, accessible side panel, minimal permission
 set, exact loopback host access, Keychain-token clipboard bridge, authenticated
 ping, restart-safe public connection state, and explicitly activated page probe
-are implemented. Scholarship/portal context and policy-blocked state validation
-will be added with the adapter contract before any field data can be read.
+are implemented. The authenticated context endpoint now binds the active public
+origin to exactly one active, **In progress** scholarship before an adapter can
+proceed. Policy-blocked state validation remains required before field filling.

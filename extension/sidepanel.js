@@ -37,8 +37,8 @@ elements.retry.addEventListener("click", () => void perform(async () => renderCo
 elements.disconnect.addEventListener("click", () => void perform(async () => renderConnection(await request({ type: "CLEAR_TOKEN" }))));
 elements.inspect.addEventListener("click", () => void perform(async () => {
   const page = await request({ type: "INSPECT_ACTIVE_PAGE" });
-  elements.pageHeading.textContent = page.state === "supported" ? "Supported public page" : "Unsupported page";
-  elements.pageDetail.textContent = page.state === "supported" ? `${page.origin} · ${page.formCount} form container(s) detected` : page.reason;
+  elements.pageHeading.textContent = page.state === "supported" ? page.scholarship_name : page.state === "ambiguous" ? "Scholarship context needed" : "Unsupported page";
+  elements.pageDetail.textContent = page.state === "supported" ? `${page.portal_origin} · ${page.adapter} adapter · ${page.formCount} form container(s) detected` : page.reason;
 }));
 
 void perform(async () => {
