@@ -24,6 +24,12 @@
         <p id="page-detail">PathAid inspects a page only after you click below.</p>
         <button id="inspect" type="button" disabled>Check current page</button>
       </section>
+      <section id="preview" class="card" aria-labelledby="preview-heading" hidden>
+        <p class="eyebrow">Review before filling</p><h2 id="preview-heading">Field preview</h2>
+        <p>Checked fields will be filled together. Unknown and ambiguous fields stay empty.</p>
+        <div id="preview-list" class="preview-list"></div>
+        <button id="fill" type="button">Fill approved fields</button>
+      </section>
       <aside class="safety"><strong>You stay in control.</strong><p>This extension cannot submit, sign, certify, accept terms, or bypass CAPTCHA or MFA. Review and submit every application yourself.</p></aside>
       <p id="status" role="status" aria-live="polite"></p>
     </main>

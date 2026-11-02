@@ -35,5 +35,12 @@ Adapters may expose only `matches`, `inspect`, and `map`; action-like methods ar
 rejected. The central fill-plan validator admits only visible, supported,
 exactly mapped, explicitly preview-approved scalar values and blocks protected
 semantics. File controls use a separate résumé/transcript/essay descriptor that
-always requires an explicit attachment action. DOM inspection and filling are
-not implemented yet.
+always requires an explicit attachment action.
+
+The generic adapter now injects only after an explicit page check, inspects
+visible field metadata without reading existing values, and maps only exact
+labels or standard autocomplete tokens to known local profile values. Its side
+panel marks sensitive fields and leaves ambiguous, unknown, protected, hidden,
+and unsupported fields unchecked. One **Fill approved fields** action rechecks
+the tab and scholarship context, then changes only the reviewed in-memory plan;
+the runtime has no click or submit path.

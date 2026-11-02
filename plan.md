@@ -82,10 +82,10 @@ scholarships without per-record human publication.
 - [x] Create Manifest V3 extension with service worker and side panel.
 - [x] Add minimal permissions and authenticated loopback connection.
 - [x] Define adapter contract that cannot submit/certify/sign.
-- [ ] Implement generic HTML form inspection, preview, and fill.
+- [x] Implement generic HTML form inspection, preview, and fill.
 - [ ] Implement AcademicWorks/Blackbaud adapter.
 - [ ] Implement Kaleidoscope adapter.
-- [ ] Mark sensitive mappings and skip ambiguous fields.
+- [x] Mark sensitive mappings and skip ambiguous fields.
 - [ ] Learn corrected portal mappings.
 - [ ] Parse source policy flags and disable prohibited automation.
 - [ ] Connect Apply to official tab and side panel.
