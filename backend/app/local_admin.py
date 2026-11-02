@@ -10,6 +10,7 @@ from .config import Settings
 from .database import Database
 from .local_data import backup_database, reset_local_data, restore_database, upgrade_database, validate_database
 from .secrets import GEMINI_API_KEY, KeychainSecretStore, get_or_create_document_key, get_or_create_extension_token
+from .scheduler import gemini_provider_factory, run_scheduler_cycle
 from .source_registry import import_ipeds_directory
 from .source_scanning import execute_registered_scan
 
@@ -31,6 +32,7 @@ def parser() -> argparse.ArgumentParser:
     institutions.add_argument("--year", type=int, required=True)
     scan = commands.add_parser("scan-source", help="run one confirmed source with its registered adapter")
     scan.add_argument("source_id")
+    commands.add_parser("scheduler-once", help="enqueue due sources and drain one local scheduler cycle")
     return result
 
 
@@ -84,6 +86,17 @@ def main(argv: list[str] | None = None) -> int:
         if run.status == "failed":
             print(f"Safe error code: {run.error_code}")
             return 1
+    elif args.command == "scheduler-once":
+        upgrade_database(settings)
+        database = Database(settings)
+        try:
+            count = run_scheduler_cycle(
+                database, worker_id="local-admin",
+                provider_factory=gemini_provider_factory(store),
+            )
+        finally:
+            database.close()
+        print(f"Scheduler cycle processed {count} job(s).")
     return 0
 
 

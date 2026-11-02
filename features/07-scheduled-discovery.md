@@ -24,3 +24,5 @@ up at the next PathAid launch.
 - Transient failures retry within limits; unsafe/permanent failures stop.
 - Paused and policy-blocked scopes never enqueue.
 - SQLite concurrency tests show no long-lived write locks.
+- Persisted extraction artifacts let activation resume without repeating a
+  completed Gemini request.

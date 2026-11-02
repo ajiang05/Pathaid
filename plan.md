@@ -61,7 +61,7 @@ security/migration tests.
 - [x] Add manual lead intake and official sponsor verification.
 - [x] Enforce robots, terms/policy, rate, path, depth, and page budgets.
 - [x] Replace reviewer publication with deterministic activation after validation.
-- [ ] Add daily scheduler plus launch-time catch-up.
+- [x] Add daily scheduler plus launch-time catch-up.
 - [ ] Add disappeared/expired source behavior and cycle change detection.
 
 **Exit:** approved fixture sources discover, update, expire, and reactivate

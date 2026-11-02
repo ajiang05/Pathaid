@@ -88,6 +88,23 @@ record the official policy URL and exact text; PathAid clears queued work and
 blocks the source. Clearing that decision leaves the source paused until you
 explicitly resume it.
 
+The FastAPI process starts the local scheduler automatically. On launch it
+queues one catch-up window for each overdue active source, then checks for new
+work once per minute while the app remains open. **Scan now** creates a durable
+manual request that the same scheduler claims.
+
+To run one scheduler cycle manually while debugging:
+
+```bash
+cd backend
+.venv/bin/python -m app.local_admin scheduler-once
+```
+
+The command performs due acquisition, Gemini extraction, deterministic
+validation, and activation. It requires the Gemini key previously saved with
+`set-gemini-key`. Completed stages persist, so a later cycle resumes rather than
+repeating successful model work.
+
 For AcademicWorks/Blackbaud, confirm the root path (`/`) because public listings
 may move between `/opportunities` and `/?page=N`. The adapter still follows only
 public listing pagination and numeric `/opportunities/{id}` detail pages; it

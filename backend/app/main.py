@@ -18,6 +18,7 @@ from .config import Settings
 from .database import Database
 from .local_data import EXPECTED_MIGRATION, REQUIRED_TABLES
 from .profile_api import create_profile_router
+from .scheduler import SchedulerThread
 from .secrets import KeychainSecretStore, SecretStore, SecretStoreError, get_or_create_extension_token
 from .source_api import create_source_router
 
@@ -32,8 +33,13 @@ def create_app(settings: Settings | None = None, secret_store: SecretStore | Non
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         settings.prepare_directories()
-        yield
-        database.close()
+        scheduler = SchedulerThread(database, secret_store)
+        scheduler.start()
+        try:
+            yield
+        finally:
+            scheduler.stop()
+            database.close()
 
     application = FastAPI(title="PathAid Local API", version="0.1.0", lifespan=lifespan)
     application.state.settings = settings

@@ -113,6 +113,9 @@ uses a descriptive user agent and conservative rate limit, enforces one or two
 link levels and a strict page budget, reads only public pages, retains snapshots
 and hashes, and skips Gemini when content is unchanged. The scheduler runs daily
 while the Mac is awake and performs a catch-up scan after a missed window.
+Repeated launches cannot duplicate the same daily window. Jobs use expiring
+leases and separately committed acquisition, extraction, and activation stages,
+so restart recovery does not repeat completed Gemini calls.
 
 Source-boundary confirmation and source-policy review are separate actions.
 Unknown or explicitly blocked policies cannot scan. Policy decisions retain
