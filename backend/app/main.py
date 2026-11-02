@@ -16,6 +16,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .config import Settings
 from .database import Database
+from .extension_api import create_extension_router
 from .local_data import EXPECTED_MIGRATION, REQUIRED_TABLES
 from .profile_api import create_profile_router
 from .saved_api import create_saved_router
@@ -123,6 +124,8 @@ def create_app(settings: Settings | None = None, secret_store: SecretStore | Non
         """Prove the narrow extension authentication boundary without private data."""
 
         return {"status": "connected"}
+
+    application.include_router(create_extension_router(database, require_extension))
 
     return application
 
