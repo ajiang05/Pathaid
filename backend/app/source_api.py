@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .database import Database
 from .models import AppSetting, Institution, LocalProfile, ManualLead, SourceScope
+from .lead_verification import verify_manual_lead
 from .source_registry import (
     RegistryError,
     confirm_scope,
@@ -59,6 +60,11 @@ class LeadInput(BaseModel):
         return value.strip()
 
 
+class LeadVerificationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    official_url: str = Field(min_length=1, max_length=2_000)
+
+
 def _institution_payload(item: Institution) -> dict:
     return {
         "unit_id": item.unit_id, "name": item.name, "aliases": item.aliases,
@@ -86,7 +92,8 @@ def _lead_payload(item: ManualLead) -> dict:
     return {
         "id": item.id, "title": item.title, "canonical_url": item.canonical_url,
         "hostname": item.hostname, "status": item.status, "official_url": item.official_url,
-        "last_error_code": item.last_error_code,
+        "official_hostname": item.official_hostname, "last_attempt_at": item.last_attempt_at,
+        "verified_at": item.verified_at, "last_error_code": item.last_error_code,
     }
 
 
@@ -209,6 +216,16 @@ def create_source_router(database: Database) -> APIRouter:
         except IntegrityError as error:
             db.rollback()
             raise HTTPException(409, detail="That lead URL is already saved") from error
+        return _lead_payload(item)
+
+    @router.post("/leads/{lead_id}/verify")
+    def verify_lead(lead_id: str, body: LeadVerificationInput) -> dict:
+        # Network acquisition is handled outside a request transaction so a
+        # slow sponsor cannot hold a SQLite write lock.
+        try:
+            item = verify_manual_lead(database, lead_id, body.official_url)
+        except RegistryError as error:
+            raise registry_error(error) from error
         return _lead_payload(item)
 
     return router

@@ -91,6 +91,15 @@ path (`/`) as a sponsor source. The adapter follows only public
 `/program/{slug}` summaries from the marketplace. It never follows account,
 login, application-form, asset, or off-host routes.
 
+## Verify a manual lead
+
+On **Sources**, save the individual BigFuture, Scholarship America, Bold.org,
+or other lead URL. Find the scholarship's current sponsor page, paste that URL
+under the saved lead, and select **Verify official page**. PathAid checks
+`robots.txt`, rejects aggregator hosts as official evidence, fetches only that
+page with same-host redirects, and stores a new immutable snapshot only when
+the normalized content changes. Verification does not authorize a domain crawl.
+
 ## Start the local API
 
 Apply migrations and bind FastAPI to loopback only:

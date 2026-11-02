@@ -97,5 +97,8 @@ export type ManualLead = {
   hostname: string;
   status: "unverified" | "official_verified" | "unavailable" | "rejected";
   official_url: string | null;
+  official_hostname: string | null;
+  last_attempt_at: string | null;
+  verified_at: string | null;
   last_error_code: string | null;
 };

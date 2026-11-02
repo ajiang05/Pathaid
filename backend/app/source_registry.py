@@ -76,7 +76,9 @@ def scope_allows_url(scope: SourceScope, raw_url: str) -> bool:
     return candidate.hostname == scope.hostname and path_is_within(urlsplit(candidate.url).path, scope.allowed_path_prefix)
 
 
-def _manual_only(hostname: str) -> bool:
+def manual_only_host(hostname: str) -> bool:
+    """Return whether a host may supply leads but never official evidence."""
+
     return any(_host_is(hostname, boundary) for boundary in MANUAL_ONLY_HOSTS)
 
 
@@ -110,7 +112,7 @@ def create_scope_proposal(
     prefix = normalize_path_prefix(allowed_path_prefix)
     if not path_is_within(urlsplit(validated.url).path, prefix):
         raise RegistryError("scope_mismatch", "The directory URL is outside the requested path prefix.")
-    if _manual_only(validated.hostname):
+    if manual_only_host(validated.hostname):
         raise RegistryError("manual_only_source", "This provider can be saved only as an individual lead.")
     if ownership not in {"school", "sponsor"} or adapter not in {"generic", "academicworks", "kaleidoscope"}:
         raise RegistryError("invalid_scope", "The source type or adapter is unsupported.")

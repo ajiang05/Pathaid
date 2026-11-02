@@ -11,6 +11,7 @@ from app.database import Database
 from app.local_data import upgrade_database
 from app.main import create_app
 from app.models import SourceScope
+from app import source_api
 from app.source_registry import import_ipeds_directory, scope_allows_url
 from conftest import FakeSecretStore
 
@@ -147,6 +148,29 @@ def test_manual_lead_does_not_create_or_authorize_a_scope(tmp_path):
         lead = client.post("/api/leads", json={"title": "BigFuture lead", "url": "https://bigfuture.collegeboard.org/scholarships/example"})
         assert lead.status_code == 201 and lead.json()["status"] == "unverified"
         assert client.get("/api/sources").json() == []
+
+
+def test_manual_lead_verification_endpoint_returns_persisted_state(tmp_path, monkeypatch):
+    app, _settings = local_app(tmp_path)
+
+    def fake_verify(database, lead_id, official_url):
+        with database.sessions.begin() as db:
+            item = db.get(source_api.ManualLead, lead_id)
+            item.status = "official_verified"
+            item.official_url = official_url
+            item.official_hostname = "sponsor.example"
+            item.last_attempt_at = datetime(2026, 11, 1, tzinfo=timezone.utc)
+            item.verified_at = item.last_attempt_at
+            return item
+
+    monkeypatch.setattr(source_api, "verify_manual_lead", fake_verify)
+    with TestClient(app) as client:
+        lead = client.post("/api/leads", json={"title": "Example Scholarship", "url": "https://bold.org/scholarships/example"}).json()
+        response = client.post(f"/api/leads/{lead['id']}/verify", json={"official_url": "https://sponsor.example/scholarship"})
+        assert response.status_code == 200
+        assert response.json()["status"] == "official_verified"
+        assert response.json()["official_hostname"] == "sponsor.example"
+        assert response.json()["verified_at"] == "2026-11-01T00:00:00Z"
         prohibited = client.post("/api/sources", json=sponsor_scope(
             canonical_url="https://bigfuture.collegeboard.org/scholarships",
             allowed_path_prefix="/scholarships",

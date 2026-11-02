@@ -104,7 +104,9 @@ Initial automatic sources are official school/sponsor directories, public
 AcademicWorks/Blackbaud listings, public Kaleidoscope listings, and a generic
 bounded directory adapter. BigFuture, Scholarship America, and Bold.org are
 manual lead sources initially. A lead must resolve to a current official sponsor
-page before it can appear as a match.
+page before it can appear as a match. The user confirms that candidate official
+URL; PathAid then validates and snapshots the exact public page without
+approving its surrounding domain.
 
 Every scan stays inside an approved host/path, obeys `robots.txt` and terms,
 uses a descriptive user agent and conservative rate limit, enforces one or two

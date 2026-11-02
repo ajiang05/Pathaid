@@ -14,11 +14,11 @@ from .config import Settings
 from .secrets import MANAGED_SECRET_NAMES, SecretStore
 
 
-EXPECTED_MIGRATION = "0004_bounded_acquisition"
+EXPECTED_MIGRATION = "0005_manual_lead_verification"
 REQUIRED_TABLES = {
     "alembic_version", "app_settings", "local_profile", "profile_experiences",
     "institutions", "source_scopes", "manual_leads",
-    "source_scan_runs", "source_snapshots",
+    "source_scan_runs", "source_snapshots", "manual_lead_snapshots",
 }
 
 

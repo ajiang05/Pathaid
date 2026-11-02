@@ -136,9 +136,33 @@ class ManualLead(Base):
     hostname: Mapped[str] = mapped_column(String(253), index=True)
     status: Mapped[str] = mapped_column(String(30), default="unverified", index=True)
     official_url: Mapped[str | None] = mapped_column(String(2_000), nullable=True)
+    official_hostname: Mapped[str | None] = mapped_column(String(253), nullable=True)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error_code: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ManualLeadSnapshot(Base):
+    """Immutable official-page evidence used to verify one manual lead."""
+
+    __tablename__ = "manual_lead_snapshots"
+    __table_args__ = (
+        CheckConstraint("source_byte_count >= 0", name="ck_manual_lead_snapshot_bytes"),
+        CheckConstraint("redirect_count >= 0", name="ck_manual_lead_snapshot_redirects"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    manual_lead_id: Mapped[str] = mapped_column(ForeignKey("manual_leads.id"), index=True)
+    official_url: Mapped[str] = mapped_column(String(2_000), index=True)
+    final_url: Mapped[str] = mapped_column(String(2_000))
+    acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    media_type: Mapped[str] = mapped_column(String(100))
+    normalized_text: Mapped[str] = mapped_column(Text)
+    source_byte_count: Mapped[int] = mapped_column(Integer)
+    redirect_count: Mapped[int] = mapped_column(Integer)
 
 
 class SourceScanRun(Base):
