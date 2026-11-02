@@ -31,3 +31,6 @@ Every nullable value has an explicit sort key.
 - An unknown mandatory rule never produces Strong.
 - Selection factors cannot change eligibility.
 - Identical inputs yield byte-stable ordered IDs across runs.
+- Automatically considered awards expose no Apply action or application status.
+- Sweepstakes enter their own section only after deterministic official-rules
+  URL and evidence validation.

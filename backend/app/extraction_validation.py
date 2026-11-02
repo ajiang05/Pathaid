@@ -110,6 +110,10 @@ def _evidence_references(draft: ExtractedProgramDraft):
         yield f"selection_factors.{index}.evidence", item.evidence
     for index, item in enumerate(draft.unresolved_conditions):
         yield f"unresolved_conditions.{index}.evidence", item.evidence
+    if draft.application_process_evidence is not None:
+        yield "application_process_evidence", draft.application_process_evidence
+    if draft.official_rules_evidence is not None:
+        yield "official_rules_evidence", draft.official_rules_evidence
 
 
 def _rule_evidence(rule: RuleNode, path: str):
@@ -237,12 +241,16 @@ def _validate_deadline(
 def _validate_application_url(draft: ExtractedProgramDraft, findings: list[ValidationFinding]) -> None:
     """Apply the same public HTTP(S) URL policy used during acquisition."""
 
-    if not draft.application_url:
-        return
-    try:
-        validate_source_url(draft.application_url)
-    except AcquisitionError:
-        findings.append(_error("invalid_application_url", "application_url", "The application URL is not an allowed public URL."))
+    for path, value in (
+        ("application_url", draft.application_url),
+        ("official_rules_url", draft.official_rules_url),
+    ):
+        if not value:
+            continue
+        try:
+            validate_source_url(value)
+        except AcquisitionError:
+            findings.append(_error(f"invalid_{path}", path, f"The {path.replace('_', ' ')} is not an allowed public URL."))
 
 
 def _has_unsupported(rule: RuleNode) -> bool:

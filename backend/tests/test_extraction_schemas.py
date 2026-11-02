@@ -32,6 +32,10 @@ def valid_draft() -> dict:
         "assistance_amount": "$2,500",
         "selection_factors": [],
         "application_url": "https://example.edu/apply",
+        "application_process": "separate_application",
+        "application_process_evidence": None,
+        "official_rules_url": None,
+        "official_rules_evidence": None,
         "unresolved_conditions": [],
     }
 
@@ -106,6 +110,43 @@ def test_generated_json_schema_is_recursive_and_closed():
 
     assert schema["additionalProperties"] is False
     assert "RuleGroup" in schema["$defs"]
+
+
+def test_special_application_processes_require_source_backing():
+    """The model cannot place a result in a special section from its title."""
+
+    automatic = valid_draft()
+    automatic["application_process"] = "automatically_considered"
+    with pytest.raises(ValidationError, match="requires evidence"):
+        ExtractedProgramDraft.model_validate(automatic)
+
+    automatic["application_process_evidence"] = {
+        "snapshot_id": "snapshot-1", "excerpt": "Applicants are automatically considered."
+    }
+    assert ExtractedProgramDraft.model_validate(automatic).application_process == "automatically_considered"
+
+    sweepstakes = valid_draft()
+    sweepstakes["application_process"] = "sweepstakes"
+    sweepstakes["application_process_evidence"] = {
+        "snapshot_id": "snapshot-1", "excerpt": "Winner selected by random drawing."
+    }
+    with pytest.raises(ValidationError, match="official rules"):
+        ExtractedProgramDraft.model_validate(sweepstakes)
+
+
+def test_sweepstakes_contract_requires_rules_url_and_rules_evidence():
+    proposal = valid_draft()
+    proposal.update({
+        "application_process": "sweepstakes",
+        "application_process_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Winner selected by random drawing."
+        },
+        "official_rules_url": "https://example.edu/official-rules",
+        "official_rules_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Read the official rules."
+        },
+    })
+    assert ExtractedProgramDraft.model_validate(proposal).official_rules_url.endswith("/official-rules")
 
 
 @pytest.mark.parametrize(

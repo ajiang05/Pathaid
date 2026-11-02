@@ -49,9 +49,13 @@ export type MatchResult = {
   unknown_fields: string[];
   application_url: string;
   saved_status: SavedStatus | null;
+  application_process: "separate_application" | "automatically_considered" | "sweepstakes";
+  official_rules_url: string | null;
 };
 export type MatchesResponse = {
   results: MatchResult[];
+  automatically_considered: MatchResult[];
+  sweepstakes: MatchResult[];
   not_matches: MatchResult[];
   profile_completeness: Completeness;
   catalog_status: "ready" | "awaiting_approved_sources";

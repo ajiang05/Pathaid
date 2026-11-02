@@ -19,6 +19,8 @@ export default function DiscoverPage() {
   const groups = useMemo(() => ({
     strong: data?.results.filter(item => item.match_label === "Strong match") ?? [],
     possible: data?.results.filter(item => item.match_label === "Possible match") ?? [],
+    automatic: data?.automatically_considered ?? [],
+    sweepstakes: data?.sweepstakes ?? [],
   }), [data]);
   async function setStatus(scholarshipId: string, status: "not_started" | "in_progress") {
     await api(`/api/saved-scholarships/${scholarshipId}`, {
@@ -59,8 +61,10 @@ export default function DiscoverPage() {
     {!data && !failed && <section className="skeleton-panel" aria-label="Loading scholarship matches" />}
     {failed && <section className="empty-panel"><h2>Matches unavailable</h2><p>Check that the local backend is running.</p><button className="button button-primary" onClick={load}>Try again</button></section>}
     {data?.catalog_status === "awaiting_approved_sources" && <section className="empty-panel"><h2>No verified scholarships yet</h2><p>Confirm and scan official sources to build the local catalog. PathAid does not insert fake opportunities or show unvalidated extractions.</p><Link className="button button-outline" href="/sources">Manage sources</Link></section>}
-    {data?.catalog_status === "ready" && data.results.length === 0 && <section className="empty-panel"><h2>No current verified matches</h2><p>This is not a finding that you are ineligible. It reflects the current source coverage.</p></section>}
+    {data?.catalog_status === "ready" && data.results.length + data.automatically_considered.length + data.sweepstakes.length === 0 && <section className="empty-panel"><h2>No current verified matches</h2><p>This is not a finding that you are ineligible. It reflects the current source coverage.</p></section>}
     {groups.strong.length > 0 && <section><div className="section-heading"><h2>Strong matches</h2><span>{groups.strong.length}</span></div><div className="result-grid">{groups.strong.map(card)}</div></section>}
     {groups.possible.length > 0 && <section><div className="section-heading"><h2>Possible matches</h2><span>{groups.possible.length}</span></div><p className="missing-note">At least one hard requirement is unknown. Add details in Profile to improve precision.</p><div className="result-grid">{groups.possible.map(card)}</div></section>}
+    {groups.automatic.length > 0 && <section><div className="section-heading"><h2>Automatically considered</h2><span>{groups.automatic.length}</span></div><p className="missing-note">The official source says eligible students are considered without a separate application. PathAid does not create a misleading application status.</p><div className="result-grid">{groups.automatic.map(card)}</div></section>}
+    {groups.sweepstakes.length > 0 && <section><div className="section-heading"><h2>Verified sweepstakes</h2><span>{groups.sweepstakes.length}</span></div><p className="missing-note">These easy-entry awards have a verified public official-rules page. Review the rules before entering.</p><div className="result-grid">{groups.sweepstakes.map(card)}</div></section>}
   </>;
 }

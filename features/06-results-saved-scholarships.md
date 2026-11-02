@@ -35,3 +35,8 @@ visible status views, removal, and cycle-level skipping. Saved state lives in
 SQLite and survives restart. Skip comparison uses the active version's material
 fingerprint, so cosmetic extraction changes remain hidden and material changes
 return the opportunity to Discover.
+
+Discover now renders source-backed automatically considered awards and verified
+sweepstakes separately. Automatic awards explain that no application is needed
+and cannot enter the application tracker. Sweepstakes show an official-rules
+link and use **Enter** rather than implying a conventional application.

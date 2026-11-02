@@ -69,6 +69,13 @@ def material_fingerprint(payload: dict) -> str:
         "assistance_amount": payload.get("assistance_amount"),
         "eligibility_tree": _eligibility_semantics(payload.get("eligibility_tree")),
     }
+    # Preserve fingerprints created before schema 1.1 for ordinary
+    # applications. Only special process semantics extend the material hash.
+    process = payload.get("application_process", "separate_application")
+    if process != "separate_application":
+        material["application_process"] = process
+    if payload.get("official_rules_url"):
+        material["official_rules_url"] = payload["official_rules_url"]
     encoded = json.dumps(material, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 

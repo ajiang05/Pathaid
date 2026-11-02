@@ -20,9 +20,16 @@ const registry = {
 };
 const matches = {
   results: [
-    { scholarship_id: "strong-1", name: "Engineering Scholars Award", sponsor: "Example Foundation", award: "$2,500", deadline: "2027-03-15", match_label: "Strong match", key_reasons: ["All known hard requirements pass."], unknown_fields: [], application_url: "https://example.org/apply", saved_status: null },
-    { scholarship_id: "possible-1", name: "Community Leadership Scholarship", sponsor: "Example University", award: null, deadline: null, match_label: "Possible match", key_reasons: ["Pell status is required but unknown."], unknown_fields: ["pell_eligible"], application_url: "https://example.edu/apply", saved_status: null },
-  ], not_matches: [], profile_completeness: completeness, catalog_status: "ready",
+    { scholarship_id: "strong-1", name: "Engineering Scholars Award", sponsor: "Example Foundation", award: "$2,500", deadline: "2027-03-15", match_label: "Strong match", key_reasons: ["All known hard requirements pass."], unknown_fields: [], application_url: "https://example.org/apply", saved_status: null, application_process: "separate_application", official_rules_url: null },
+    { scholarship_id: "possible-1", name: "Community Leadership Scholarship", sponsor: "Example University", award: null, deadline: null, match_label: "Possible match", key_reasons: ["Pell status is required but unknown."], unknown_fields: ["pell_eligible"], application_url: "https://example.edu/apply", saved_status: null, application_process: "separate_application", official_rules_url: null },
+  ],
+  automatically_considered: [
+    { scholarship_id: "automatic-1", name: "Campus Merit Award", sponsor: "Example University", award: "$1,000", deadline: null, match_label: "Strong match", key_reasons: ["All known hard requirements pass."], unknown_fields: [], application_url: "https://example.edu/merit", saved_status: null, application_process: "automatically_considered", official_rules_url: null },
+  ],
+  sweepstakes: [
+    { scholarship_id: "sweepstakes-1", name: "Monthly Student Drawing", sponsor: "Example Foundation", award: "$500", deadline: "2027-03-31", match_label: "Strong match", key_reasons: ["All known hard requirements pass."], unknown_fields: [], application_url: "https://example.org/enter", saved_status: null, application_process: "sweepstakes", official_rules_url: "https://example.org/rules" },
+  ],
+  not_matches: [], profile_completeness: completeness, catalog_status: "ready",
 };
 
 async function fulfillApi(route: Route) {
@@ -83,6 +90,13 @@ test("discover groups deterministic matches without inline questions", async ({ 
   await expect(page.getByRole("heading", { name: "Possible matches" })).toBeVisible();
   await expect(page.getByText("Community Leadership Scholarship")).toBeVisible();
   await expect(page.getByText("Unknown: Pell Eligible")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Automatically considered" })).toBeVisible();
+  const automatic = page.locator("article", { hasText: "Campus Merit Award" });
+  await expect(automatic.getByText("No separate application required")).toBeVisible();
+  await expect(automatic.getByRole("button", { name: /Apply|Enter/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Verified sweepstakes" })).toBeVisible();
+  const sweepstakes = page.locator("article", { hasText: "Monthly Student Drawing" });
+  await expect(sweepstakes.getByRole("link", { name: "Official rules" })).toHaveAttribute("href", "https://example.org/rules");
   await expect(page.locator("form")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
 });

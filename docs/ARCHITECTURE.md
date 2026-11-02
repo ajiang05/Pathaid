@@ -239,6 +239,13 @@ the sponsor timezone for date-only deadlines. Material fingerprints include
 cycle, deadline, availability, award, and eligibility semantics but exclude
 marketing copy and evidence-capture metadata.
 
+Extraction schema 1.1 explicitly classifies `separate_application`,
+`automatically_considered`, or `sweepstakes`. Special classifications require
+verbatim retained evidence, and sweepstakes additionally require a safe public
+official-rules URL with evidence. Matching preserves deterministic order while
+routing current results into distinct response sections. Automatically
+considered records cannot receive a saved application status.
+
 ## 9. Extension architecture
 
 The Manifest V3 extension uses:
