@@ -71,6 +71,20 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run lint
       - run: npm run build
+      - name: Verify native standalone frontend runtime
+        run: |
+          ../scripts/prepare_frontend_runtime
+          HOSTNAME=127.0.0.1 PORT=3101 node .next/standalone/server.js > /tmp/pathaid-standalone-web.log 2>&1 &
+          server_pid="$!"
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:3101/ >/dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          cat /tmp/pathaid-standalone-web.log
+          exit 1
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 
