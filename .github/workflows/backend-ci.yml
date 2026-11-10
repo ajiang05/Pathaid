@@ -30,8 +30,10 @@ jobs:
       run:
         working-directory: backend
     env:
-      PATHAID_DATA_DIR: ${{ runner.temp }}/pathaid-data
-      PATHAID_DATABASE_PATH: ${{ runner.temp }}/pathaid-data/pathaid.sqlite3
+      # Job-level expressions are evaluated before a runner exists, so the
+      # `runner.temp` context is unavailable here. GitHub's Ubuntu runners
+      # provide an isolated /tmp directory for each ephemeral VM.
+      PATHAID_DATA_DIR: /tmp/pathaid-data
 
     steps:
       - name: Check out repository

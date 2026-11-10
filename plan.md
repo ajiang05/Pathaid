@@ -1,7 +1,7 @@
 # PathAid local-first redesign plan
 
-**Status:** Phases 1–4 complete and verified; Phase 5 is in progress
-**Last updated:** November 2, 2026
+**Status:** Phases 0–7 complete and verified; MVP implementation complete
+**Last updated:** November 10, 2026
 
 This file is the authoritative implementation sequence. Product scope is in
 [docs/MVP.md](docs/MVP.md); implementation should not be inferred from the old

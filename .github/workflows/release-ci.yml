@@ -21,8 +21,9 @@ jobs:
       run:
         working-directory: backend
     env:
-      PATHAID_DATA_DIR: ${{ runner.temp }}/fresh-pathaid-data
-      PATHAID_DATABASE_PATH: ${{ runner.temp }}/fresh-pathaid-data/pathaid.sqlite3
+      # `runner.temp` is not available while GitHub validates job-level env.
+      # Each Ubuntu job runs in a fresh VM, so this path remains isolated.
+      PATHAID_DATA_DIR: /tmp/fresh-pathaid-data
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
