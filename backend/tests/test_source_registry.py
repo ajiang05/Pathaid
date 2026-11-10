@@ -84,6 +84,18 @@ def test_ipeds_search_and_selection_updates_authoritative_profile_fields(tmp_pat
         assert [(item["unit_id"], item["source"], item["source_year"]) for item in results] == [("166629", "NCES IPEDS", 2025)]
         selected = select_umass(client)
         assert selected["changed"] is True
+        assert selected["source_suggestions"] == [
+            {
+                "name": "University of Massachusetts Amherst financial aid scholarships",
+                "canonical_url": "https://www.umass.edu/financialaid/scholarships",
+                "allowed_path_prefix": "/financialaid", "adapter": "generic",
+            },
+            {
+                "name": "University of Massachusetts Amherst scholarship directory",
+                "canonical_url": "https://www.umass.edu/scholarships",
+                "allowed_path_prefix": "/scholarships", "adapter": "generic",
+            },
+        ]
         profile = client.get("/api/profile").json()
         expected = {
             "school_id": "166629", "school": "University of Massachusetts Amherst",

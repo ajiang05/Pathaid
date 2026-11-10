@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal, Mapping, Protocol
@@ -51,6 +52,22 @@ class DraftValidationResult:
         return not any(finding.severity == "error" for finding in self.findings)
 
 
+AUTOMATION_PROHIBITION = re.compile(
+    r"(?:\b(?:do not|may not|must not|cannot|prohibited|forbidden|not permitted)\b.{0,100}"
+    r"\b(?:bots?|scripts?|automat(?:ed|ion))\b|"
+    r"\b(?:bots?|scripts?|automat(?:ed|ion))\b.{0,100}"
+    r"\b(?:not allowed|prohibited|forbidden|not permitted)\b)",
+    re.IGNORECASE,
+)
+AI_PROHIBITION = re.compile(
+    r"(?:\b(?:do not|may not|must not|cannot|prohibited|forbidden|not permitted)\b.{0,100}"
+    r"\b(?:ai|artificial intelligence|generative ai|language model)\b|"
+    r"\b(?:ai|artificial intelligence|generative ai|language model)\b.{0,100}"
+    r"\b(?:not allowed|prohibited|forbidden|not permitted)\b)",
+    re.IGNORECASE,
+)
+
+
 def validate_extracted_draft(
     draft: ExtractedProgramDraft,
     snapshot: SnapshotForValidation,
@@ -77,6 +94,7 @@ def validate_extracted_draft(
     _validate_coverage(draft, field_registry, findings)
     _validate_deadline(draft, findings, as_of or datetime.now(timezone.utc))
     _validate_application_url(draft, findings)
+    _validate_policy_flags(draft, findings)
     if draft.categories != ["scholarships"]:
         findings.append(_error("unsupported_category", "categories", "The local MVP activates scholarship records only."))
 
@@ -114,6 +132,10 @@ def _evidence_references(draft: ExtractedProgramDraft):
         yield "application_process_evidence", draft.application_process_evidence
     if draft.official_rules_evidence is not None:
         yield "official_rules_evidence", draft.official_rules_evidence
+    if draft.automation_policy_evidence is not None:
+        yield "automation_policy_evidence", draft.automation_policy_evidence
+    if draft.ai_assistance_policy_evidence is not None:
+        yield "ai_assistance_policy_evidence", draft.ai_assistance_policy_evidence
 
 
 def _rule_evidence(rule: RuleNode, path: str):
@@ -251,6 +273,22 @@ def _validate_application_url(draft: ExtractedProgramDraft, findings: list[Valid
             validate_source_url(value)
         except AcquisitionError:
             findings.append(_error(f"invalid_{path}", path, f"The {path.replace('_', ' ')} is not an allowed public URL."))
+
+
+def _validate_policy_flags(draft: ExtractedProgramDraft, findings: list[ValidationFinding]) -> None:
+    """Require blocked flags to quote unambiguous prohibition language."""
+
+    policies = (
+        ("automation_policy", draft.automation_policy, draft.automation_policy_evidence, AUTOMATION_PROHIBITION),
+        ("ai_assistance_policy", draft.ai_assistance_policy, draft.ai_assistance_policy_evidence, AI_PROHIBITION),
+    )
+    for path, outcome, evidence, pattern in policies:
+        if outcome == "blocked" and (evidence is None or not pattern.search(evidence.excerpt)):
+            findings.append(_error(
+                "unsupported_policy_block",
+                path,
+                "A blocked policy requires exact, explicit prohibition language.",
+            ))
 
 
 def _has_unsupported(rule: RuleNode) -> bool:

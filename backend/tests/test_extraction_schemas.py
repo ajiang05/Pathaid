@@ -149,6 +149,18 @@ def test_sweepstakes_contract_requires_rules_url_and_rules_evidence():
     assert ExtractedProgramDraft.model_validate(proposal).official_rules_url.endswith("/official-rules")
 
 
+def test_blocked_automation_and_ai_policies_require_exact_evidence():
+    automation = valid_draft()
+    automation["automation_policy"] = "blocked"
+    with pytest.raises(ValidationError, match="automation policy requires evidence"):
+        ExtractedProgramDraft.model_validate(automation)
+
+    ai_policy = valid_draft()
+    ai_policy["ai_assistance_policy"] = "blocked"
+    with pytest.raises(ValidationError, match="AI assistance policy requires evidence"):
+        ExtractedProgramDraft.model_validate(ai_policy)
+
+
 @pytest.mark.parametrize(
     ("field", "limit"),
     [("name", 240), ("award_cycle", 120), ("deadline_timezone", 80), ("assistance_amount", 240)],

@@ -126,7 +126,7 @@ def test_adapter_uses_structured_output_and_records_metadata():
 def test_prompt_requires_complete_mandatory_rule_coverage_and_current_profile_fields():
     """The extraction contract must not silently omit rules or drift from profile fields."""
 
-    assert PROMPT_VERSION == "2.1.0"
+    assert PROMPT_VERSION == "2.3.0"
     assert "every mandatory eligibility requirement" in SYSTEM_INSTRUCTIONS
     assert "Never omit a mandatory requirement" in SYSTEM_INSTRUCTIONS
     assert "school_state, current_city" in SYSTEM_INSTRUCTIONS
@@ -138,6 +138,8 @@ def test_prompt_requires_complete_mandatory_rule_coverage_and_current_profile_fi
     assert "never emit an in condition containing every allowed value" in SYSTEM_INSTRUCTIONS
     assert "automatically_considered only when the source explicitly says" in SYSTEM_INSTRUCTIONS
     assert "public official-rules URL" in SYSTEM_INSTRUCTIONS
+    assert "Set automation_policy to blocked only" in SYSTEM_INSTRUCTIONS
+    assert "Set ai_assistance_policy to blocked only" in SYSTEM_INSTRUCTIONS
 
 
 def test_refusal_has_an_explicit_safe_outcome():

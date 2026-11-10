@@ -50,3 +50,26 @@ validator. It adds exact mappings for common Award Management academic questions
 and explicit boolean translations such as full-time enrollment and Pell status.
 Institution-defined custom questions, essays, and unclear wording remain
 untouched; the adapter cannot submit the General Application or an opportunity.
+
+The Kaleidoscope adapter likewise maps only exact reusable learner-profile
+questions and explicit yes/no translations. Sponsor-specific questions, future
+college preferences that are not represented by the current-school profile,
+essays, official-rules controls, attachments, and submission remain untouched.
+
+The preview permits corrections only for controls admitted by the central
+safety contract. A correction stores the selected profile-field name under the
+exact portal origin plus SHA-256 form and field metadata signatures; it never
+stores a profile value or an answer already present in the form. Learned
+mappings take precedence on the same form shape and can be cleared by selecting
+**Leave empty**.
+
+Before inspection, the context endpoint reads the active immutable version's
+validated automation policy. An explicit prohibition returns `policy_blocked`
+and no profile values, mappings, form inspection, or fill plan are released.
+
+The local web app's **Apply/Open application** action sends only the scholarship
+ID through the extension's origin-restricted external message boundary. The
+extension creates a blank tab, opens its side panel, asks the authenticated
+backend to mark the saved record In progress and release the retained official
+application URL, then navigates that tab. If the extension is unavailable, the
+web app retains its direct official-link fallback.

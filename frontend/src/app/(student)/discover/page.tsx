@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { openWithApplicationCopilot } from "@/lib/application-copilot";
 import { ResultCard } from "@/components/result-card";
-import type { MatchesResponse } from "@/types/api";
+import type { LocalStatus, MatchesResponse } from "@/types/api";
 
 export default function DiscoverPage() {
   const [data, setData] = useState<MatchesResponse | null>(null);
+  const [extensionId, setExtensionId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     api<MatchesResponse>("/api/matches").then(setData).catch(() => setFailed(true));
+    api<LocalStatus>("/api/local/status").then(status => setExtensionId(status.extension_id)).catch(() => undefined);
   }, []);
   const load = () => {
     setFailed(false);
@@ -37,6 +40,14 @@ export default function DiscoverPage() {
     // Sever access back to PathAid before navigating to an external sponsor.
     if (application) application.opener = null;
     try {
+      if (await openWithApplicationCopilot(extensionId, result.scholarship_id)) {
+        application?.close();
+        setData(current => current ? {
+          ...current,
+          results: current.results.map(item => item.scholarship_id === result.scholarship_id ? { ...item, saved_status: "in_progress" } : item),
+        } : current);
+        return;
+      }
       await setStatus(result.scholarship_id, "in_progress");
       if (application) application.location.href = result.application_url;
       else window.location.assign(result.application_url);

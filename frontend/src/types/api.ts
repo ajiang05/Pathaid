@@ -52,6 +52,31 @@ export type MatchResult = {
   application_process: "separate_application" | "automatically_considered" | "sweepstakes";
   official_rules_url: string | null;
 };
+export type ScholarshipDetail = {
+  scholarship_id: string;
+  name: string;
+  description: string;
+  sponsor: string;
+  award: string | null;
+  deadline: string | null;
+  availability: string;
+  application_process: "separate_application" | "automatically_considered" | "sweepstakes";
+  application_url: string;
+  official_rules_url: string | null;
+  source_url: string;
+  source_freshness: string;
+  match_label: "Strong match" | "Possible match" | "Not a match";
+  coverage_complete: boolean;
+  criteria: { field: string; operator: string; truth: "pass" | "fail" | "unknown"; reason: string; answerable: boolean; evidence: { snapshot_id: string; excerpt: string } }[];
+  unknown_fields: string[];
+  unresolved_conditions: { description: string; evidence: { snapshot_id: string; excerpt: string } }[];
+  selection_factors: { description: string; evidence: { snapshot_id: string; excerpt: string } }[];
+  checklist: { label: string; required: boolean; evidence: { snapshot_id: string; excerpt: string } }[];
+  coverage: { national: boolean; states: string[]; institutions: string[] };
+  automation_policy: "allowed" | "blocked" | "unknown";
+  ai_assistance_policy: "allowed" | "blocked" | "unknown";
+  saved_status: SavedStatus | null;
+};
 export type MatchesResponse = {
   results: MatchResult[];
   automatically_considered: MatchResult[];
@@ -77,6 +102,82 @@ export type SavedScholarship = {
   updated_at: string;
 };
 export type SavedResponse = { items: SavedScholarship[] };
+export type LocalStatus = {
+  mode: "local_single_user";
+  database: "sqlite";
+  extension_configured: boolean;
+  extension_id: string | null;
+};
+export type ManagedDocument = {
+  document_type: "resume" | "transcript";
+  original_name: string;
+  media_type: "application/pdf";
+  size_bytes: number;
+  content_hash: string;
+  updated_at: string;
+};
+export type DocumentsResponse = { items: ManagedDocument[] };
+export type EssayUse = {
+  id: string;
+  scholarship_id: string | null;
+  scholarship_name: string;
+  destination_prompt: string;
+  used_at: string;
+};
+export type Essay = {
+  id: string;
+  title: string;
+  original_prompt: string;
+  text: string;
+  tags: string[];
+  themes: string[];
+  word_count: number;
+  written_on: string;
+  uses: EssayUse[];
+  updated_at: string;
+};
+export type EssaysResponse = { items: Essay[] };
+export type EssayAnalysisSettings = {
+  full_text_analysis_enabled: boolean;
+  data_tier: "unpaid" | "paid" | "unknown";
+  notice_acknowledged: boolean;
+  notice: string;
+  gemini_key_configured: boolean;
+};
+export type EssayRecommendation = {
+  essay_id: string;
+  score: number;
+  rationale: string;
+  mismatches: { section_reference: string; reason: string }[];
+  warnings: string[];
+};
+export type EssayRecommendationsResponse = {
+  destination_prompt: string;
+  word_limit: number | null;
+  source: "local" | "gemini";
+  ai_policy: "unknown" | "allowed" | "blocked";
+  items: EssayRecommendation[];
+  warning: string | null;
+};
+export type SettingsStatus = {
+  gemini_configured: boolean;
+  extension_token_available: boolean;
+  document_vault_key_available: boolean;
+  extension_configured: boolean;
+  extension_id: string | null;
+  backup_format: string;
+  backup_excludes: string[];
+};
+export type HomeSummary = {
+  profile_completeness: Completeness;
+  active_sources: number;
+  paused_sources: number;
+  due_sources: number;
+  active_scholarships: number;
+  last_success_at: string | null;
+  latest_job: { status: string; stage: string; error_code: string | null; updated_at: string } | null;
+  alerts: { code: string; message: string; href: string }[];
+};
 
 export type Institution = {
   unit_id: string;
@@ -87,6 +188,18 @@ export type Institution = {
   website_url: string | null;
   source: "NCES IPEDS";
   source_year: number;
+};
+export type SourceSuggestion = {
+  name: string;
+  canonical_url: string;
+  allowed_path_prefix: string;
+  adapter: "generic";
+};
+export type InstitutionSelection = {
+  institution: Institution;
+  school_revision: number;
+  changed: boolean;
+  source_suggestions: SourceSuggestion[];
 };
 
 export type SourceScope = {

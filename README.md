@@ -6,7 +6,32 @@ requirements with Gemini, evaluates eligibility deterministically against a
 private local profile, and helps fill applications in Chrome. The student
 reviews every application and submits it personally.
 
-> **Redesign status:** Phases 1–4 are implemented: the local SQLite/Keychain
+## Quick start on macOS
+
+```bash
+git clone https://github.com/aidanjiang/Pathaid.git
+cd Pathaid
+scripts/pathaid bootstrap
+scripts/pathaid set-gemini-key
+scripts/pathaid start
+```
+
+Open `http://127.0.0.1:3000`. For the application copilot, load `extension/`
+from `chrome://extensions` in developer mode, then run:
+
+```bash
+scripts/pathaid configure-extension PASTE_THE_EXTENSION_ID
+scripts/pathaid stop
+scripts/pathaid start
+scripts/pathaid copy-extension-token
+```
+
+Operational commands are `scripts/pathaid status`, `stop`, `backup`, `restore`,
+and `reset`. Backup/restore prompt for a separate archive passphrase; reset
+prints its exact targets and requires typing `RESET`.
+
+> **Redesign status:** Phases 1–6 and the automated release gates are
+> implemented: the local SQLite/Keychain
 > foundation, private profile, strict deterministic matching, accountless UI,
 > bounded source registry, generic directory acquisition, and the
 > AcademicWorks/Blackbaud and Kaleidoscope public adapters are verified. Manual
@@ -20,8 +45,15 @@ reviews every application and submits it personally.
 > awards, and verified sweepstakes sections are implemented. The Chrome
 > extension foundation now connects an unpacked side panel to the authenticated
 > loopback API; generic forms and AcademicWorks/Blackbaud applications preview
-> and fill explicitly approved safe fields. The Kaleidoscope adapter remains.
-> Follow
+> and fill explicitly approved safe fields, including dedicated conservative
+> mappings for AcademicWorks/Blackbaud and Kaleidoscope. Reviewed field
+> corrections are remembered locally by exact portal and form shape, and Apply
+> opens the retained official page with the extension side panel. A Keychain-
+> backed encrypted vault now manages one résumé and transcript, with one click
+> required per exact attachment target. The local student-written essay bank,
+> deterministic metadata recommendations, guarded Gemini mismatch analysis,
+> explicit essay-file attachment, encrypted backups, and local settings are
+> also implemented. Follow
 > [plan.md](plan.md) for authoritative status.
 
 ## Product boundaries
@@ -129,5 +161,6 @@ plan.md        Redesign implementation plan and status
 - [Architecture](docs/ARCHITECTURE.md)
 - [Architecture diagrams](docs/ARCHITECTURE_DIAGRAM.md)
 - [Local setup and operations](INSTRUCTIONS.md)
+- [Optional live release smoke tests](docs/LIVE_SMOKE_TESTS.md)
 - [Feature index](features/README.md)
 - [Implementation plan](plan.md)

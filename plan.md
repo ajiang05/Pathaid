@@ -84,37 +84,38 @@ scholarships without per-record human publication.
 - [x] Define adapter contract that cannot submit/certify/sign.
 - [x] Implement generic HTML form inspection, preview, and fill.
 - [x] Implement AcademicWorks/Blackbaud adapter.
-- [ ] Implement Kaleidoscope adapter.
+- [x] Implement Kaleidoscope adapter.
 - [x] Mark sensitive mappings and skip ambiguous fields.
-- [ ] Learn corrected portal mappings.
-- [ ] Parse source policy flags and disable prohibited automation.
-- [ ] Connect Apply to official tab and side panel.
+- [x] Learn corrected portal mappings.
+- [x] Parse source policy flags and disable prohibited automation.
+- [x] Connect Apply to official tab and side panel.
 
 **Exit:** three supported real forms can be previewed and filled without any
 submission/certification action.
 
 ## Phase 6 — documents, essays, and backup
 
-- [ ] Build Keychain-backed encrypted vault for one résumé and transcript.
-- [ ] Require one click for every attachment.
-- [ ] Build local student-written essay bank and metadata.
-- [ ] Add Gemini essay recommendation/mismatch analysis only.
-- [ ] Disable AI analysis when official rules prohibit it.
-- [ ] Add data-tier notice and explicit full-essay analysis configuration.
-- [ ] Implement encrypted backup with documented exclusions.
+- [x] Build Keychain-backed encrypted vault for one résumé and transcript.
+- [x] Require one click for every attachment.
+- [x] Build local student-written essay bank and metadata.
+- [x] Add Gemini essay recommendation/mismatch analysis only.
+- [x] Disable AI analysis when official rules prohibit it.
+- [x] Add data-tier notice and explicit full-essay analysis configuration.
+- [x] Implement encrypted backup with documented exclusions.
 
 **Exit:** encryption, attachment consent, AI policy, and backup-exclusion tests
 pass.
 
 ## Phase 7 — local packaging and release verification
 
-- [ ] Write one-command macOS bootstrap/start scripts.
-- [ ] Load and connect the unpacked extension in developer mode.
-- [ ] Add startup/catch-up scheduling suitable for a Mac that may sleep.
-- [ ] Run backend, frontend, extension, adapter, and security suites in CI.
-- [ ] Test from a fresh checkout and fresh app-data directory.
-- [ ] Run real workflow smoke tests without automatic submission.
-- [ ] Update README commands from transitional to final packaged commands.
+- [x] Write one-command macOS bootstrap/start scripts.
+- [x] Load and connect the unpacked extension in developer mode.
+- [x] Add startup/catch-up scheduling suitable for a Mac that may sleep.
+- [x] Run backend, frontend, extension, adapter, and security suites in CI.
+- [x] Test from a fresh checkout and fresh app-data directory.
+- [x] Run offline end-to-end workflow smoke tests without automatic submission.
+- [x] Document optional budgeted live-provider and real-portal pre-release checks.
+- [x] Update README commands from transitional to final packaged commands.
 
 **Exit:** the MVP release gates in `docs/MVP.md` all pass.
 

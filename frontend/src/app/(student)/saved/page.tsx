@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, dateLabel } from "@/lib/api";
-import type { SavedResponse, SavedScholarship, SavedStatus } from "@/types/api";
+import { openWithApplicationCopilot } from "@/lib/application-copilot";
+import type { LocalStatus, SavedResponse, SavedScholarship, SavedStatus } from "@/types/api";
 
 const tabs: { value: SavedStatus; label: string }[] = [
   { value: "not_started", label: "Not started" },
@@ -13,12 +14,16 @@ const tabs: { value: SavedStatus; label: string }[] = [
 export default function SavedPage() {
   const [items, setItems] = useState<SavedScholarship[]>([]);
   const [active, setActive] = useState<SavedStatus>("not_started");
+  const [extensionId, setExtensionId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [message, setMessage] = useState("");
   const load = () => api<SavedResponse>("/api/saved-scholarships")
     .then(data => { setItems(data.items); setFailed(false); })
     .catch(() => setFailed(true));
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+    api<LocalStatus>("/api/local/status").then(status => setExtensionId(status.extension_id)).catch(() => undefined);
+  }, []);
   const visible = useMemo(() => items.filter(item => item.status === active), [items, active]);
 
   async function change(item: SavedScholarship, status: SavedStatus) {
@@ -43,6 +48,20 @@ export default function SavedPage() {
     }
   }
 
+  async function openApplication(item: SavedScholarship) {
+    const fallback = window.open("about:blank", "_blank");
+    if (fallback) fallback.opener = null;
+    if (await openWithApplicationCopilot(extensionId, item.scholarship_id)) {
+      fallback?.close();
+      setItems(current => current.map(entry => entry.scholarship_id === item.scholarship_id ? { ...entry, status: "in_progress" } : entry));
+      setMessage(`${item.name} opened with the application copilot.`);
+      return;
+    }
+    await change(item, "in_progress");
+    if (fallback) fallback.location.href = item.application_url;
+    else window.location.assign(item.application_url);
+  }
+
   return <>
     <div className="page-heading"><div><p className="eyebrow">Minimal application tracking</p><h1>Saved</h1><p>Keep only the status you need. PathAid does not track award decisions or submit applications.</p></div></div>
     <div className="saved-tabs" role="tablist" aria-label="Saved scholarship status">
@@ -56,7 +75,7 @@ export default function SavedPage() {
       <dl className="result-facts"><div><dt>Award</dt><dd>{item.award ?? "Not stated"}</dd></div><div><dt>Deadline</dt><dd>{dateLabel(item.deadline)}</dd></div><div><dt>Source</dt><dd>{item.source_status === "active" && item.availability === "verified_open" ? "Current" : "Unavailable"}</dd></div></dl>
       <footer className="result-actions">
         <select aria-label={`Status for ${item.name}`} value={item.status} onChange={event => void change(item, event.target.value as SavedStatus)}>{tabs.map(tab => <option key={tab.value} value={tab.value}>{tab.label}</option>)}</select>
-        <a className="button button-primary" href={item.application_url} target="_blank" rel="noreferrer" onClick={() => void change(item, "in_progress")}>Open application</a>
+        <button className="button button-primary" type="button" onClick={() => void openApplication(item)}>Open application</button>
         <button className="text-action" onClick={() => void remove(item)}>Remove</button>
       </footer>
     </article>)}</div>

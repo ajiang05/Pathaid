@@ -27,3 +27,19 @@ rewriting application essays.
 - Provider failures fall back to local recommendations without blocking apply.
 - Prompts/tests reject generated or rewritten essay content.
 - Full essay text and model responses are not logged.
+
+## Implemented design
+
+- Essays and prior-use history live in the local SQLite database. Word count is
+  computed by the backend rather than trusted from the browser.
+- Local title, prompt, tag, and theme matching always runs first. Gemini is an
+  optional analysis layer and a provider failure returns the local result.
+- The structured Gemini response can contain only essay IDs, ranking rationale,
+  and mismatch references. Extra fields such as replacement prose fail schema
+  validation.
+- Full-text analysis requires an explicit setting and acknowledgement of a
+  tier-specific Gemini data-handling notice. A validated `blocked` AI policy
+  prevents the provider from being called.
+- Exact essay-file inputs appear in the extension attachment preview with a
+  stored-essay selector. Only the user's Attach click releases a plain-text copy;
+  essay textareas, attestations, and submission remain untouched.

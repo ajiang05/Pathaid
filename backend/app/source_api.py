@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Literal
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -81,6 +82,31 @@ def _institution_payload(item: Institution) -> dict:
     }
 
 
+def _school_source_suggestions(item: Institution) -> list[dict]:
+    """Return inert same-host guesses that still require explicit confirmation."""
+
+    if not item.website_url:
+        return []
+    parsed = urlsplit(item.website_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return []
+    origin = f"https://{parsed.hostname}"
+    return [
+        {
+            "name": f"{item.name} financial aid scholarships",
+            "canonical_url": f"{origin}/financialaid/scholarships",
+            "allowed_path_prefix": "/financialaid",
+            "adapter": "generic",
+        },
+        {
+            "name": f"{item.name} scholarship directory",
+            "canonical_url": f"{origin}/scholarships",
+            "allowed_path_prefix": "/scholarships",
+            "adapter": "generic",
+        },
+    ]
+
+
 def _scope_payload(item: SourceScope) -> dict:
     return {
         "id": item.id, "name": item.name, "ownership": item.ownership, "adapter": item.adapter,
@@ -154,7 +180,12 @@ def create_source_router(database: Database) -> APIRouter:
             else:
                 setting.value = "true"
         db.commit()
-        return {"institution": _institution_payload(institution), "school_revision": profile.school_revision, "changed": changed}
+        return {
+            "institution": _institution_payload(institution),
+            "school_revision": profile.school_revision,
+            "changed": changed,
+            "source_suggestions": _school_source_suggestions(institution),
+        }
 
     @router.get("/sources")
     def list_sources(db: Session = Depends(get_db)) -> list[dict]:

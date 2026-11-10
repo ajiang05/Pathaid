@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 from contextlib import asynccontextmanager
+from typing import Callable
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -16,16 +17,25 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .config import Settings
 from .database import Database
+from .document_api import create_document_router
+from .essay_api import create_essay_router
+from .essay_recommendation import EssayAnalysisProvider
 from .extension_api import create_extension_router
+from .home_api import create_home_router
 from .local_data import EXPECTED_MIGRATION, REQUIRED_TABLES
 from .profile_api import create_profile_router
 from .saved_api import create_saved_router
 from .scheduler import SchedulerThread
+from .settings_api import create_settings_router
 from .secrets import KeychainSecretStore, SecretStore, SecretStoreError, get_or_create_extension_token
 from .source_api import create_source_router
 
 
-def create_app(settings: Settings | None = None, secret_store: SecretStore | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    secret_store: SecretStore | None = None,
+    essay_provider_factory: Callable[[str], EssayAnalysisProvider] | None = None,
+) -> FastAPI:
     """Build an app whose database and secret boundaries can be isolated in tests."""
 
     settings = settings or Settings.from_env()
@@ -55,12 +65,16 @@ def create_app(settings: Settings | None = None, secret_store: SecretStore | Non
         CORSMiddleware,
         allow_origins=allowed_origins,
         allow_credentials=False,
-        allow_methods=["GET", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["X-PathAid-Token", "Content-Type"],
     )
     application.include_router(create_profile_router(database))
     application.include_router(create_saved_router(database))
     application.include_router(create_source_router(database))
+    application.include_router(create_document_router(database, secret_store))
+    application.include_router(create_essay_router(database, secret_store, essay_provider_factory))
+    application.include_router(create_settings_router(settings, secret_store))
+    application.include_router(create_home_router(database, secret_store))
 
     def get_db() -> Session:
         yield from database.session()
@@ -101,6 +115,7 @@ def create_app(settings: Settings | None = None, secret_store: SecretStore | Non
             "mode": "local_single_user",
             "database": "sqlite",
             "extension_configured": settings.extension_origin is not None,
+            "extension_id": settings.extension_id,
         }
 
     def require_extension(
@@ -125,7 +140,7 @@ def create_app(settings: Settings | None = None, secret_store: SecretStore | Non
 
         return {"status": "connected"}
 
-    application.include_router(create_extension_router(database, require_extension))
+    application.include_router(create_extension_router(database, require_extension, secret_store))
 
     return application
 

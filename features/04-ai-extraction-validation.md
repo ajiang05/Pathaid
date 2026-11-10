@@ -35,3 +35,10 @@ deterministic validation decides whether the result is safe to activate.
 - Automatic consideration requires exact retained evidence. Sweepstakes also
   require a validated public official-rules URL and exact rules-link evidence;
   neither classification may be inferred from an opportunity's title.
+
+## Implementation status
+
+Schema 1.2 extracts separate automation and AI-assistance policy outcomes.
+Blocked outcomes require exact retained evidence, and deterministic validation
+additionally requires explicit prohibition language rather than a vague rules
+reference. The active immutable scholarship version carries the validated flags.
