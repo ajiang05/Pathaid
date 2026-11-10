@@ -53,7 +53,9 @@ bootstrap() {
   "${PYTHON_BIN}" -m pip install --upgrade pip
   "${PYTHON_BIN}" -m pip install -r "${BACKEND_ROOT}/requirements.txt"
   npm --prefix "${FRONTEND_ROOT}" ci
+  mkdir -p "${FRONTEND_ROOT}/public"
   npm --prefix "${FRONTEND_ROOT}" run build
+  "${SCRIPT_DIR}/prepare_frontend_runtime"
   (
     cd "${BACKEND_ROOT}"
     "${PYTHON_BIN}" -m app.local_admin init
@@ -108,7 +110,7 @@ start_services() {
   fi
   (
     cd "${FRONTEND_ROOT}"
-    nohup npm run start -- --hostname 127.0.0.1 --port 3000 >"${run_dir}/web.log" 2>&1 &
+    HOSTNAME=127.0.0.1 PORT=3000 nohup node .next/standalone/server.js >"${run_dir}/web.log" 2>&1 &
     echo "$!" >"${run_dir}/web.pid"
   )
   for _ in {1..60}; do
