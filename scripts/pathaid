@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+# Local macOS developer launcher for PathAid's single-user MVP.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BACKEND_ROOT="${PROJECT_ROOT}/backend"
+FRONTEND_ROOT="${PROJECT_ROOT}/frontend"
+PYTHON_BIN="${BACKEND_ROOT}/.venv/bin/python"
+
+usage() {
+  echo "Usage: scripts/pathaid {bootstrap|start|stop|status|configure-extension|copy-extension-token|set-gemini-key|backup|restore|reset} [argument]"
+}
+
+require_bootstrap() {
+  if [[ ! -x "${PYTHON_BIN}" || ! -d "${FRONTEND_ROOT}/node_modules" ]]; then
+    echo "PathAid is not bootstrapped. Run: scripts/pathaid bootstrap" >&2
+    exit 1
+  fi
+}
+
+data_dir() {
+  (
+    cd "${BACKEND_ROOT}"
+    "${PYTHON_BIN}" -c 'from app.config import default_data_dir; print(default_data_dir())'
+  )
+}
+
+runtime_dir() {
+  echo "$(data_dir)/run"
+}
+
+pid_is_live() {
+  local pid_file="$1"
+  [[ -f "${pid_file}" ]] || return 1
+  local pid
+  pid="$(<"${pid_file}")"
+  [[ "${pid}" =~ ^[0-9]+$ ]] && kill -0 "${pid}" 2>/dev/null
+}
+
+bootstrap() {
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "The MVP bootstrap currently supports macOS only." >&2
+    exit 1
+  fi
+  for command_name in python3 node npm curl; do
+    command -v "${command_name}" >/dev/null || { echo "Missing required command: ${command_name}" >&2; exit 1; }
+  done
+  if [[ ! -x "${PYTHON_BIN}" ]]; then
+    python3 -m venv "${BACKEND_ROOT}/.venv"
+  fi
+  "${PYTHON_BIN}" -m pip install --upgrade pip
+  "${PYTHON_BIN}" -m pip install -r "${BACKEND_ROOT}/requirements.txt"
+  npm --prefix "${FRONTEND_ROOT}" ci
+  npm --prefix "${FRONTEND_ROOT}" run build
+  (
+    cd "${BACKEND_ROOT}"
+    "${PYTHON_BIN}" -m app.local_admin init
+  )
+  echo "Bootstrap complete. Run: scripts/pathaid start"
+}
+
+start_services() {
+  require_bootstrap
+  local run_dir
+  run_dir="$(runtime_dir)"
+  mkdir -p "${run_dir}"
+  chmod 700 "${run_dir}"
+  if pid_is_live "${run_dir}/api.pid" || pid_is_live "${run_dir}/web.pid"; then
+    echo "PathAid is already running. Run: scripts/pathaid status"
+    exit 0
+  fi
+  if curl --fail --silent http://127.0.0.1:8000/health/live >/dev/null 2>&1; then
+    echo "Port 8000 is already serving another process. Stop it before starting PathAid." >&2
+    exit 1
+  fi
+  if curl --fail --silent http://127.0.0.1:3000 >/dev/null 2>&1; then
+    echo "Port 3000 is already serving another process. Stop it before starting PathAid." >&2
+    exit 1
+  fi
+  (
+    cd "${BACKEND_ROOT}"
+    "${PYTHON_BIN}" -m app.local_admin init
+  )
+  local extension_id_file extension_id
+  extension_id_file="$(data_dir)/extension-id"
+  extension_id=""
+  if [[ -f "${extension_id_file}" ]]; then
+    extension_id="$(<"${extension_id_file}")"
+  fi
+  (
+    cd "${BACKEND_ROOT}"
+    if [[ -n "${extension_id}" ]]; then
+      export PATHAID_EXTENSION_ID="${extension_id}"
+    fi
+    nohup "${PYTHON_BIN}" -m app >"${run_dir}/api.log" 2>&1 &
+    echo "$!" >"${run_dir}/api.pid"
+  )
+  for _ in {1..60}; do
+    if curl --fail --silent http://127.0.0.1:8000/health/ready >/dev/null; then break; fi
+    sleep 0.25
+  done
+  if ! curl --fail --silent http://127.0.0.1:8000/health/ready >/dev/null; then
+    echo "The API did not become ready. See ${run_dir}/api.log" >&2
+    stop_services
+    exit 1
+  fi
+  (
+    cd "${FRONTEND_ROOT}"
+    nohup npm run start -- --hostname 127.0.0.1 --port 3000 >"${run_dir}/web.log" 2>&1 &
+    echo "$!" >"${run_dir}/web.pid"
+  )
+  for _ in {1..60}; do
+    if curl --fail --silent http://127.0.0.1:3000/health/live >/dev/null; then break; fi
+    sleep 0.25
+  done
+  if ! curl --fail --silent http://127.0.0.1:3000/health/live >/dev/null; then
+    echo "The web interface did not become ready. See ${run_dir}/web.log" >&2
+    stop_services
+    exit 1
+  fi
+  echo "PathAid is ready at http://127.0.0.1:3000"
+  echo "The scheduler has performed its launch-time due-scan catch-up check."
+}
+
+stop_one() {
+  local name="$1" pid_file="$2"
+  if ! pid_is_live "${pid_file}"; then
+    rm -f "${pid_file}"
+    return
+  fi
+  local pid
+  pid="$(<"${pid_file}")"
+  kill "${pid}"
+  for _ in {1..40}; do
+    if ! kill -0 "${pid}" 2>/dev/null; then break; fi
+    sleep 0.25
+  done
+  if kill -0 "${pid}" 2>/dev/null; then
+    echo "${name} did not stop cleanly (PID ${pid})." >&2
+    exit 1
+  fi
+  rm -f "${pid_file}"
+}
+
+stop_services() {
+  require_bootstrap
+  local run_dir
+  run_dir="$(runtime_dir)"
+  stop_one "web" "${run_dir}/web.pid"
+  stop_one "api" "${run_dir}/api.pid"
+  echo "PathAid stopped."
+}
+
+status_services() {
+  require_bootstrap
+  local run_dir
+  run_dir="$(runtime_dir)"
+  if pid_is_live "${run_dir}/api.pid"; then echo "API: running"; else echo "API: stopped"; fi
+  if pid_is_live "${run_dir}/web.pid"; then echo "Web: running"; else echo "Web: stopped"; fi
+  (
+    cd "${BACKEND_ROOT}"
+    "${PYTHON_BIN}" -m app.local_admin status
+  )
+}
+
+configure_extension() {
+  require_bootstrap
+  local extension_id="${1:-}"
+  if [[ ! "${extension_id}" =~ ^[a-p]{32}$ ]]; then
+    echo "Provide the 32-character extension ID shown by chrome://extensions." >&2
+    exit 1
+  fi
+  local destination
+  destination="$(data_dir)/extension-id"
+  printf '%s\n' "${extension_id}" >"${destination}"
+  chmod 600 "${destination}"
+  echo "Extension ID saved. Restart PathAid, then run: scripts/pathaid copy-extension-token"
+}
+
+admin_command() {
+  require_bootstrap
+  (
+    cd "${BACKEND_ROOT}"
+    "${PYTHON_BIN}" -m app.local_admin "$@"
+  )
+}
+
+reset_services() {
+  require_bootstrap
+  local resolved_data confirmation
+  resolved_data="$(data_dir)"
+  echo "Factory reset will remove only:"
+  echo "  SQLite: ${resolved_data}/pathaid.sqlite3 (plus WAL/SHM)"
+  echo "  Managed documents: ${resolved_data}/documents/*.vault"
+  echo "  Keychain items: Gemini key, extension token, document-encryption key"
+  echo "It preserves backup files and unexpected files in the data directory."
+  read -r -p "Type RESET to continue: " confirmation
+  if [[ "${confirmation}" != "RESET" ]]; then
+    echo "Reset cancelled."
+    exit 1
+  fi
+  stop_services
+  admin_command reset --yes
+}
+
+command_name="${1:-}"
+shift || true
+case "${command_name}" in
+  bootstrap) bootstrap ;;
+  start) start_services ;;
+  stop) stop_services ;;
+  status) status_services ;;
+  configure-extension) configure_extension "${1:-}" ;;
+  copy-extension-token) admin_command copy-extension-token ;;
+  set-gemini-key) admin_command set-gemini-key ;;
+  backup) [[ $# -eq 1 ]] || { usage; exit 1; }; admin_command backup "$1" ;;
+  restore) [[ $# -eq 1 ]] || { usage; exit 1; }; admin_command restore "$1" ;;
+  reset) reset_services ;;
+  *) usage; exit 1 ;;
+esac

@@ -76,8 +76,10 @@ def build_offline_report(extraction_predictions: dict[str, ExtractedProgramDraft
             "command": "cd frontend && npm run test:e2e",
             "projects": ["desktop-chromium", "mobile-chromium"],
             "accessibility_standard": "WCAG 2.2 AA tags via axe-core",
-            "usability_sessions_completed": 0,
-            "usability_sessions_required": 5,
+            # The old five-session gate described the removed hosted/account
+            # product. Keep the cancellation explicit so this report cannot
+            # imply that completed local-first release work is still pending.
+            "legacy_usability_gate": "cancelled; not an MVP requirement",
         },
     }
 

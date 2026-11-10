@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, ApiError, readable } from "@/lib/api";
-import type { Institution, ManualLead, Profile, SourceScope } from "@/types/api";
+import type { Institution, InstitutionSelection, ManualLead, Profile, SourceScope, SourceSuggestion } from "@/types/api";
 
 export default function SourcesPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -10,6 +10,7 @@ export default function SourcesPage() {
   const [leads, setLeads] = useState<ManualLead[]>([]);
   const [schools, setSchools] = useState<Institution[]>([]);
   const [schoolQuery, setSchoolQuery] = useState("");
+  const [sourceSuggestions, setSourceSuggestions] = useState<SourceSuggestion[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [scope, setScope] = useState({ name: "", ownership: "school", adapter: "generic", canonical_url: "", allowed_path_prefix: "/", max_depth: 1, page_budget: 25, requests_per_minute: 10, scan_interval_hours: 24 });
@@ -42,10 +43,19 @@ export default function SourcesPage() {
 
   async function selectSchool(item: Institution) {
     try {
-      await api(`/api/institutions/${item.unit_id}/select`, { method: "POST" });
-      setMessage(`${item.name} is now your current school. Confirm its scholarship directories separately.`);
+      const selected = await api<InstitutionSelection>(`/api/institutions/${item.unit_id}/select`, { method: "POST" });
+      setSourceSuggestions(selected.source_suggestions);
+      setMessage(`${item.name} is now your current school. Review a suggested directory or enter another official URL.`);
       setSchools([]); setSchoolQuery(""); await load();
     } catch (caught) { report(caught); }
+  }
+
+  function selectSuggestion(suggestion: SourceSuggestion) {
+    setScope(current => ({
+      ...current, name: suggestion.name, ownership: "school", adapter: suggestion.adapter,
+      canonical_url: suggestion.canonical_url, allowed_path_prefix: suggestion.allowed_path_prefix,
+    }));
+    document.getElementById("source-proposal")?.scrollIntoView({ behavior: "smooth" });
   }
 
   async function proposeScope(event: FormEvent) {
@@ -108,7 +118,8 @@ export default function SourcesPage() {
       {schools.length > 0 && <div className="institution-results">{schools.map(item => <article key={item.unit_id}><div><strong>{item.name}</strong><span>{item.city}, {item.state} · NCES {item.source_year}</span></div><button className="button button-outline" onClick={() => selectSchool(item)}>Select</button></article>)}</div>}
     </section>
 
-    <section className="form-card source-section"><div className="form-card-heading"><p className="eyebrow">Bounded automation</p><h2>Propose a directory</h2><p className="field-help">Saving is not approval. You must inspect and confirm the exact boundary before any scan can run.</p></div>
+    <section className="form-card source-section" id="source-proposal"><div className="form-card-heading"><p className="eyebrow">Bounded automation</p><h2>Propose a directory</h2><p className="field-help">Saving is not approval. You must inspect and confirm the exact boundary before any scan can run.</p></div>
+      {sourceSuggestions.length > 0 && <div className="suggestion-list" aria-label="Likely official directory paths"><p>Unverified paths on the school&apos;s official host:</p>{sourceSuggestions.map(suggestion => <button type="button" className="button button-outline" key={suggestion.canonical_url} onClick={() => selectSuggestion(suggestion)}>Use {suggestion.allowed_path_prefix}</button>)}</div>}
       <form className="source-form" onSubmit={proposeScope}>
         <label>Source name<input value={scope.name} required onChange={event => setScope({ ...scope, name: event.target.value })} /></label>
         <label>Ownership<select value={scope.ownership} onChange={event => setScope({ ...scope, ownership: event.target.value })}><option value="school">Current school</option><option value="sponsor">Scholarship sponsor</option></select></label>

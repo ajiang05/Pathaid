@@ -60,6 +60,16 @@
     });
     return descriptors.slice(0, 200);
   }
+  function attachmentTargets() {
+    return [...registry.entries()].slice(0, 50).flatMap(([id, elements]) => {
+      const element = elements.find(item => control(item) === "file");
+      if (!element) return [];
+      return [{
+        fieldId: id, control: "file", label: label(element), name: element.name || "",
+        visible: visible(element) && !protectedField(element), accept: element.accept || "",
+      }];
+    });
+  }
   function normalized(value) {
     return String(value).normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "").toLowerCase();
   }
@@ -109,8 +119,38 @@
     }
     return { filled: count, requested: Array.isArray(plan) ? Math.min(plan.length, 200) : 0 };
   }
+  function attach(message) {
+    const fields = (registry.get(message.fieldId) || []).filter(element => element.isConnected);
+    if (fields.length !== 1 || control(fields[0]) !== "file" || !visible(fields[0]) || protectedField(fields[0])) return false;
+    const element = fields[0];
+    const accept = (element.accept || "").toLowerCase();
+    // Infer legacy PDF messages by filename; current worker messages always
+    // carry the response media type explicitly.
+    const contentType = typeof message.contentType === "string"
+      ? message.contentType.toLowerCase()
+      : String(message.filename || "").toLowerCase().endsWith(".pdf") ? "application/pdf" : "";
+    const isPdf = contentType === "application/pdf";
+    const isText = contentType === "text/plain";
+    if (!isPdf && !isText) return false;
+    if (accept && isPdf && !accept.includes("application/pdf") && !accept.includes(".pdf")) return false;
+    if (accept && isText && !accept.includes("text/plain") && !accept.includes(".txt")) return false;
+    if (typeof message.base64 !== "string" || typeof message.filename !== "string") return false;
+    const binary = atob(message.base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([bytes], message.filename, { type: contentType }));
+    element.files = transfer.files;
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+    return element.files?.length === 1;
+  }
   chrome.runtime.onMessage.addListener((message, _sender, respond) => {
-    if (message?.type === "PATHAID_INSPECT_GENERIC") respond({ ok: true, descriptors: inspect() });
+    if (message?.type === "PATHAID_INSPECT_GENERIC") {
+      const descriptors = inspect();
+      respond({ ok: true, descriptors, attachmentTargets: attachmentTargets() });
+    }
     else if (message?.type === "PATHAID_FILL_GENERIC") respond({ ok: true, result: fill(message.plan) });
+    else if (message?.type === "PATHAID_ATTACH_DOCUMENT") respond({ ok: true, attached: attach(message) });
   });
 })();

@@ -7,11 +7,14 @@ import getpass
 import subprocess
 from pathlib import Path
 
+from sqlalchemy import select
+
 from .config import Settings
 from .database import Database
 from .local_data import backup_database, reset_local_data, restore_database, upgrade_database, validate_database
-from .secrets import GEMINI_API_KEY, KeychainSecretStore, get_or_create_document_key, get_or_create_extension_token
+from .secrets import DOCUMENT_KEY, EXTENSION_TOKEN, GEMINI_API_KEY, KeychainSecretStore, get_or_create_document_key, get_or_create_extension_token
 from .scheduler import gemini_provider_factory, run_scheduler_cycle
+from .models import DiscoveryJob
 from .source_registry import import_ipeds_directory
 from .source_scanning import execute_registered_scan
 
@@ -20,9 +23,9 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Manage local PathAid data")
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("init", help="create secrets and migrate SQLite")
-    backup = commands.add_parser("backup", help="create a consistent database backup")
+    backup = commands.add_parser("backup", help="create a versioned encrypted backup")
     backup.add_argument("destination", type=Path)
-    restore = commands.add_parser("restore", help="restore a verified database backup")
+    restore = commands.add_parser("restore", help="restore a verified encrypted backup")
     restore.add_argument("source", type=Path)
     reset = commands.add_parser("reset", help="delete local PathAid data and secrets")
     reset.add_argument("--yes", action="store_true", help="confirm destructive reset")
@@ -48,10 +51,15 @@ def main(argv: list[str] | None = None) -> int:
         get_or_create_document_key(store)
         print("PathAid local data and Keychain secrets are initialized.")
     elif args.command == "backup":
-        backup_database(settings.database_path, args.destination)
+        passphrase = getpass.getpass("New backup passphrase (12+ characters): ")
+        confirmation = getpass.getpass("Confirm backup passphrase: ")
+        if passphrase != confirmation:
+            raise SystemExit("Backup passphrases do not match")
+        backup_database(settings.database_path, args.destination, passphrase=passphrase)
         print(f"Backup created at {args.destination.expanduser().resolve()}")
     elif args.command == "restore":
-        restore_database(args.source, settings.database_path)
+        passphrase = getpass.getpass("Backup passphrase: ")
+        restore_database(args.source, settings.database_path, passphrase=passphrase)
         print("Backup restored.")
     elif args.command == "reset":
         reset_local_data(settings, store, confirmed=args.yes)
@@ -67,7 +75,20 @@ def main(argv: list[str] | None = None) -> int:
         print("Extension token copied to the clipboard. It was not printed.")
     elif args.command == "status":
         validate_database(settings.database_path)
-        print("PathAid database is current and passes its integrity check.")
+        database = Database(settings)
+        try:
+            with database.sessions() as db:
+                latest_job = db.scalar(select(DiscoveryJob).order_by(DiscoveryJob.created_at.desc()).limit(1))
+        finally:
+            database.close()
+        print("Database: current and integrity-checked")
+        print(f"Gemini: {'configured' if store.get(GEMINI_API_KEY) else 'not configured'}")
+        print(f"Extension token: {'available' if store.get(EXTENSION_TOKEN) else 'missing'}")
+        print(f"Document vault key: {'available' if store.get(DOCUMENT_KEY) else 'missing'}")
+        if latest_job is None:
+            print("Latest discovery job: none")
+        else:
+            print(f"Latest discovery job: {latest_job.status} ({latest_job.stage})")
     elif args.command == "import-institutions":
         upgrade_database(settings)
         database = Database(settings)

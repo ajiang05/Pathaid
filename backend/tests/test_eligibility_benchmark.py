@@ -64,7 +64,7 @@ def test_offline_report_distinguishes_measurements_from_pending_work():
     assert report["frontend"]["browser_tests"] == "implemented; run separately"
     assert report["frontend"]["command"] == "cd frontend && npm run test:e2e"
     assert report["frontend"]["projects"] == ["desktop-chromium", "mobile-chromium"]
-    assert report["frontend"]["usability_sessions_completed"] == 0
+    assert report["frontend"]["legacy_usability_gate"] == "cancelled; not an MVP requirement"
 
 
 def test_supplied_extraction_artifact_reports_explicit_denominators(tmp_path):

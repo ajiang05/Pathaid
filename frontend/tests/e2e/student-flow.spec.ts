@@ -43,6 +43,7 @@ async function fulfillApi(route: Route) {
     }
     return route.fulfill({ json: profile });
   }
+  if (path === "/api/home-summary") return route.fulfill({ json: { profile_completeness: completeness, active_sources: 1, paused_sources: 0, due_sources: 0, active_scholarships: 4, last_success_at: "2026-11-01T12:00:00Z", latest_job: { status: "succeeded", stage: "complete", error_code: null, updated_at: "2026-11-01T12:00:00Z" }, alerts: [] } });
   if (path === "/api/matches") return route.fulfill({ json: matches });
   return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
 }
@@ -101,6 +102,58 @@ test("discover groups deterministic matches without inline questions", async ({ 
   await expect(page.getByRole("textbox")).toHaveCount(0);
 });
 
+test("discover detail shows evidence and save/apply never submits", async ({ page, context }) => {
+  await page.unroute("**/api/**");
+  let savedStatus: "not_started" | "in_progress" | null = null;
+  await context.route("https://example.org/apply", route => route.fulfill({
+    contentType: "text/html", body: "<h1>Official application fixture</h1><button>Submit application</button>",
+  }));
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/matches") return route.fulfill({ json: matches });
+    if (path === "/api/local/status") return route.fulfill({ json: { mode: "local_single_user", database: "sqlite", extension_configured: false, extension_id: null } });
+    if (path === "/api/scholarships/strong-1" && request.method() === "GET") return route.fulfill({ json: {
+      scholarship_id: "strong-1", name: "Engineering Scholars Award",
+      description: "Supports undergraduate engineering students.", sponsor: "Example Foundation",
+      award: "$2,500", deadline: "2027-03-15", availability: "verified_open",
+      application_process: "separate_application", application_url: "https://example.org/apply",
+      official_rules_url: null, source_url: "https://example.org/scholarship",
+      source_freshness: "2026-11-01T12:00:00Z", match_label: "Strong match",
+      coverage_complete: true,
+      criteria: [{ field: "gpa", operator: "gte", truth: "pass", reason: "gpa passes this requirement.", answerable: true, evidence: { snapshot_id: "snapshot-1", excerpt: "Applicants must have a 3.0 GPA." } }],
+      unknown_fields: [], unresolved_conditions: [],
+      selection_factors: [{ description: "Community service is considered.", evidence: { snapshot_id: "snapshot-1", excerpt: "Community service is considered." } }],
+      checklist: [{ label: "Transcript", required: true, evidence: { snapshot_id: "snapshot-1", excerpt: "Upload a transcript." } }],
+      coverage: { national: true, states: [], institutions: [] },
+      automation_policy: "unknown", ai_assistance_policy: "unknown", saved_status: savedStatus,
+    } });
+    if (path === "/api/saved-scholarships/strong-1" && request.method() === "PUT") {
+      savedStatus = request.postDataJSON().status;
+      return route.fulfill({ json: { scholarship_id: "strong-1", status: savedStatus } });
+    }
+    return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
+  });
+
+  await page.goto("/discover");
+  await page.locator("article", { hasText: "Engineering Scholars Award" }).getByRole("link", { name: "View details" }).click();
+  await expect(page).toHaveURL(/\/scholarships\/strong-1$/);
+  await expect(page.getByRole("heading", { name: "Engineering Scholars Award" })).toBeVisible();
+  await expect(page.getByText("Applicants must have a 3.0 GPA.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Application materials" })).toBeVisible();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved as Not started.");
+  expect(savedStatus).toBe("not_started");
+
+  const popupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Apply" }).click();
+  const popup = await popupPromise;
+  await expect(popup.getByRole("heading", { name: "Official application fixture" })).toBeVisible();
+  await expect(popup.getByRole("button", { name: "Submit application" })).toBeVisible();
+  expect(savedStatus).toBe("in_progress");
+  await popup.close();
+});
+
 test("save persists a scholarship into the three-state saved workflow", async ({ page }) => {
   await page.unroute("**/api/**");
   let savedStatus: "not_started" | "in_progress" | "already_applied" | null = null;
@@ -156,7 +209,7 @@ test("source registry requires confirmation and keeps manual leads isolated", as
     if (path === "/api/institutions") return route.fulfill({ json: [{ unit_id: "166629", name: "University of Massachusetts Amherst", aliases: ["UMass"], city: "Amherst", state: "MA", website_url: "https://www.umass.edu/", source: "NCES IPEDS", source_year: 2025 }] });
     if (path === "/api/institutions/166629/select") {
       localProfile = { ...localProfile, fields: { ...localProfile.fields, school_id: "166629", school: "University of Massachusetts Amherst", school_city: "Amherst", school_state: "MA" } };
-      return route.fulfill({ json: { changed: true, school_revision: 2 } });
+      return route.fulfill({ json: { changed: true, school_revision: 2, institution: { unit_id: "166629", name: "University of Massachusetts Amherst" }, source_suggestions: [{ name: "UMass scholarships", canonical_url: "https://www.umass.edu/financialaid/scholarships", allowed_path_prefix: "/financialaid", adapter: "generic" }] } });
     }
     if (path === "/api/sources" && request.method() === "GET") return route.fulfill({ json: sourceItems });
     if (path === "/api/sources" && request.method() === "POST") {
@@ -214,4 +267,51 @@ test("source registry requires confirmation and keeps manual leads isolated", as
   await page.getByRole("button", { name: "Save lead" }).click();
   await expect(page.getByText("Lead saved as one URL. Its surrounding domain was not approved.")).toBeVisible();
   await expect(page.locator(".source-card")).toHaveCount(1);
+});
+
+test("settings saves secrets and downloads only an encrypted backup", async ({ page }) => {
+  await page.unroute("**/api/**");
+  let geminiConfigured = false;
+  await page.route("**/api/**", async route => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/settings/status") return route.fulfill({ json: {
+      gemini_configured: geminiConfigured,
+      extension_token_available: true,
+      document_vault_key_available: true,
+      extension_configured: true,
+      extension_id: "abcdefghijklmnopabcdefghijklmnop",
+      backup_format: "AES-256-GCM / scrypt / version 1",
+      backup_excludes: ["Keychain secrets", "résumé and transcript ciphertext"],
+    } });
+    if (path === "/api/settings/gemini-key" && request.method() === "PUT") {
+      expect(request.postDataJSON().key).toBe("test-gemini-key");
+      geminiConfigured = true;
+      return route.fulfill({ json: { configured: true } });
+    }
+    if (path === "/api/settings/backup" && request.method() === "POST") {
+      expect(request.postDataJSON().passphrase).toBe("correct horse battery staple");
+      return route.fulfill({
+        body: Buffer.from("PATHAID-BACKUP\0encrypted"),
+        contentType: "application/octet-stream",
+        headers: { "Content-Disposition": 'attachment; filename="pathaid-test.pathaid-backup"' },
+      });
+    }
+    return route.fulfill({ status: 404, json: { detail: "Not mocked" } });
+  });
+
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await page.getByLabel("New Gemini API key").fill("test-gemini-key");
+  await page.getByRole("button", { name: "Save key in Keychain" }).click();
+  await expect(page.getByRole("status")).toHaveText("Gemini key saved in macOS Keychain.");
+  await expect(page.getByLabel("New Gemini API key")).toHaveValue("");
+
+  await page.getByLabel("Backup passphrase").fill("correct horse battery staple");
+  await page.getByLabel("Confirm passphrase").fill("correct horse battery staple");
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download encrypted backup" }).click();
+  await expect((await download).suggestedFilename()).toBe("pathaid-test.pathaid-backup");
+  await expect(page.getByRole("status")).toContainText("Encrypted backup downloaded");
+  await expect(page.getByLabel("Backup passphrase")).toHaveValue("");
 });

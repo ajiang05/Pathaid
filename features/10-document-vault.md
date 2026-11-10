@@ -26,3 +26,18 @@ one deliberately selected file at a time.
 - Wrong-type/ambiguous file controls remain untouched.
 - Reset removes encrypted files and associated Keychain material after explicit
   destructive confirmation.
+
+## Implementation status
+
+The local vault encrypts one current résumé and transcript with AES-256-GCM.
+The random 256-bit key is stored through the macOS Keychain abstraction;
+SQLite holds only filename, type, size, hash, and ciphertext filename metadata.
+Managed ciphertext lives under the private app-data document directory, is
+replaced without retaining old variants, and is excluded from SQLite backups.
+
+The extension recognizes only exact résumé/transcript file labels. Metadata is
+shown during preview, but decryption occurs only after the student clicks that
+specific **Attach** button. The backend repeats scholarship/origin/policy checks,
+the runtime validates a visible PDF-compatible file input, and no submit action
+exists. Full reset removes exact managed `.vault` files and the Keychain key
+while preserving unexpected files.

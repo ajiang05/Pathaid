@@ -41,8 +41,8 @@ The native entrypoint always binds to `127.0.0.1`.
 ```bash
 .venv/bin/python -m app.local_admin status
 .venv/bin/python -m app.local_admin set-gemini-key
-.venv/bin/python -m app.local_admin backup /absolute/path/backup.sqlite3
-.venv/bin/python -m app.local_admin restore /absolute/path/backup.sqlite3
+.venv/bin/python -m app.local_admin backup /absolute/path/backup.pathaid-backup
+.venv/bin/python -m app.local_admin restore /absolute/path/backup.pathaid-backup
 .venv/bin/python -m app.local_admin reset --yes
 ```
 

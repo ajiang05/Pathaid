@@ -11,7 +11,7 @@ from typing import Annotated, Literal, TypeAlias
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-EXTRACTION_SCHEMA_VERSION = "1.1.0"
+EXTRACTION_SCHEMA_VERSION = "1.3.0"
 Category = Literal["scholarships", "grants", "food", "emergency", "housing"]
 Operator = Literal["eq", "in", "contains", "gt", "gte", "lt", "lte"]
 RuleValue: TypeAlias = str | int | float | bool | list[str]
@@ -97,6 +97,7 @@ class ExtractedProgramDraft(StrictModel):
     """Complete model output proposed for deterministic validation."""
 
     name: str = Field(min_length=1, max_length=240)
+    sponsor_name: str | None = Field(default=None, min_length=1, max_length=240)
     description: str = Field(min_length=1)
     categories: list[Category] = Field(min_length=1)
     coverage: CoverageDraft
@@ -117,6 +118,12 @@ class ExtractedProgramDraft(StrictModel):
     application_process_evidence: EvidenceReference | None
     official_rules_url: str | None
     official_rules_evidence: EvidenceReference | None
+    # Legacy 1.1 records default safely. New extraction instructions require an
+    # explicit classification backed by exact evidence when blocked.
+    automation_policy: Literal["allowed", "blocked", "unknown"] = "unknown"
+    automation_policy_evidence: EvidenceReference | None = None
+    ai_assistance_policy: Literal["allowed", "blocked", "unknown"] = "unknown"
+    ai_assistance_policy_evidence: EvidenceReference | None = None
     unresolved_conditions: list[UnresolvedCondition]
 
     @field_validator("categories")
@@ -146,6 +153,16 @@ class ExtractedProgramDraft(StrictModel):
             self.official_rules_url is None or self.official_rules_evidence is None
         ):
             raise ValueError("sweepstakes require an official rules URL and evidence")
+        return self
+
+    @model_validator(mode="after")
+    def require_blocking_policy_evidence(self) -> "ExtractedProgramDraft":
+        """A prohibition can never be inferred without retained exact text."""
+
+        if self.automation_policy == "blocked" and self.automation_policy_evidence is None:
+            raise ValueError("blocked automation policy requires evidence")
+        if self.ai_assistance_policy == "blocked" and self.ai_assistance_policy_evidence is None:
+            raise ValueError("blocked AI assistance policy requires evidence")
         return self
 
 

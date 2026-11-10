@@ -18,6 +18,8 @@ test("generic extension runtime fills only approved safe fields and never submit
       </fieldset>
       <label>Citizenship status <select name="citizenship"><option value="">Choose</option><option value="us_citizen">U.S. citizen</option></select></label>
       <label><input id="certify" type="checkbox" name="certify"> I certify this application is true</label>
+      <label>Upload résumé <input type="file" name="resume" accept="application/pdf"></label>
+      <label>Supporting document <input type="file" name="supporting" accept="application/pdf"></label>
       <input type="hidden" name="anti_bot" value="leave-empty">
       <button type="submit">Submit application</button>
     </form>
@@ -36,6 +38,8 @@ test("generic extension runtime fills only approved safe fields and never submit
   expect(inspection.ok).toBe(true);
   const descriptors = inspection.descriptors as Array<Record<string, unknown>>;
   expect(descriptors.every(item => !("value" in item))).toBe(true);
+  const attachmentTargets = inspection.attachmentTargets as Array<Record<string, unknown>>;
+  expect(attachmentTargets.map(item => item.name)).toEqual(["resume", "supporting"]);
   const byName = Object.fromEntries(descriptors.map(item => [item.name, item]));
 
   const fillResult = await page.evaluate(async ({ descriptorsByName }) => {
@@ -56,5 +60,19 @@ test("generic extension runtime fills only approved safe fields and never submit
   await expect(page.locator('input[value="full_time"]')).toBeChecked();
   await expect(page.locator('select[name="citizenship"]')).toHaveValue("us_citizen");
   await expect(page.locator("#certify")).not.toBeChecked();
+  expect(await page.evaluate(() => (window as typeof window & { submitCount: number }).submitCount)).toBe(0);
+
+  const attachment = await page.evaluate(async ({ resumeField }) => {
+    const target = globalThis as typeof globalThis & { pathAidListener: RuntimeListener };
+    return new Promise<Record<string, unknown>>(resolve => target.pathAidListener({
+      type: "PATHAID_ATTACH_DOCUMENT", fieldId: resumeField.fieldId,
+      filename: "resume.pdf", base64: btoa("%PDF-1.7 test"),
+    }, {}, resolve));
+  }, { resumeField: byName.resume });
+  expect(attachment).toEqual({ ok: true, attached: true });
+  expect(await page.locator('input[name="resume"]').evaluate((element: HTMLInputElement) => ({
+    name: element.files?.[0]?.name, type: element.files?.[0]?.type,
+  }))).toEqual({ name: "resume.pdf", type: "application/pdf" });
+  expect(await page.locator('input[name="supporting"]').evaluate((element: HTMLInputElement) => element.files?.length)).toBe(0);
   expect(await page.evaluate(() => (window as typeof window & { submitCount: number }).submitCount)).toBe(0);
 });

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const links = [["/home", "Home"], ["/discover", "Discover"], ["/saved", "Saved"], ["/profile", "Profile"], ["/sources", "Sources"]];
+const links = [["/home", "Home"], ["/discover", "Discover"], ["/saved", "Saved"], ["/profile", "Profile"], ["/sources", "Sources"], ["/documents", "Documents"], ["/settings", "Settings"]];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

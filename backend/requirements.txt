@@ -6,6 +6,8 @@ SQLAlchemy>=2.0,<3
 alembic>=1.15,<2
 # macOS Keychain integration for API and encryption secrets.
 keyring>=25,<26
+# Authenticated encryption for the local résumé/transcript vault.
+cryptography>=45,<51
 # Retained temporarily by the reusable legacy extraction adapter during migration.
 openai>=2,<3
 # Gemini structured-output client used by Gemini extraction and recommendation adapters.

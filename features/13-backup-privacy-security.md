@@ -28,3 +28,18 @@ testable guarantees about what never leaves or enters a backup.
 - Logs from profile, extension, extraction, and document operations contain no
   seeded secret canaries.
 - Dependency and extension-permission checks run in CI.
+
+## Implemented backup design
+
+- `app.local_admin backup` creates a versioned `.pathaid-backup` archive using
+  a user-entered passphrase, scrypt key derivation, and AES-256-GCM authenticated
+  encryption. It refuses weak passphrases and existing destinations.
+- The archive contains one consistent SQLite snapshot. Keychain items, document
+  ciphertext, browser state, credentials, and caches are outside that snapshot
+  and are named in the versioned header's exclusion manifest.
+- Restore authenticates and decrypts into a private temporary file, validates
+  SQLite integrity and the exact Alembic schema, copies into a second temporary
+  database, and only then atomically replaces the live database.
+- Wrong passphrases, modified ciphertext, and incompatible format/schema
+  versions fail before the destination changes. Restore never alters Keychain
+  items or installs résumé/transcript files.

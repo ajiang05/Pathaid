@@ -27,3 +27,9 @@ unpacked extension, and verify the MVP without hosted infrastructure.
 - All release gates in `docs/MVP.md` pass.
 - Setup docs do not require PostgreSQL, Caddy, admin credentials, or a hosted
   domain.
+
+The offline release suite covers complete profile, source, discovery, detail,
+save/apply, settings/backup, and three-adapter no-submit browser workflows.
+Quota-limited live-provider and real-portal checks remain an explicit optional
+pre-release procedure in `docs/LIVE_SMOKE_TESTS.md`; they are never silently run
+by CI.

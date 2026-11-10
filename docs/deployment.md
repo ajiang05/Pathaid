@@ -1,9 +1,9 @@
 # Local runtime and packaging
 
 PathAid's MVP is a local macOS application, not a hosted deployment. The local
-foundation and private deterministic matching described here are implemented;
-later source, scheduler, extension, document, and packaging components remain
-tracked in [../plan.md](../plan.md).
+runtime, scheduler, extension, document vault, encrypted backup, and developer
+launcher described here are implemented. Remaining release evidence is tracked
+in [../plan.md](../plan.md).
 
 ## Runtime topology
 
@@ -19,15 +19,14 @@ tracked in [../plan.md](../plan.md).
 PostgreSQL, Caddy, TLS domains, public ingress, administrator credentials, and
 cloud container deployment are not MVP dependencies.
 
-## Current local startup
+## Local startup
 
 ```bash
-cd backend
-.venv/bin/python -m app.local_admin init
-.venv/bin/python -m app
+scripts/pathaid bootstrap
+scripts/pathaid start
 ```
 
-The final packaged startup order remains:
+The launcher implements this startup order:
 
 1. Resolve the fixed PathAid app-data directory.
 2. Load/create required Keychain entries.
@@ -35,7 +34,7 @@ The final packaged startup order remains:
 4. Start the loopback API and background worker.
 5. Start the local web interface.
 6. Enqueue at most one catch-up scan per overdue approved source.
-7. Report health and open the interface on explicit user request.
+7. Report health and the local interface URL.
 
 A failed migration prevents API/worker startup. A missing Gemini key disables
 AI-dependent extraction but does not prevent viewing existing data or matching.

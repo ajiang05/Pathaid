@@ -327,6 +327,90 @@ class SkippedScholarship(Base):
     skipped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class PortalMapping(Base):
+    """Student-corrected field mapping scoped to one portal form shape."""
+
+    __tablename__ = "portal_mappings"
+    __table_args__ = (
+        UniqueConstraint(
+            "portal_origin", "form_signature", "field_signature",
+            name="uq_portal_mapping_field",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    portal_origin: Mapped[str] = mapped_column(String(500), index=True)
+    form_signature: Mapped[str] = mapped_column(String(64), index=True)
+    field_signature: Mapped[str] = mapped_column(String(64))
+    profile_field: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class Document(Base):
+    """Non-secret metadata for one current encrypted managed document."""
+
+    __tablename__ = "documents"
+    __table_args__ = (
+        CheckConstraint("document_type IN ('resume', 'transcript')", name="ck_document_type"),
+        CheckConstraint("size_bytes > 0", name="ck_document_size"),
+    )
+
+    document_type: Mapped[str] = mapped_column(String(20), primary_key=True)
+    original_name: Mapped[str] = mapped_column(String(240))
+    media_type: Mapped[str] = mapped_column(String(100))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    encrypted_filename: Mapped[str] = mapped_column(String(80), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class Essay(Base):
+    """Student-authored essay text and local recommendation metadata."""
+
+    __tablename__ = "essays"
+    __table_args__ = (
+        CheckConstraint("word_count > 0", name="ck_essay_word_count"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    title: Mapped[str] = mapped_column(String(240), index=True)
+    original_prompt: Mapped[str] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)
+    tags: Mapped[list] = mapped_column(JSON, default=list)
+    themes: Mapped[list] = mapped_column(JSON, default=list)
+    word_count: Mapped[int] = mapped_column(Integer)
+    written_on: Mapped[date] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True
+    )
+    uses: Mapped[list["EssayUse"]] = relationship(
+        back_populates="essay", cascade="all, delete-orphan", order_by="EssayUse.used_at"
+    )
+
+
+class EssayUse(Base):
+    """History that records where the student chose to reuse an essay."""
+
+    __tablename__ = "essay_uses"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    essay_id: Mapped[str] = mapped_column(ForeignKey("essays.id", ondelete="CASCADE"), index=True)
+    scholarship_id: Mapped[str | None] = mapped_column(
+        ForeignKey("scholarships.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    scholarship_name: Mapped[str] = mapped_column(String(240))
+    destination_prompt: Mapped[str] = mapped_column(Text)
+    used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    essay: Mapped[Essay] = relationship(back_populates="uses")
+
+
 class ExtractionActivationAttempt(Base):
     """Append-only result of validating one provider extraction response."""
 

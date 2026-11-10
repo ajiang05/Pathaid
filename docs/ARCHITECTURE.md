@@ -207,7 +207,8 @@ snapshot and structured draft is idempotent.
 | `SelectionPreference` | Non-eligibility factor with evidence |
 | `SavedScholarship` | Not started/In progress/Already applied state |
 | `SkippedScholarship` | Stable ID plus material fingerprint used to decide reappearance |
-| `Essay` | Student-authored content and reuse metadata |
+| `Essay` | Student-authored content, prompt, tags, themes, and word count |
+| `EssayUse` | Prior scholarship reuse history for one essay |
 | `Document` | Encrypted-file metadata, type, hash, and current flag |
 | `PortalMapping` | User-corrected field mapping scoped by portal/form signature |
 | `AppSetting` | Non-secret local settings and schema version |
@@ -301,6 +302,31 @@ such as full-time enrollment. Since each institution defines its own General
 Application, custom questions and essays remain untouched unless a later learned
 mapping has been reviewed by the student.
 
+Kaleidoscope uses the same contract and runtime with a separate exact-question
+mapper. It deliberately distinguishes the saved current college from a sponsor's
+future or first-choice college question and refuses to infer the latter.
+
+Reviewed mapping corrections persist in `PortalMapping`, scoped by canonical
+portal origin, a SHA-256 form-metadata signature, and a SHA-256 field-metadata
+signature. Signatures contain control type, normalized label/name/autocomplete,
+required state, and stable order, but no current form answer or profile value.
+The extension retrieves and updates them only after repeating the authenticated
+In-progress scholarship/origin check. A changed form shape does not inherit an
+older mapping.
+
+Extraction schema 1.2 records distinct automation and AI-assistance policy
+flags. A blocked flag must quote retained evidence and pass deterministic
+explicit-prohibition matching. The extension context checks the active immutable
+version before inspection; a blocked automation policy returns only a safe
+reason and releases no profile values or learned mappings.
+
+Apply integration uses `externally_connectable` only for the two fixed local web
+origins. The web page sends a scholarship ID, never a destination URL. The
+extension creates an owned blank tab and opens the panel, while an authenticated
+backend preparation endpoint changes the saved state to In progress and returns
+the retained official URL for navigation. This prevents the local page from
+turning the extension into an arbitrary URL opener.
+
 ## 10. Documents, essays, and secrets
 
 Generate a random document-encryption key and store it through macOS Keychain.
@@ -308,10 +334,21 @@ Keep encrypted document bytes in the app data directory. Decrypt only for an
 explicit attachment action and clean temporary plaintext promptly. One current
 résumé and transcript are supported.
 
-Essays remain local except when the user enables Gemini analysis and rules allow
-it. Send only the content needed for recommendation/mismatch analysis. Show a
-data-handling notice appropriate to the configured Gemini tier. No endpoint or
-prompt may request generated replacement prose.
+The implemented vault uses AES-256-GCM with a random nonce for every managed
+copy. SQLite stores only non-secret metadata; ciphertext files live in the
+private `documents/` app-data directory and are excluded from SQLite backup.
+The extension requests plaintext over its authenticated loopback boundary only
+after a dedicated attachment click, transfers it directly to one exact inspected
+PDF file control, clears its worker byte buffer, and never writes a plaintext
+temporary file. Student essays remain SQLite text. For an exact essay-file
+control, the side panel requires the user to choose one essay and click Attach;
+the loopback API then releases a plain-text copy for that request only.
+
+Essays remain local except when the user enables Gemini analysis, acknowledges
+the configured tier's data-handling notice, and rules allow it. Local metadata
+matching always runs first. The provider schema permits only ranking rationale
+and mismatch references; it cannot return replacement prose. Provider failure
+falls back to the local result without blocking the application workflow.
 
 ## 11. Backup and reset
 

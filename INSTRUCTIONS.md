@@ -1,35 +1,45 @@
 # PathAid local setup and command guide
 
-Phases 1–4 and the initial extension foundation provide the local macOS backend,
-private profile, automated discovery, matching, saved workflow, and an
-authenticated Chrome side panel. Form preview/filling remains under active
-development; consult [plan.md](plan.md) for authoritative status.
+PathAid provides a local macOS backend, private profile, automated discovery,
+matching, saved workflow, document/essay library, and authenticated Chrome side
+panel. Consult [plan.md](plan.md) for authoritative release status.
 
 ## Prerequisites
 
 - macOS
 - Git
 - Python 3.14
-- Node.js/npm for the existing frontend development build
+- Node.js 22 and npm
 - Google Chrome for the unpacked extension
 
 PostgreSQL, Caddy, administrator credentials, and a hosted domain are no longer
 required.
 
-## Backend setup
+## One-command bootstrap and launcher
 
 From the repository root:
 
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-python -m app.local_admin init
+scripts/pathaid bootstrap
+scripts/pathaid start
 ```
 
-`init` creates the local SQLite schema and stores the extension-installation and
-future document-encryption keys in macOS Keychain. It does not print either key.
+Bootstrap creates `backend/.venv`, installs locked project dependency ranges,
+installs/builds the frontend, migrates SQLite, and creates installation/document
+keys in macOS Keychain without printing them. Start binds both services to
+loopback and immediately performs the scheduler's due-scan catch-up check.
+
+Useful launcher commands:
+
+```bash
+scripts/pathaid status
+scripts/pathaid stop
+scripts/pathaid set-gemini-key
+scripts/pathaid backup /absolute/path/pathaid.pathaid-backup
+scripts/pathaid restore /absolute/path/pathaid.pathaid-backup
+scripts/pathaid reset
+```
+
 By default, local data is placed under:
 
 ```text
@@ -42,20 +52,19 @@ By default, local data is placed under:
 2. Enable **Developer mode**.
 3. Select **Load unpacked** and choose this repository's `extension/` folder.
 4. Copy the extension ID shown by Chrome.
-5. Start the backend with that exact ID so CORS accepts only this extension:
+5. Save that exact ID so the API accepts only this extension, then restart:
 
 ```bash
-cd backend
-export PATHAID_EXTENSION_ID=PASTE_THE_32_CHARACTER_EXTENSION_ID
-.venv/bin/uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+scripts/pathaid configure-extension PASTE_THE_32_CHARACTER_EXTENSION_ID
+scripts/pathaid stop
+scripts/pathaid start
 ```
 
 In another terminal, copy the installation token from Keychain directly to the
 macOS clipboard. The command deliberately does not print the token:
 
 ```bash
-cd backend
-.venv/bin/python -m app.local_admin copy-extension-token
+scripts/pathaid copy-extension-token
 ```
 
 Click the PathAid toolbar icon, paste the token into the side panel, and select
@@ -69,8 +78,7 @@ restart the backend with the new ID; requests from any other origin fail closed.
 Save or replace the personal Gemini key without putting it in `.env`:
 
 ```bash
-cd backend
-.venv/bin/python -m app.local_admin set-gemini-key
+scripts/pathaid set-gemini-key
 ```
 
 The prompt hides input. The key is stored under the Keychain service
@@ -95,13 +103,12 @@ and import time. A newer HD file safely updates matching Unit IDs.
 
 ## Run one confirmed source
 
-The Sources screen queues **Scan now** for the future scheduler. During current
-development, run any confirmed generic, AcademicWorks, or Kaleidoscope source
-immediately with its displayed source ID:
+The Sources screen queues **Scan now** for the running local scheduler. For a
+one-cycle diagnostic while the API is stopped, use:
 
 ```bash
 cd backend
-.venv/bin/python -m app.local_admin scan-source SOURCE_UUID
+.venv/bin/python -m app.local_admin scheduler-once
 ```
 
 The scan checks `robots.txt`, exact host/path approval, depth, page budget, and
@@ -189,24 +196,26 @@ your Keychain or real local database.
 
 ## Backup and restore
 
-Stop the API before restore. Create a consistent SQLite recovery backup:
+Stop the API before restore. Create a versioned encrypted recovery backup. The
+command prompts twice for a new passphrase of at least 12 characters:
 
 ```bash
 cd backend
-.venv/bin/python -m app.local_admin backup /absolute/path/pathaid-backup.sqlite3
+.venv/bin/python -m app.local_admin backup /absolute/path/pathaid-backup.pathaid-backup
 ```
 
-The command refuses to overwrite an existing file. Restore a validated backup:
+The command refuses to overwrite an existing file. Restore prompts for that
+passphrase, authenticates the archive, and validates it before replacing SQLite:
 
 ```bash
-.venv/bin/python -m app.local_admin restore /absolute/path/pathaid-backup.sqlite3
+.venv/bin/python -m app.local_admin restore /absolute/path/pathaid-backup.pathaid-backup
 .venv/bin/python -m app.local_admin status
 ```
 
-Current backups are database recovery snapshots and are not encrypted. The live
-profile is local but is also not application-level encrypted. Encrypted portable
-backups and document exclusions arrive in Phase 6, so protect backup files as
-sensitive data.
+The backup includes the profile, scholarship/source history, essay bank, saved
+status, and portal mappings. It excludes macOS Keychain secrets, résumé and
+transcript ciphertext, browser data, portal credentials, and caches. Losing the
+backup passphrase makes the archive unrecoverable.
 
 ## Reset local data
 

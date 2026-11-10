@@ -209,6 +209,36 @@ def test_sweepstakes_evidence_and_official_rules_url_are_validated():
     assert "invalid_official_rules_url" in finding_codes(result)
 
 
+def test_policy_blocks_require_explicit_prohibition_language():
+    explicit_text = SOURCE + " Automated scripts are prohibited. Generative AI is not allowed."
+    data = proposal()
+    data.update({
+        "automation_policy": "blocked",
+        "automation_policy_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Automated scripts are prohibited.",
+        },
+        "ai_assistance_policy": "blocked",
+        "ai_assistance_policy_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Generative AI is not allowed.",
+        },
+    })
+    valid = validate_extracted_draft(
+        ExtractedProgramDraft.model_validate(data), Snapshot(source_text=explicit_text)
+    )
+    assert valid.is_valid
+
+    vague = proposal()
+    vague.update({
+        "automation_policy": "blocked",
+        "automation_policy_evidence": {
+            "snapshot_id": "snapshot-1", "excerpt": "Read the official rules.",
+        },
+    })
+    invalid = validate_extracted_draft(ExtractedProgramDraft.model_validate(vague), Snapshot())
+    assert not invalid.is_valid
+    assert "unsupported_policy_block" in finding_codes(invalid)
+
+
 def test_missing_named_timezone_is_visible_to_reviewers():
     """A deadline without source timezone context is retained with a warning."""
 

@@ -14,5 +14,8 @@
   },
   "side_panel": {
     "default_path": "sidepanel.html"
+  },
+  "externally_connectable": {
+    "matches": ["http://127.0.0.1:3000/*", "http://localhost:3000/*"]
   }
 }

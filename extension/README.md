@@ -14,7 +14,22 @@ credential, certification, consent, signature, CAPTCHA, and MFA controls.
 AcademicWorks/Blackbaud application forms use a dedicated conservative mapping
 adapter. Because each institution configures its own questions, PathAid fills
 only exact supported wording and otherwise leaves the question untouched.
-Kaleidoscope remains unsupported pending its dedicated adapter.
+Kaleidoscope applications use the same conservative approach: exact reusable
+learner-profile questions are supported, while sponsor-specific questions,
+essay textareas, certifications, and submission remain untouched. Exact résumé,
+transcript, and essay-file inputs use a separate explicit attachment action.
+
+Safe preview rows also allow the student to correct their profile source. The
+local API remembers only value-free portal/form/field signatures and the chosen
+profile field; a changed form shape fails closed and requires another review.
+If the validated active scholarship version says official rules prohibit
+automation, the backend releases neither the profile nor mappings and the panel
+shows that automation is disabled.
+
+From the local web interface, **Apply** sends only a scholarship ID. PathAid's
+authenticated backend returns the retained official application URL to the
+extension, which owns the new tab and opens the side panel. Direct-link fallback
+still works when the unpacked extension is not loaded.
 
 Run its dependency-free checks with:
 
