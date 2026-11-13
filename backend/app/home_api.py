@@ -10,7 +10,7 @@ from sqlalchemy import func, or_, select
 from .database import Database
 from .models import DiscoveryJob, LocalProfile, Scholarship, SourceScope
 from .profile_fields import completeness
-from .secrets import GEMINI_API_KEY, SecretStore, SecretStoreError
+from .secrets import SecretStore
 
 
 def create_home_router(database: Database, secret_store: SecretStore) -> APIRouter:
@@ -49,12 +49,6 @@ def create_home_router(database: Database, secret_store: SecretStore) -> APIRout
             alerts.append({"code": "policy_blocked", "message": f"{policy_blocked} source(s) are blocked by an automation policy decision.", "href": "/sources"})
         if latest_job and latest_job.status == "failed":
             alerts.append({"code": "scan_failed", "message": "The latest discovery job failed safely; prior verified records were preserved.", "href": "/sources"})
-        try:
-            gemini_configured = bool(secret_store.get(GEMINI_API_KEY))
-        except SecretStoreError:
-            gemini_configured = False
-        if not gemini_configured:
-            alerts.append({"code": "gemini_missing", "message": "Add a Gemini key before changed sources can be extracted.", "href": "/settings"})
         return {
             "profile_completeness": completeness(fields),
             "active_sources": int(source_counts.get("active", 0)),

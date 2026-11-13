@@ -1,5 +1,46 @@
 # PathAid local setup and command guide
 
+## Run PathAid locally
+
+Open Terminal and run these commands from the repository:
+
+```bash
+cd /Users/aidanjiang/Documents/GitHub/Pathaid
+
+# First-time setup, or after dependency/build changes:
+scripts/pathaid bootstrap
+
+# Start the backend, scheduler, and frontend:
+scripts/pathaid start
+```
+
+Then open [http://127.0.0.1:3000](http://127.0.0.1:3000) in your browser.
+Keep PathAid running while you use the website or Chrome extension. You do not
+need to run separate FastAPI, Next.js, Alembic, or Docker commands.
+
+For later sessions, you normally only need:
+
+```bash
+cd /Users/aidanjiang/Documents/GitHub/Pathaid
+scripts/pathaid start
+```
+
+Check or stop the application with:
+
+```bash
+scripts/pathaid status
+scripts/pathaid stop
+```
+
+If startup reports that port `3000` or `8000` is already in use, another
+PathAid/Docker process is already running. Check it before starting a second
+copy:
+
+```bash
+scripts/pathaid status
+docker ps
+```
+
 PathAid provides a local macOS backend, private profile, automated discovery,
 matching, saved workflow, document/essay library, and authenticated Chrome side
 panel. Consult [plan.md](plan.md) for authoritative release status.
@@ -11,6 +52,7 @@ panel. Consult [plan.md](plan.md) for authoritative release status.
 - Python 3.14
 - Node.js 22 and npm
 - Google Chrome for the unpacked extension
+- Ollama with the local `qwen3:4b` model
 
 PostgreSQL, Caddy, administrator credentials, and a hosted domain are no longer
 required.
@@ -75,6 +117,21 @@ restart the backend with the new ID; requests from any other origin fail closed.
 
 ## Gemini key
 
+Scholarship extraction uses local Ollama by default. Install Ollama globally,
+open the macOS application, and download the model from any directory:
+
+```bash
+ollama pull qwen3:4b
+ollama list
+```
+
+Keep Ollama running during source extraction. PathAid connects only to
+`http://127.0.0.1:11434`, disables model thinking, requests constrained JSON,
+and validates every draft deterministically. `ollama_unavailable` means the
+application is closed; `ollama_model_missing` means `qwen3:4b` is not installed.
+
+### Optional Gemini essay analysis
+
 Save or replace the personal Gemini key without putting it in `.env`:
 
 ```bash
@@ -82,8 +139,8 @@ scripts/pathaid set-gemini-key
 ```
 
 The prompt hides input. The key is stored under the Keychain service
-`com.pathaid.local`. Extraction is not connected to the new runtime until the
-discovery phase, but the secret boundary is ready.
+`com.pathaid.local`. It is used only for separately controlled essay analysis;
+automated scholarship extraction always uses local Ollama.
 
 ## Import the U.S. institution directory
 
@@ -135,10 +192,10 @@ cd backend
 .venv/bin/python -m app.local_admin scheduler-once
 ```
 
-The command performs due acquisition, Gemini extraction, deterministic
-validation, and activation. It requires the Gemini key previously saved with
-`set-gemini-key`. Completed stages persist, so a later cycle resumes rather than
-repeating successful model work.
+The command performs due acquisition, local Ollama extraction, deterministic
+validation, and activation. A Gemini key is not required. Invalid local pages
+are recorded individually while remaining pages continue. Completed stages
+persist, so a later cycle resumes rather than repeating successful model work.
 
 For AcademicWorks/Blackbaud, confirm the root path (`/`) because public listings
 may move between `/opportunities` and `/?page=N`. The adapter still follows only

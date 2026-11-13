@@ -14,7 +14,7 @@ unpacked extension, and verify the MVP without hosted infrastructure.
 - Start local services and perform one due-scan catch-up check.
 - CI runs SQLite migrations, backend tests, frontend lint/build/E2E, extension
   tests/build, adapter fixture contracts, and secret/policy checks without live
-  Gemini calls.
+  live model calls.
 - Maintain optional, explicitly budgeted live-provider and real-portal smoke
   procedures that never submit applications.
 - Treat Chrome Web Store and signed consumer macOS distribution as post-MVP.

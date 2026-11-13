@@ -12,8 +12,8 @@ It discovers relevant U.S. college scholarships from approved public sources,
 extracts their rules, compares them with one student's private profile, and
 assists with—but never submits—applications.
 
-The first product is macOS-only. Developers may fork it and supply their own
-Gemini key. A consumer installer and Chrome Web Store release are separate
+The first product is macOS-only. Developers may fork it, install Ollama/Qwen3,
+and optionally supply their own Gemini key. A consumer installer and Chrome Web Store release are separate
 future distribution projects, not MVP promises.
 
 ## 2. Problem
@@ -69,7 +69,7 @@ a current official sponsor or rules page.
 1. **Official evidence wins.** Aggregators supply leads, not final eligibility.
 2. **False positives are costly.** Unknown requirements produce Possible, never
    Strong.
-3. **AI extracts; code decides.** Gemini structures public source material;
+3. **AI extracts; code decides.** Local Qwen3 structures public source material;
    deterministic code evaluates the private profile.
 4. **Local by default.** Profile data, matching, mappings, documents, essays,
    and application status stay on the Mac.
@@ -111,11 +111,11 @@ approving its surrounding domain.
 Every scan stays inside an approved host/path, obeys `robots.txt` and terms,
 uses a descriptive user agent and conservative rate limit, enforces one or two
 link levels and a strict page budget, reads only public pages, retains snapshots
-and hashes, and skips Gemini when content is unchanged. The scheduler runs daily
+and hashes, and skips model extraction when content is unchanged. The scheduler runs daily
 while the Mac is awake and performs a catch-up scan after a missed window.
 Repeated launches cannot duplicate the same daily window. Jobs use expiring
 leases and separately committed acquisition, extraction, and activation stages,
-so restart recovery does not repeat completed Gemini calls.
+so restart recovery does not repeat completed model calls.
 
 Source-boundary confirmation and source-policy review are separate actions.
 Unknown or explicitly blocked policies cannot scan. Policy decisions retain
@@ -124,9 +124,11 @@ clearing a block requires a separate resume before crawling restarts.
 
 ### 7.3 Extraction and validation
 
-Gemini extracts identity, sponsor, award, cycle, deadlines, URLs, hard
+Local Qwen3 extracts identity, sponsor, award, cycle, deadlines, URLs, hard
 requirements, selection preferences, materials, steps, automatically-considered
 status, sweepstakes rules, automation/AI restrictions, and exact evidence.
+Gemini is not used for scholarship extraction. Invalid, refused, or oversized
+local pages retain a page-level failure and do not stop remaining extraction.
 
 Deterministic validation rejects malformed dates, unsafe URLs, inconsistent
 cycles, unsupported claims, evidence absent from the retained snapshot, and

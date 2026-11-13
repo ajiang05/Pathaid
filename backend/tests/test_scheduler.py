@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 
 from app.config import Settings
 from app.database import Database
-from app.extraction import DeterministicExtractionStub, ExtractionError
+from app.extraction import DeterministicExtractionStub, ExtractionError, OllamaExtractionAdapter
 from app.extraction_schemas import ExtractedProgramDraft
 from app.local_data import upgrade_database
 from app.models import (
@@ -17,11 +17,12 @@ from app.models import (
     DiscoveryExtractionArtifact,
     DiscoveryJob,
     Scholarship,
+    SourcePageState,
     SourceScanRun,
     SourceScope,
     SourceSnapshot,
 )
-from app.scheduler import claim_next_job, enqueue_due_sources, run_claimed_job
+from app.scheduler import claim_next_job, enqueue_due_sources, local_provider_factory, renew_job_lease, run_claimed_job
 
 
 NOW = datetime(2026, 11, 2, 12, tzinfo=timezone.utc)
@@ -81,6 +82,21 @@ class CountingProvider(DeterministicExtractionStub):
         return super().extract(snapshot)
 
 
+class FakeSecrets:
+    def __init__(self, gemini_key=None):
+        self.gemini_key = gemini_key
+
+    def get(self, _name):
+        return self.gemini_key
+
+
+def test_scheduler_uses_local_ollama_even_when_a_gemini_key_exists():
+    local = local_provider_factory(FakeSecrets())()
+    with_key = local_provider_factory(FakeSecrets("test-gemini-key"))()
+    assert isinstance(local, OllamaExtractionAdapter)
+    assert isinstance(with_key, OllamaExtractionAdapter)
+
+
 def successful_scanner(database: Database, source_id: str):
     """Persist acquisition exactly as a real adapter does, outside scheduler locks."""
 
@@ -135,6 +151,69 @@ def test_claim_is_exclusive_and_an_expired_lease_is_recovered(tmp_path):
     database.close()
 
 
+def test_heartbeat_renews_owned_lease_and_attempt_limit_fails_closed(tmp_path):
+    database, _settings = scheduler_database(tmp_path)
+    job_id = enqueue_due_sources(database, now=NOW)[0]
+    claim_next_job(database, "worker-a", now=NOW, lease_seconds=30)
+    assert renew_job_lease(database, job_id, "worker-a", now=NOW + timedelta(seconds=20), lease_seconds=30)
+    assert claim_next_job(database, "worker-b", now=NOW + timedelta(seconds=31)) is None
+    recovered = claim_next_job(database, "worker-b", now=NOW + timedelta(seconds=51), lease_seconds=30)
+    assert recovered is not None and recovered.attempt_count == 2
+    with database.sessions.begin() as db:
+        job = db.get(DiscoveryJob, job_id)
+        job.attempt_count = job.max_attempts
+        job.lease_expires_at = NOW + timedelta(seconds=52)
+    assert claim_next_job(database, "worker-c", now=NOW + timedelta(seconds=53)) is None
+    with database.sessions() as db:
+        job = db.get(DiscoveryJob, job_id)
+        assert job.status == "failed" and job.last_error_code == "worker_lease_expired"
+    database.close()
+
+
+def test_repeated_manual_request_joins_existing_active_job(tmp_path):
+    database, _settings = scheduler_database(tmp_path)
+    first = enqueue_due_sources(database, now=NOW)
+    with database.sessions.begin() as db:
+        scope = db.get(SourceScope, "source-1")
+        scope.scan_requested_at = NOW + timedelta(minutes=1)
+        scope.next_scan_at = scope.scan_requested_at
+    second = enqueue_due_sources(database, now=NOW + timedelta(minutes=1))
+    assert len(first) == 1 and second == ()
+    with database.sessions() as db:
+        assert db.scalar(select(func.count()).select_from(DiscoveryJob)) == 1
+        assert db.get(SourceScope, "source-1").scan_requested_at is None
+    database.close()
+
+
+def test_manual_retry_resumes_failed_extraction_without_acquisition(tmp_path):
+    database, _settings = scheduler_database(tmp_path, next_scan_at=NOW + timedelta(days=1))
+    with database.sessions.begin() as db:
+        run = SourceScanRun(
+            id="completed-run", source_scope_id="source-1", status="succeeded",
+            started_at=NOW - timedelta(hours=1), finished_at=NOW - timedelta(hours=1),
+            pages_attempted=1, snapshots_created=1, unchanged_pages=0,
+            traversal_truncated=False,
+        )
+        db.add(run)
+        db.flush()
+        db.add(DiscoveryJob(
+            id="failed-extraction", source_scope_id="source-1", trigger="manual",
+            window_start=NOW - timedelta(hours=1), status="failed", stage="extraction",
+            attempt_count=3, max_attempts=3, available_at=NOW - timedelta(hours=1),
+            scan_run_id=run.id, last_error_code="provider_unavailable",
+        ))
+        scope = db.get(SourceScope, "source-1")
+        scope.scan_requested_at = NOW
+
+    job_id = enqueue_due_sources(database, now=NOW)[0]
+    with database.sessions() as db:
+        retry = db.get(DiscoveryJob, job_id)
+        assert retry.stage == "extraction"
+        assert retry.scan_run_id == "completed-run"
+        assert retry.trigger == "manual"
+    database.close()
+
+
 def test_complete_job_commits_each_stage_and_activates_without_long_write_lock(tmp_path):
     database, _settings = scheduler_database(tmp_path)
     job_id = enqueue_due_sources(database, now=NOW)[0]
@@ -186,6 +265,118 @@ def test_persisted_extraction_resumes_activation_without_repeating_provider(tmp_
     provider = CountingProvider({"snapshot-1": ExtractionError("should_not_run", "Provider repeated")})
     assert run_claimed_job(database, "job-1", "worker-a", provider_factory=lambda: provider, now=lambda: NOW) == "succeeded"
     assert provider.calls == 0
+    database.close()
+
+
+def test_invalid_local_page_is_recorded_without_stopping_remaining_pages(tmp_path):
+    database, _settings = scheduler_database(tmp_path, next_scan_at=NOW + timedelta(days=1))
+    with database.sessions.begin() as db:
+        run = SourceScanRun(
+            id="local-run", source_scope_id="source-1", status="succeeded",
+            started_at=NOW, finished_at=NOW, pages_attempted=2,
+            snapshots_created=2, unchanged_pages=0, traversal_truncated=False,
+        )
+        db.add(run)
+        db.flush()
+        for index in (1, 2):
+            db.add(SourceSnapshot(
+                id=f"snapshot-{index}", source_scope_id="source-1", scan_run_id=run.id,
+                canonical_url=f"https://sponsor.example/scholarships/{index}",
+                final_url=f"https://sponsor.example/scholarships/{index}", acquired_at=NOW,
+                content_hash=str(index) * 64, media_type="text/html", normalized_text=SOURCE,
+                source_byte_count=len(SOURCE), redirect_count=0, depth=1,
+            ))
+        db.add(DiscoveryJob(
+            id="local-job", source_scope_id="source-1", trigger="manual", window_start=NOW,
+            status="queued", stage="extraction", attempt_count=0, max_attempts=3,
+            available_at=NOW, scan_run_id=run.id,
+        ))
+
+    claim_next_job(database, "worker-a", now=NOW)
+    provider = CountingProvider({
+        "snapshot-1": ExtractionError("invalid_output", "Local draft failed validation."),
+        "snapshot-2": draft("snapshot-2"),
+    })
+    assert run_claimed_job(
+        database, "local-job", "worker-a", provider_factory=lambda: provider, now=lambda: NOW,
+    ) == "succeeded"
+    assert provider.calls == 2
+    with database.sessions() as db:
+        job = db.get(DiscoveryJob, "local-job")
+        statuses = dict(db.execute(
+            select(DiscoveryExtractionArtifact.source_snapshot_id, DiscoveryExtractionArtifact.status)
+            .where(DiscoveryExtractionArtifact.discovery_job_id == "local-job")
+        ).all())
+        assert job.status == "succeeded" and job.stage == "complete" and job.last_error_code is None
+        assert statuses == {"snapshot-1": "validation_failed", "snapshot-2": "activated"}
+        assert db.scalar(select(func.count()).select_from(Scholarship)) == 1
+    database.close()
+
+
+def test_unchanged_scan_reuses_retained_snapshot_and_prior_extraction(tmp_path):
+    database, _settings = scheduler_database(tmp_path, next_scan_at=NOW + timedelta(days=1))
+    with database.sessions.begin() as db:
+        original_run = SourceScanRun(
+            id="original-run", source_scope_id="source-1", status="succeeded",
+            started_at=NOW - timedelta(days=1), finished_at=NOW - timedelta(days=1),
+            pages_attempted=1, snapshots_created=1, unchanged_pages=0, traversal_truncated=False,
+        )
+        db.add(original_run); db.flush()
+        db.add(SourceSnapshot(
+            id="retained-snapshot", source_scope_id="source-1", scan_run_id=original_run.id,
+            canonical_url="https://sponsor.example/scholarships/community",
+            final_url="https://sponsor.example/scholarships/community", acquired_at=NOW - timedelta(days=1),
+            content_hash="b" * 64, media_type="text/html", normalized_text=SOURCE,
+            source_byte_count=len(SOURCE), redirect_count=0, depth=1,
+        ))
+        db.add(SourcePageState(
+            id="page-state", source_scope_id="source-1",
+            canonical_url="https://sponsor.example/scholarships/community", status="current",
+            first_seen_at=NOW - timedelta(days=1), last_seen_at=NOW,
+        ))
+        db.add(DiscoveryJob(
+            id="prior-job", source_scope_id="source-1", trigger="scheduled",
+            window_start=NOW - timedelta(days=1), status="failed", stage="extraction",
+            attempt_count=3, max_attempts=3, available_at=NOW - timedelta(days=1),
+            scan_run_id=original_run.id, last_error_code="provider_unavailable",
+        ))
+        db.flush()
+        db.add(DiscoveryExtractionArtifact(
+            id="prior-artifact", discovery_job_id="prior-job", source_snapshot_id="retained-snapshot",
+            status="extracted", draft=draft("retained-snapshot").model_dump(mode="json"),
+            extraction_model="fixture", prompt_version="2.0.0", schema_version="1.0.0",
+        ))
+        db.add(DiscoveryJob(
+            id="current-job", source_scope_id="source-1", trigger="manual", window_start=NOW,
+            status="queued", stage="acquisition", attempt_count=0, max_attempts=3, available_at=NOW,
+        ))
+
+    def unchanged_scanner(database: Database, source_id: str):
+        with database.sessions.begin() as db:
+            run = SourceScanRun(
+                id="unchanged-run", source_scope_id=source_id, status="succeeded",
+                started_at=NOW, finished_at=NOW, pages_attempted=1,
+                snapshots_created=0, unchanged_pages=1, traversal_truncated=False,
+            )
+            db.add(run)
+            return run
+
+    claim_next_job(database, "worker-a", now=NOW)
+    provider = CountingProvider({"retained-snapshot": ExtractionError("should_not_run", "Provider repeated")})
+    status = run_claimed_job(
+        database, "current-job", "worker-a", scanner=unchanged_scanner,
+        provider_factory=lambda: provider, now=lambda: NOW,
+    )
+    assert status == "succeeded" and provider.calls == 0
+    with database.sessions() as db:
+        current = db.get(DiscoveryJob, "current-job")
+        copied = db.scalar(select(DiscoveryExtractionArtifact).where(
+            DiscoveryExtractionArtifact.discovery_job_id == "current-job",
+            DiscoveryExtractionArtifact.source_snapshot_id == "retained-snapshot",
+        ))
+        assert current.stage == "complete" and current.scan_run_id == "unchanged-run"
+        assert copied.status == "activated"
+        assert db.scalar(select(func.count()).select_from(Scholarship)) == 1
     database.close()
 
 

@@ -1,14 +1,14 @@
 # Optional live-provider and real-portal smoke tests
 
-These checks are intentionally outside normal CI. They spend Gemini quota or
+These checks are intentionally outside normal CI. They load the local model or
 touch changing third-party pages, so run them only before a tagged release with
 a small explicit budget. They never submit, certify, sign, enter credentials,
 or bypass a portal control.
 
 ## Budget and safety limits
 
-- Gemini extraction: at most three changed public pages and 20,000 total input
-  tokens for one release candidate.
+- Local extraction: at most three changed public pages for one release
+  candidate. Scholarship extraction must not call Gemini.
 - Portal inspection: one public or personally authenticated application each
   for generic HTML, AcademicWorks/Blackbaud, and Kaleidoscope.
 - Use only scholarships the tester may legitimately view. Log in manually;
@@ -20,11 +20,12 @@ or bypass a portal control.
 
 1. Start PathAid with `scripts/pathaid start` and confirm a narrow official
    sponsor or school path whose policy review permits automation.
-2. Record the current Gemini quota, select **Scan now**, and wait for one job.
+2. Confirm Ollama and `qwen3:4b` are running. Select **Scan now** and wait for
+   one job.
 3. Verify a changed page creates one validated active version with retained
    evidence. Verify the profile never appears in provider-request diagnostics.
 4. Scan the unchanged page again. Confirm freshness advances and no second
-   Gemini request is made.
+   model request is made.
 5. If the provider fails or quota is exhausted, confirm the prior version stays
    active and only a safe error code is shown.
 

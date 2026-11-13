@@ -7,12 +7,12 @@ from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .database import Database
-from .models import AppSetting, Institution, LocalProfile, ManualLead, SourcePolicyAssessment, SourceScope
+from .models import AppSetting, DiscoveryExtractionArtifact, DiscoveryJob, Institution, LocalProfile, ManualLead, SourcePolicyAssessment, SourceScanRun, SourceScope
 from .lead_verification import verify_manual_lead
 from .source_registry import (
     RegistryError,
@@ -25,6 +25,7 @@ from .source_registry import (
     record_source_policy,
     resume_scope,
     search_institutions,
+    update_scope,
 )
 
 
@@ -107,8 +108,8 @@ def _school_source_suggestions(item: Institution) -> list[dict]:
     ]
 
 
-def _scope_payload(item: SourceScope) -> dict:
-    return {
+def _scope_payload(item: SourceScope, db: Session | None = None) -> dict:
+    payload = {
         "id": item.id, "name": item.name, "ownership": item.ownership, "adapter": item.adapter,
         "canonical_url": item.canonical_url, "hostname": item.hostname,
         "allowed_path_prefix": item.allowed_path_prefix, "institution_unit_id": item.institution_unit_id,
@@ -120,6 +121,50 @@ def _scope_payload(item: SourceScope) -> dict:
         "last_content_change_at": item.last_content_change_at, "next_scan_at": item.next_scan_at,
         "scan_requested_at": item.scan_requested_at, "last_error_code": item.last_error_code,
     }
+    if db is None:
+        payload["scan_progress"] = None
+        return payload
+    job = db.scalar(
+        select(DiscoveryJob)
+        .where(DiscoveryJob.source_scope_id == item.id)
+        .order_by(DiscoveryJob.created_at.desc(), DiscoveryJob.id.desc())
+        .limit(1)
+    )
+    run = db.scalar(
+        select(SourceScanRun)
+        .where(SourceScanRun.source_scope_id == item.id)
+        .order_by(SourceScanRun.started_at.desc(), SourceScanRun.id.desc())
+        .limit(1)
+    )
+    artifact_counts = {}
+    if job is not None:
+        artifact_counts = dict(db.execute(
+            select(DiscoveryExtractionArtifact.status, func.count())
+            .where(DiscoveryExtractionArtifact.discovery_job_id == job.id)
+            .group_by(DiscoveryExtractionArtifact.status)
+        ).all())
+    extraction_processed = sum(artifact_counts.values())
+    extraction_succeeded = artifact_counts.get("extracted", 0) + artifact_counts.get("activated", 0)
+    extraction_failed = artifact_counts.get("validation_failed", 0)
+    extraction_skipped = artifact_counts.get("skipped", 0)
+    payload["scan_progress"] = None if job is None and run is None else {
+        "status": job.status if job is not None else run.status,
+        "stage": job.stage if job is not None else "acquisition",
+        "attempt": job.attempt_count if job is not None else 1,
+        "max_attempts": job.max_attempts if job is not None else 1,
+        "error_code": (job.last_error_code if job is not None else None) or (run.error_code if run is not None else None),
+        "pages_attempted": run.pages_attempted if run is not None else 0,
+        "snapshots_created": run.snapshots_created if run is not None else 0,
+        "extraction_processed": extraction_processed,
+        "extraction_succeeded": extraction_succeeded,
+        "extraction_failed": extraction_failed,
+        "extraction_skipped": extraction_skipped,
+        "extraction_remaining": max((run.pages_attempted if run is not None else 0) - extraction_processed, 0),
+        "started_at": run.started_at if run is not None else None,
+        "finished_at": run.finished_at if run is not None else None,
+        "updated_at": job.updated_at if job is not None else run.finished_at or run.started_at,
+    }
+    return payload
 
 
 def _lead_payload(item: ManualLead) -> dict:
@@ -190,7 +235,7 @@ def create_source_router(database: Database) -> APIRouter:
     @router.get("/sources")
     def list_sources(db: Session = Depends(get_db)) -> list[dict]:
         items = db.scalars(select(SourceScope).order_by(SourceScope.name, SourceScope.id)).all()
-        return [_scope_payload(item) for item in items]
+        return [_scope_payload(item, db) for item in items]
 
     @router.post("/sources", status_code=201)
     def propose_source(body: ScopeProposalInput, db: Session = Depends(get_db)) -> dict:
@@ -204,7 +249,21 @@ def create_source_router(database: Database) -> APIRouter:
         except IntegrityError as error:
             db.rollback()
             raise HTTPException(409, detail="That host and path are already registered") from error
-        return _scope_payload(item)
+        return _scope_payload(item, db)
+
+    @router.patch("/sources/{source_id}")
+    def edit_source(source_id: str, body: ScopeProposalInput, db: Session = Depends(get_db)) -> dict:
+        item = source_or_404(source_id, db)
+        try:
+            update_scope(db, item, **body.model_dump())
+            db.commit()
+        except RegistryError as error:
+            db.rollback()
+            raise registry_error(error) from error
+        except IntegrityError as error:
+            db.rollback()
+            raise HTTPException(409, detail="That host and path are already registered") from error
+        return _scope_payload(item, db)
 
     @router.post("/sources/{source_id}/confirm")
     def confirm(source_id: str, db: Session = Depends(get_db)) -> dict:
@@ -214,7 +273,7 @@ def create_source_router(database: Database) -> APIRouter:
         except RegistryError as error:
             raise registry_error(error) from error
         db.commit()
-        return _scope_payload(item)
+        return _scope_payload(item, db)
 
     @router.post("/sources/{source_id}/pause")
     def pause(source_id: str, db: Session = Depends(get_db)) -> dict:
@@ -224,7 +283,7 @@ def create_source_router(database: Database) -> APIRouter:
         except RegistryError as error:
             raise registry_error(error) from error
         db.commit()
-        return _scope_payload(item)
+        return _scope_payload(item, db)
 
     @router.post("/sources/{source_id}/resume")
     def resume(source_id: str, db: Session = Depends(get_db)) -> dict:
@@ -234,7 +293,7 @@ def create_source_router(database: Database) -> APIRouter:
         except RegistryError as error:
             raise registry_error(error) from error
         db.commit()
-        return _scope_payload(item)
+        return _scope_payload(item, db)
 
     @router.post("/sources/{source_id}/scan-now")
     def scan_now(source_id: str, db: Session = Depends(get_db)) -> dict:
@@ -244,7 +303,7 @@ def create_source_router(database: Database) -> APIRouter:
         except RegistryError as error:
             raise registry_error(error) from error
         db.commit()
-        return _scope_payload(item)
+        return _scope_payload(item, db)
 
     @router.get("/sources/{source_id}/policies")
     def policy_history(source_id: str, db: Session = Depends(get_db)) -> list[dict]:
@@ -265,7 +324,7 @@ def create_source_router(database: Database) -> APIRouter:
             db.rollback()
             raise registry_error(error) from error
         db.commit()
-        return _scope_payload(item)
+        return _scope_payload(item, db)
 
     @router.get("/leads")
     def list_leads(db: Session = Depends(get_db)) -> list[dict]:

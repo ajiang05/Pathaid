@@ -108,7 +108,7 @@ accounts, administrator review, and publication leave the target runtime.
 ### Functional
 
 - Confirmed school source scans safely and changed pages re-extract.
-- Unchanged content skips Gemini.
+- Unchanged content skips model extraction.
 - Aggregator lead cannot appear without official verification.
 - Match-class and unknown-boundary fixtures pass.
 - Apply opens the right URL and sets In progress.

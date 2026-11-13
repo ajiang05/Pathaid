@@ -24,7 +24,8 @@ Feature completion is recorded only in [../plan.md](../plan.md).
 ## Cross-feature invariants
 
 - PathAid is single-user and local-first; no student/admin accounts exist.
-- Gemini extracts public requirements but never determines eligibility.
+- Local Qwen3 extracts public requirements but never determines eligibility;
+  Gemini is reserved for explicitly requested essay analysis.
 - Strong requires all hard requirements to pass; unknown produces Possible.
 - Aggregator listings require current official-source verification.
 - The extension never submits, signs, certifies, accepts terms, or bypasses

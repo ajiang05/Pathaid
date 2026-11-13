@@ -224,6 +224,23 @@ export type SourceScope = {
   next_scan_at: string | null;
   scan_requested_at: string | null;
   last_error_code: string | null;
+  scan_progress: {
+    status: "queued" | "running" | "retry_wait" | "succeeded" | "failed" | "cancelled";
+    stage: "acquisition" | "extraction" | "activation" | "complete";
+    attempt: number;
+    max_attempts: number;
+    error_code: string | null;
+    pages_attempted: number;
+    snapshots_created: number;
+    extraction_processed: number;
+    extraction_succeeded: number;
+    extraction_failed: number;
+    extraction_skipped: number;
+    extraction_remaining: number;
+    started_at: string | null;
+    finished_at: string | null;
+    updated_at: string;
+  } | null;
 };
 
 export type ManualLead = {

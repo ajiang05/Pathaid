@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, dateLabel } from "@/lib/api";
 import { openWithApplicationCopilot } from "@/lib/application-copilot";
+import { FeedbackToast } from "@/components/feedback-toast";
 import type { LocalStatus, SavedResponse, SavedScholarship, SavedStatus } from "@/types/api";
 
 const tabs: { value: SavedStatus; label: string }[] = [
@@ -67,7 +68,7 @@ export default function SavedPage() {
     <div className="saved-tabs" role="tablist" aria-label="Saved scholarship status">
       {tabs.map(tab => <button key={tab.value} role="tab" aria-selected={active === tab.value} onClick={() => setActive(tab.value)}>{tab.label}<span>{items.filter(item => item.status === tab.value).length}</span></button>)}
     </div>
-    <p className="action-message" role="status" aria-live="polite">{message}</p>
+    <FeedbackToast message={message} tone="info" onDismiss={() => setMessage("")} />
     {failed && <section className="empty-panel"><h2>Saved scholarships unavailable</h2><p>Check that the local backend is running.</p><button className="button button-primary" onClick={load}>Try again</button></section>}
     {!failed && visible.length === 0 && <section className="empty-panel"><h2>No {tabs.find(tab => tab.value === active)?.label.toLowerCase()} scholarships</h2><p>Save a scholarship from Discover to add it here.</p></section>}
     <div className="saved-list">{visible.map(item => <article className="result-card" key={item.scholarship_id}>

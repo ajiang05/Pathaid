@@ -462,7 +462,7 @@ class DiscoveryJob(Base):
 
 
 class DiscoveryExtractionArtifact(Base):
-    """Persisted provider output so activation retries never repeat Gemini work."""
+    """Persisted local extraction outcome so retries resume per page."""
 
     __tablename__ = "discovery_extraction_artifacts"
     __table_args__ = (

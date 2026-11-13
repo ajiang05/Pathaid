@@ -16,7 +16,8 @@ application boundary.
 PathAid has four external boundaries:
 
 - public scholarship pages and application portals;
-- Google Gemini for structuring public requirements and optional essay matching;
+- local Ollama/Qwen3 for structuring public requirements and separately
+  controlled Gemini essay matching;
 - Chrome, which hosts the application-copilot extension; and
 - macOS Keychain, which protects local secrets.
 
@@ -32,7 +33,8 @@ administrator, provider dashboard, or cloud database in the target MVP.
 | SQLite | Profile, scholarships, source state, snapshots, jobs, mappings, statuses | Local app data directory |
 | Scheduler/worker | Daily catch-up scheduling, acquisition, extraction, validation | Local process, durable jobs |
 | Source adapters | Generic bounded directories, AcademicWorks, Kaleidoscope | Public approved URLs only |
-| Matching engine | Pure deterministic Pass/Fail/Unknown evaluation and ranking | No network or Gemini |
+| Local extraction | Qwen3 4B structured extraction through Ollama | Loopback only; public source text only |
+| Matching engine | Pure deterministic Pass/Fail/Unknown evaluation and ranking | No model or network |
 | Document vault | Encrypt/decrypt current résumé and transcript | Ciphertext on disk, key in Keychain |
 | Essay service | Local essay bank and optional Gemini relevance analysis | Full text leaves device only when enabled |
 | Chrome extension | Inspect, preview, fill, attach, and remember portal mappings | Active tab plus authenticated loopback API |
@@ -41,12 +43,12 @@ administrator, provider dashboard, or cloud database in the target MVP.
 The backend may initially run the API, scheduler, and worker as separate local
 processes during development. SQLite background writes must be short,
 transactional, and serialized through durable job state; enable WAL mode and a
-busy timeout. Do not hold a database transaction open during HTTP or Gemini
+busy timeout. Do not hold a database transaction open during HTTP or model
 calls.
 
 The local API now starts a scheduler thread at launch. It creates one unique
 daily catch-up job per due source, claims work through an expiring lease, and
-commits acquisition, extracted Gemini output, and activation separately.
+commits acquisition, extracted model output, and activation separately.
 Completed extraction artifacts are reused after restart, transient failures use
 bounded backoff, and jobs for paused or policy-blocked sources are cancelled.
 
@@ -60,13 +62,14 @@ approved source scope
   -> robots + policy + scope checks
   -> bounded fetch and canonicalization
   -> content hash comparison
-  -> Gemini extraction only if changed
+  -> local Ollama extraction only if changed
+  -> record invalid local page and continue
   -> deterministic schema/evidence validation
   -> versioned scholarship record
   -> local deterministic matching
 ```
 
-An unchanged normalized hash updates scan metadata but does not call Gemini.
+An unchanged normalized hash updates scan metadata but does not call a model.
 Failures preserve the last valid record. Newly extracted data becomes active
 only after deterministic validation; there is no human publication queue.
 
@@ -163,10 +166,12 @@ for that target.
 
 ## 6. Extraction boundary
 
-Gemini receives the retained public source text, canonical URL, retrieval time,
-and a strict response schema. It never receives the student profile during
-scholarship extraction. Output includes exact evidence references and policy
-flags for automation and AI assistance.
+Qwen3 receives the retained public source text, canonical URL, retrieval time,
+and a constrained response schema through Ollama on loopback. It never receives
+the student profile. Scholarship extraction never calls Gemini. Invalid,
+refused, or oversized local pages are recorded individually and do not stop the
+remaining source. Output must pass the strict Pydantic and deterministic
+evidence boundary.
 
 The validator checks:
 
@@ -202,7 +207,7 @@ snapshot and structured draft is idempotent.
 | `ScholarshipVersion` | Cycle-specific validated facts plus a material-change fingerprint |
 | `ExtractionActivationAttempt` | Append-only activated/unchanged/failed validation outcome |
 | `DiscoveryJob` | Daily/manual window, stage, retry state, and worker lease |
-| `DiscoveryExtractionArtifact` | Persisted Gemini result used by resumable activation |
+| `DiscoveryExtractionArtifact` | Persisted provider result used by resumable activation |
 | `Requirement` | Typed hard criterion with evidence |
 | `SelectionPreference` | Non-eligibility factor with evidence |
 | `SavedScholarship` | Not started/In progress/Already applied state |
@@ -370,7 +375,7 @@ hosted server. The eventual macOS launcher starts the API/web/worker, opens the
 web interface, and runs one catch-up scheduling check.
 
 All schema changes use Alembic. CI runs migrations against fresh SQLite, backend
-tests without live Gemini calls, frontend checks, extension checks, and fixture
+tests without live model calls, frontend checks, extension checks, and fixture
 contracts for each adapter.
 
 ## 13. Legacy migration
@@ -378,7 +383,7 @@ contracts for each adapter.
 Reuse after review:
 
 - safe source acquisition and immutable snapshots;
-- Gemini provider abstraction and strict extraction validation;
+- local Ollama provider abstraction and strict extraction validation;
 - deterministic eligibility/ranking concepts;
 - durable job/lease concepts, simplified for local SQLite;
 - health checks, tests, and accessible UI primitives.

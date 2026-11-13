@@ -101,7 +101,7 @@ def test_home_summary_exposes_operational_counts_and_actionable_alerts(tmp_path)
     assert payload["active_scholarships"] == 0
     assert payload["latest_job"] is None
     assert {alert["code"] for alert in payload["alerts"]} == {
-        "school_missing", "sources_missing", "gemini_missing",
+        "school_missing", "sources_missing",
     }
     assert all(alert["href"].startswith("/") for alert in payload["alerts"])
 

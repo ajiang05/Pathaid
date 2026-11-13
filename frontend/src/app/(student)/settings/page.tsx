@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { FeedbackToast } from "@/components/feedback-toast";
 import type { SettingsStatus } from "@/types/api";
 
 export default function SettingsPage() {
@@ -59,7 +60,7 @@ export default function SettingsPage() {
 
   return <>
     <div className="page-heading"><div><p className="eyebrow">Local configuration</p><h1>Settings</h1><p>Manage Keychain-backed AI access, extension pairing, encrypted backups, and destructive recovery commands.</p></div></div>
-    <p className="action-message" role="status" aria-live="polite">{message}</p>
+    <FeedbackToast message={message} tone="info" onDismiss={() => setMessage("")} />
 
     <div className="document-grid">
       <section className="form-card">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { FeedbackToast } from "@/components/feedback-toast";
 import type { DocumentsResponse, Essay, EssayAnalysisSettings, EssayRecommendationsResponse, EssaysResponse, ManagedDocument } from "@/types/api";
 
 const documentTypes = [
@@ -119,7 +120,7 @@ export default function DocumentsPage() {
 
   return <>
     <div className="page-heading"><div><p className="eyebrow">Private application library</p><h1>Documents and essays</h1><p>Store your current documents and your own writing locally. PathAid recommends existing essays but never generates or rewrites them.</p></div></div>
-    <p className="action-message" role="status" aria-live="polite">{message}</p>
+    <FeedbackToast message={message} tone="info" onDismiss={() => setMessage("")} />
     {failed && <section className="empty-panel"><h2>Document vault unavailable</h2><p>Check that the local backend and macOS Keychain are available.</p><button className="button button-primary" onClick={load}>Try again</button></section>}
     {!failed && <div className="document-grid">{documentTypes.map(spec => {
       const stored = items.find(item => item.document_type === spec.type);

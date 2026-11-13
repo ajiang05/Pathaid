@@ -12,7 +12,7 @@ up at the next PathAid launch.
 - Enforce one active run per source/window and conservative per-host pacing.
 - Commit acquisition, comparison, extraction, validation, and activation stages
   separately so restart resumes completed work.
-- Do not hold SQLite transactions during network or Gemini calls.
+- Do not hold SQLite transactions during network or model calls.
 - Use short leases/idempotency to recover interrupted local workers.
 - An unchanged page updates freshness and finishes without Gemini.
 - A disappeared official page becomes unavailable and leaves history intact.
@@ -31,7 +31,7 @@ up at the next PathAid launch.
 - Paused and policy-blocked scopes never enqueue.
 - SQLite concurrency tests show no long-lived write locks.
 - Persisted extraction artifacts let activation resume without repeating a
-  completed Gemini request.
+  completed model request.
 - A returning byte-identical page reactivates its retained validated version
   without duplicating its snapshot or calling Gemini.
 - Cosmetic source/evidence changes preserve the material fingerprint; cycle,

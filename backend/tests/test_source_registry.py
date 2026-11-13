@@ -14,7 +14,7 @@ from app.config import Settings
 from app.database import Database
 from app.local_data import upgrade_database
 from app.main import create_app
-from app.models import SourcePolicyAssessment, SourceScope
+from app.models import DiscoveryJob, SourcePolicyAssessment, SourceScanRun, SourceScope
 from app.source_registry import import_ipeds_directory, scope_allows_url
 from conftest import FakeSecretStore
 
@@ -125,6 +125,74 @@ def test_unconfirmed_scope_cannot_scan_and_confirmation_is_explicit(tmp_path):
         assert active["policy_status"] == "allowed" and active["next_scan_at"] is not None
         queued = client.post(f"/api/sources/{source['id']}/scan-now").json()
         assert queued["scan_requested_at"] is not None
+
+
+def test_source_edit_revalidates_and_revokes_stale_approval(tmp_path):
+    app, _settings = local_app(tmp_path)
+    with TestClient(app) as client:
+        select_umass(client)
+        source = client.post("/api/sources", json=school_scope()).json()
+        client.post(f"/api/sources/{source['id']}/confirm")
+        client.post(f"/api/sources/{source['id']}/policy", json={"outcome": "allowed"})
+        client.post(f"/api/sources/{source['id']}/scan-now")
+
+        renamed = client.patch(f"/api/sources/{source['id']}", json=school_scope(name="Renamed source")).json()
+        assert renamed["name"] == "Renamed source"
+        assert renamed["status"] == "active" and renamed["policy_status"] == "allowed"
+
+        changed = client.patch(f"/api/sources/{source['id']}", json=school_scope(
+            name="Smaller safe boundary", canonical_url="https://www.umass.edu/financialaid/scholarships",
+            allowed_path_prefix="/financialaid/scholarships", page_budget=10,
+        )).json()
+        assert changed["status"] == "proposed" and changed["confirmed_at"] is None
+        assert changed["policy_status"] == "unknown" and changed["scan_requested_at"] is None
+        assert client.post(f"/api/sources/{source['id']}/scan-now").status_code == 422
+
+
+def test_source_edit_uses_the_same_boundary_validation_as_creation(tmp_path):
+    app, _settings = local_app(tmp_path)
+    with TestClient(app) as client:
+        select_umass(client)
+        source = client.post("/api/sources", json=school_scope()).json()
+        invalid = client.patch(f"/api/sources/{source['id']}", json=school_scope(
+            adapter="academicworks", canonical_url="https://umass.academicworks.com/opportunities",
+            allowed_path_prefix="/opportunities",
+        ))
+        assert invalid.status_code == 422
+        assert invalid.json()["detail"]["code"] == "invalid_adapter_boundary"
+        stored = client.get("/api/sources").json()[0]
+        assert stored["adapter"] == "generic" and stored["allowed_path_prefix"] == "/financialaid"
+
+
+def test_source_payload_reports_durable_scan_progress(tmp_path):
+    app, settings = local_app(tmp_path)
+    with TestClient(app) as client:
+        select_umass(client)
+        source = client.post("/api/sources", json=school_scope()).json()
+    moment = datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc)
+    database = Database(settings)
+    with database.sessions.begin() as db:
+        run = SourceScanRun(
+            id="run-1", source_scope_id=source["id"], status="running", started_at=moment,
+            pages_attempted=3, snapshots_created=2, unchanged_pages=1,
+        )
+        db.add(run)
+        db.add(DiscoveryJob(
+            id="job-1", source_scope_id=source["id"], trigger="manual", window_start=moment,
+            status="running", stage="acquisition", attempt_count=1, max_attempts=3,
+            available_at=moment, lease_owner="test-worker", lease_expires_at=moment,
+        ))
+    database.close()
+    with TestClient(app) as client:
+        progress = client.get("/api/sources").json()[0]["scan_progress"]
+        assert progress == {
+            "status": "running", "stage": "acquisition", "attempt": 1, "max_attempts": 3,
+            "error_code": None, "pages_attempted": 3, "snapshots_created": 2,
+            "extraction_processed": 0, "extraction_succeeded": 0,
+            "extraction_failed": 0, "extraction_skipped": 0, "extraction_remaining": 3,
+            "started_at": "2026-11-01T12:00:00", "finished_at": None,
+            "updated_at": progress["updated_at"],
+        }
 
 
 def test_exact_host_and_path_boundary_never_silently_widens(tmp_path):
@@ -286,7 +354,7 @@ def test_kaleidoscope_scope_requires_public_marketplace_root(tmp_path):
         assert valid.status_code == 201
 
 
-def test_blocking_policy_requires_evidence_and_clears_queued_scan(tmp_path):
+def test_blocking_policy_setting_clears_queued_scan(tmp_path):
     app, settings = local_app(tmp_path)
     with TestClient(app) as client:
         source_id = client.post("/api/sources", json=sponsor_scope()).json()["id"]
@@ -295,14 +363,7 @@ def test_blocking_policy_requires_evidence_and_clears_queued_scan(tmp_path):
         queued = client.post(f"/api/sources/{source_id}/scan-now").json()
         assert queued["scan_requested_at"] is not None
 
-        missing = client.post(f"/api/sources/{source_id}/policy", json={"outcome": "blocked"})
-        assert missing.status_code == 422
-        assert missing.json()["detail"]["code"] == "policy_evidence_required"
-        blocked = client.post(f"/api/sources/{source_id}/policy", json={
-            "outcome": "blocked",
-            "evidence_url": "https://scholarships.example.org/terms",
-            "evidence_excerpt": "You may not use automated scripts to access this service.",
-        }).json()
+        blocked = client.post(f"/api/sources/{source_id}/policy", json={"outcome": "blocked"}).json()
         assert blocked["status"] == "policy_blocked" and blocked["policy_status"] == "blocked"
         assert blocked["scan_requested_at"] is None and blocked["next_scan_at"] is None
         assert client.post(f"/api/sources/{source_id}/scan-now").status_code == 422

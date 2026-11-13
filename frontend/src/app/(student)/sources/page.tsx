@@ -2,7 +2,44 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, ApiError, readable } from "@/lib/api";
+import { FeedbackToast } from "@/components/feedback-toast";
 import type { Institution, InstitutionSelection, ManualLead, Profile, SourceScope, SourceSuggestion } from "@/types/api";
+
+type SourceDraft = Pick<SourceScope, "name" | "ownership" | "adapter" | "canonical_url" | "allowed_path_prefix" | "max_depth" | "page_budget" | "requests_per_minute" | "scan_interval_hours">;
+
+function SourceEditor({ draft, setDraft, save, cancel }: { draft: SourceDraft; setDraft: (draft: SourceDraft) => void; save: (event: FormEvent) => void; cancel: () => void }) {
+  return <form className="source-form source-edit-form" onSubmit={save}>
+    <label>Source name<input value={draft.name} required onChange={event => setDraft({ ...draft, name: event.target.value })} /></label>
+    <label>Ownership<select value={draft.ownership} onChange={event => setDraft({ ...draft, ownership: event.target.value as SourceDraft["ownership"] })}><option value="school">Current school</option><option value="sponsor">Scholarship sponsor</option></select></label>
+    <label>Adapter<select value={draft.adapter} onChange={event => { const adapter = event.target.value as SourceDraft["adapter"]; setDraft({ ...draft, adapter, ownership: adapter === "kaleidoscope" ? "sponsor" : draft.ownership, allowed_path_prefix: ["academicworks", "kaleidoscope"].includes(adapter) ? "/" : draft.allowed_path_prefix }); }}><option value="generic">Generic directory</option><option value="academicworks">AcademicWorks / Blackbaud</option><option value="kaleidoscope">Kaleidoscope marketplace</option></select></label>
+    <label className="full-field">Directory URL<input type="url" value={draft.canonical_url} required onChange={event => setDraft({ ...draft, canonical_url: event.target.value })} /></label>
+    <label className="full-field">Allowed path prefix<input value={draft.allowed_path_prefix} required onChange={event => setDraft({ ...draft, allowed_path_prefix: event.target.value })} /></label>
+    <label>Maximum link depth<input type="number" min="0" max="2" value={draft.max_depth} onChange={event => setDraft({ ...draft, max_depth: Number(event.target.value) })} /></label>
+    <label>Page budget<input type="number" min="1" max="100" value={draft.page_budget} onChange={event => setDraft({ ...draft, page_budget: Number(event.target.value) })} /></label>
+    <label>Requests per minute<input type="number" min="1" max="60" value={draft.requests_per_minute} onChange={event => setDraft({ ...draft, requests_per_minute: Number(event.target.value) })} /></label>
+    <label>Scan interval (hours)<input type="number" min="6" max="720" value={draft.scan_interval_hours} onChange={event => setDraft({ ...draft, scan_interval_hours: Number(event.target.value) })} /></label>
+    <div className="row-actions full-field"><button className="button button-primary">Save changes</button><button type="button" className="button button-outline" onClick={cancel}>Cancel</button></div>
+  </form>;
+}
+
+function ScanProgress({ source }: { source: SourceScope }) {
+  const progress = source.scan_progress;
+  const queuedWithoutJob = !progress && Boolean(source.scan_requested_at);
+  if (!progress && !queuedWithoutJob) return <div className="scan-progress scan-progress-idle"><span className="scan-dot" /> <div><strong>No scan activity</strong><small>Use Scan now to queue a refresh.</small></div></div>;
+  const status = queuedWithoutJob ? "queued" : progress!.status;
+  const working = ["queued", "running", "retry_wait"].includes(status);
+  const labels: Record<string, string> = { queued: "Queued", running: "Running", retry_wait: "Waiting to retry", succeeded: "Completed", failed: "Failed", cancelled: "Cancelled" };
+  return <div className={`scan-progress scan-progress-${status}`} aria-live="polite">
+    <span className={working ? "scan-spinner" : "scan-dot"} aria-hidden="true" />
+    <div><strong>Scan: {labels[status] ?? readable(status)}</strong>
+      {progress && <small>{readable(progress.stage)} · {progress.pages_attempted} pages · {progress.snapshots_created} new snapshots{progress.attempt > 1 ? ` · attempt ${progress.attempt}/${progress.max_attempts}` : ""}</small>}
+      {progress && progress.stage !== "acquisition" && <small>{progress.extraction_processed} processed · {progress.extraction_succeeded} accepted · {progress.extraction_failed} local failures · {progress.extraction_remaining} remaining</small>}
+      {progress?.error_code && <small className="scan-error">Error: {readable(progress.error_code)}</small>}
+      {progress?.finished_at && <small>Finished {new Date(progress.finished_at).toLocaleString()}</small>}
+      {queuedWithoutJob && <small>The scheduler will claim this request shortly.</small>}
+    </div>
+  </div>;
+}
 
 export default function SourcesPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -16,7 +53,9 @@ export default function SourcesPage() {
   const [scope, setScope] = useState({ name: "", ownership: "school", adapter: "generic", canonical_url: "", allowed_path_prefix: "/", max_depth: 1, page_budget: 25, requests_per_minute: 10, scan_interval_hours: 24 });
   const [lead, setLead] = useState({ title: "", url: "" });
   const [officialUrls, setOfficialUrls] = useState<Record<string, string>>({});
-  const [policyInputs, setPolicyInputs] = useState<Record<string, { outcome: "allowed" | "blocked"; evidence_url: string; evidence_excerpt: string }>>({});
+  const [savingPolicyId, setSavingPolicyId] = useState<string | null>(null);
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [editScope, setEditScope] = useState<SourceDraft | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -29,6 +68,12 @@ export default function SourcesPage() {
       .then(([nextProfile, nextSources, nextLeads]) => { setProfile(nextProfile); setSources(nextSources); setLeads(nextLeads); })
       .catch(() => setError("Source registry unavailable. Check that the local backend is running."));
   }, []);
+  useEffect(() => {
+    const active = sources.some(item => item.scan_requested_at || ["queued", "running", "retry_wait"].includes(item.scan_progress?.status ?? ""));
+    if (!active) return;
+    const timer = window.setInterval(() => void load(), 3_000);
+    return () => window.clearInterval(timer);
+  }, [load, sources]);
 
   function report(caught: unknown) {
     setMessage("");
@@ -76,13 +121,39 @@ export default function SourcesPage() {
     } catch (caught) { report(caught); }
   }
 
-  async function reviewPolicy(item: SourceScope) {
-    const input = policyInputs[item.id] ?? { outcome: "allowed", evidence_url: "", evidence_excerpt: "" };
+  function beginSourceEdit(item: SourceScope) {
+    setEditingSourceId(item.id);
+    setEditScope({
+      name: item.name, ownership: item.ownership, adapter: item.adapter,
+      canonical_url: item.canonical_url, allowed_path_prefix: item.allowed_path_prefix,
+      max_depth: item.max_depth, page_budget: item.page_budget,
+      requests_per_minute: item.requests_per_minute, scan_interval_hours: item.scan_interval_hours,
+    });
+    setMessage(""); setError("");
+  }
+
+  async function saveSourceEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editingSourceId || !editScope) return;
+    const schoolId = typeof profile?.fields.school_id === "string" ? profile.fields.school_id : null;
     try {
-      await api(`/api/sources/${item.id}/policy`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ outcome: input.outcome, evidence_url: input.evidence_url || null, evidence_excerpt: input.evidence_excerpt || null }) });
-      setMessage(input.outcome === "blocked" ? "Automation prohibition recorded. This source cannot scan." : "Policy review recorded. Scanning is allowed by the current decision.");
-      setError(""); await load();
+      const updated = await api<SourceScope>(`/api/sources/${editingSourceId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...editScope, institution_unit_id: editScope.ownership === "school" ? schoolId : null }) });
+      setEditingSourceId(null); setEditScope(null);
+      setMessage(updated.status === "proposed" ? "Source updated. Its scan behavior changed, so confirm the boundary and review its policy again." : "Source updated.");
+      await load();
     } catch (caught) { report(caught); }
+  }
+
+  async function changePolicy(item: SourceScope, outcome: "allowed" | "blocked") {
+    setSavingPolicyId(item.id);
+    try {
+      await api(`/api/sources/${item.id}/policy`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ outcome }) });
+      const confirmation = outcome === "blocked" ? "Scanning policy saved: blocked." : "Scanning policy saved: allowed.";
+      setMessage(confirmation);
+      setError(""); await load();
+    } catch (caught) {
+      report(caught);
+    } finally { setSavingPolicyId(null); }
   }
 
   async function addLead(event: FormEvent) {
@@ -109,8 +180,7 @@ export default function SourcesPage() {
 
   return <>
     <div className="page-heading"><div><p className="eyebrow">Explicit crawl permission</p><h1>Sources</h1><p>Confirm a precise host and path once. PathAid cannot scan outside that boundary, and individual leads never approve a whole website.</p></div></div>
-    {message && <p className="form-success" role="status">{message}</p>}
-    {error && <p className="form-error" role="alert">{error}</p>}
+    <FeedbackToast message={error || message} tone={error ? "error" : "success"} onDismiss={() => { setMessage(""); setError(""); }} />
 
     <section className="form-card source-section"><div className="form-card-heading"><p className="eyebrow">NCES IPEDS directory</p><h2>Current institution</h2></div>
       <p><strong>{selectedSchool}</strong>{selectedSchoolId && <> · Unit ID {selectedSchoolId}</>}</p>
@@ -135,7 +205,7 @@ export default function SourcesPage() {
     </section>
 
     <section className="source-section"><div className="section-heading"><h2>Registered boundaries</h2><span>{sources.length}</span></div>
-      {sources.length === 0 ? <div className="empty-panel"><h3>No directory scopes</h3><p>Add a proposed source, then explicitly confirm it.</p></div> : <div className="source-list">{sources.map(item => { const policy = policyInputs[item.id] ?? { outcome: "allowed" as const, evidence_url: "", evidence_excerpt: "" }; return <article className="source-card" key={item.id}><div><div className="pill-row"><span className="info-pill">{readable(item.status)}</span><span className="info-pill">{readable(item.adapter)}</span><span className="info-pill">Policy: {readable(item.policy_status)}</span></div><h3>{item.name}</h3><p>{item.hostname}<strong>{item.allowed_path_prefix}</strong></p><dl><div><dt>Depth / pages</dt><dd>{item.max_depth} / {item.page_budget}</dd></div><div><dt>Rate</dt><dd>{item.requests_per_minute}/minute</dd></div><div><dt>Interval</dt><dd>{item.scan_interval_hours} hours</dd></div><div><dt>Next scan</dt><dd>{item.next_scan_at ? new Date(item.next_scan_at).toLocaleString() : "Not scheduled"}</dd></div></dl>{item.status !== "proposed" && item.status !== "inactive" && <div className="source-form"><label>Automation policy<select value={policy.outcome} onChange={event => setPolicyInputs({ ...policyInputs, [item.id]: { ...policy, outcome: event.target.value as "allowed" | "blocked" } })}><option value="allowed">No explicit prohibition found</option><option value="blocked">Automation explicitly prohibited</option></select></label><label>Official policy URL<input type="url" value={policy.evidence_url} onChange={event => setPolicyInputs({ ...policyInputs, [item.id]: { ...policy, evidence_url: event.target.value } })} /></label><label className="full-field">Exact policy text<textarea value={policy.evidence_excerpt} onChange={event => setPolicyInputs({ ...policyInputs, [item.id]: { ...policy, evidence_excerpt: event.target.value } })} /><small>Required when blocking automation. Do not paraphrase the prohibition.</small></label><button className="button button-outline" type="button" onClick={() => reviewPolicy(item)}>Record policy review</button></div>}</div><div className="row-actions">{item.status === "proposed" && <button className="button button-primary" onClick={() => sourceAction(item, "confirm")}>Confirm boundary</button>}{item.status === "active" && <><button className="button button-outline" disabled={item.policy_status !== "allowed"} onClick={() => sourceAction(item, "scan-now")}>Scan now</button><button className="button button-outline" onClick={() => sourceAction(item, "pause")}>Pause</button></>}{item.status === "paused" && <button className="button button-primary" disabled={item.policy_status !== "allowed"} onClick={() => sourceAction(item, "resume")}>Resume</button>}</div></article>; })}</div>}
+      {sources.length === 0 ? <div className="empty-panel"><h3>No directory scopes</h3><p>Add a proposed source, then explicitly confirm it.</p></div> : <div className="source-list">{sources.map(item => { const editing = editingSourceId === item.id && editScope; return <article className="source-card" key={item.id}><div><div className="pill-row"><span className="info-pill">{readable(item.status)}</span><span className="info-pill">{readable(item.adapter)}</span><span className="info-pill">Policy: {readable(item.policy_status)}</span></div><h3>{item.name}</h3><p>{item.hostname}<strong>{item.allowed_path_prefix}</strong></p><dl><div><dt>Depth / pages</dt><dd>{item.max_depth} / {item.page_budget}</dd></div><div><dt>Rate</dt><dd>{item.requests_per_minute}/minute</dd></div><div><dt>Interval</dt><dd>{item.scan_interval_hours} hours</dd></div><div><dt>Next scan</dt><dd>{item.next_scan_at ? new Date(item.next_scan_at).toLocaleString() : "Not scheduled"}</dd></div></dl><ScanProgress source={item} />{editing ? <SourceEditor draft={editScope} setDraft={setEditScope} save={saveSourceEdit} cancel={() => { setEditingSourceId(null); setEditScope(null); }} /> : item.status !== "proposed" && item.status !== "inactive" && <div className="source-form"><label>Scanning policy<select aria-label="Scanning policy" value={item.policy_status === "unknown" ? "" : item.policy_status} disabled={savingPolicyId === item.id} onChange={event => changePolicy(item, event.target.value as "allowed" | "blocked")}><option value="" disabled>Choose a setting</option><option value="allowed">Allow automated scanning</option><option value="blocked">Block automated scanning</option></select><small>This setting saves automatically.</small></label></div>}</div><div className="row-actions">{!editing && <><button className="button button-outline" onClick={() => beginSourceEdit(item)}>Edit</button>{item.status === "proposed" && <button className="button button-primary" onClick={() => sourceAction(item, "confirm")}>Confirm boundary</button>}{item.status === "active" && <><button className="button button-outline" disabled={item.policy_status !== "allowed"} onClick={() => sourceAction(item, "scan-now")}>Scan now</button><button className="button button-outline" onClick={() => sourceAction(item, "pause")}>Pause</button></>}{item.status === "paused" && <button className="button button-primary" disabled={item.policy_status !== "allowed"} onClick={() => sourceAction(item, "resume")}>Resume</button>}</>}</div></article>; })}</div>}
     </section>
 
     <section className="form-card source-section"><div className="form-card-heading"><p className="eyebrow">No crawl permission</p><h2>Manual leads</h2><p className="field-help">Use this for BigFuture, Scholarship America, Bold.org, or any single URL you want verified later.</p></div>

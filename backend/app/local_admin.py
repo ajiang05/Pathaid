@@ -13,7 +13,7 @@ from .config import Settings
 from .database import Database
 from .local_data import backup_database, reset_local_data, restore_database, upgrade_database, validate_database
 from .secrets import DOCUMENT_KEY, EXTENSION_TOKEN, GEMINI_API_KEY, KeychainSecretStore, get_or_create_document_key, get_or_create_extension_token
-from .scheduler import gemini_provider_factory, run_scheduler_cycle
+from .scheduler import local_provider_factory, run_scheduler_cycle
 from .models import DiscoveryJob
 from .source_registry import import_ipeds_directory
 from .source_scanning import execute_registered_scan
@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             count = run_scheduler_cycle(
                 database, worker_id="local-admin",
-                provider_factory=gemini_provider_factory(store),
+                provider_factory=local_provider_factory(store),
             )
         finally:
             database.close()

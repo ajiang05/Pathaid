@@ -146,6 +146,35 @@ def create_scope_proposal(
     )
 
 
+def update_scope(
+    db: Session,
+    scope: SourceScope,
+    **values,
+) -> bool:
+    """Validate a complete edit and revoke approval when scan behavior changes."""
+
+    candidate = create_scope_proposal(db, **values)
+    behavior_fields = (
+        "ownership", "adapter", "canonical_url", "hostname", "allowed_path_prefix",
+        "institution_unit_id", "school_revision", "max_depth", "page_budget",
+        "requests_per_minute", "scan_interval_hours",
+    )
+    behavior_changed = any(getattr(scope, name) != getattr(candidate, name) for name in behavior_fields)
+    scope.name = candidate.name
+    for name in behavior_fields:
+        setattr(scope, name, getattr(candidate, name))
+    if behavior_changed:
+        # A prior confirmation and policy decision apply only to the old crawl behavior.
+        scope.status = "proposed"
+        scope.confirmed_at = None
+        scope.policy_status = "unknown"
+        scope.policy_checked_at = None
+        scope.next_scan_at = None
+        scope.scan_requested_at = None
+        scope.last_error_code = None
+    return behavior_changed
+
+
 def confirm_scope(scope: SourceScope, *, now: datetime | None = None) -> None:
     if scope.status == "active":
         return
@@ -202,9 +231,6 @@ def record_source_policy(
         raise RegistryError("invalid_policy", "The source policy outcome is unsupported.")
     cleaned_excerpt = evidence_excerpt.strip() if evidence_excerpt else None
     cleaned_url = _validated(evidence_url).url if evidence_url else None
-    if outcome == "blocked" and (cleaned_url is None or not cleaned_excerpt):
-        raise RegistryError("policy_evidence_required", "A blocking policy requires its official URL and exact prohibition text.")
-
     moment = now or utcnow()
     assessment = SourcePolicyAssessment(
         id=str(uuid4()), source_scope_id=scope.id, outcome=outcome,

@@ -13,6 +13,8 @@ from app.extraction import (
     ExtractionError,
     GeminiExtractionAdapter,
     GeminiExtractionConfig,
+    OllamaExtractionAdapter,
+    OllamaExtractionConfig,
     OpenAIExtractionAdapter,
     PROMPT_VERSION,
     SYSTEM_INSTRUCTIONS,
@@ -248,12 +250,105 @@ def test_provider_selection_requires_matching_key_and_known_provider():
         }
     )
     assert isinstance(provider, GeminiExtractionAdapter)
+    assert isinstance(configured_extraction_provider({}), OllamaExtractionAdapter)
     with pytest.raises(ExtractionError) as missing:
         configured_extraction_provider({"PATHAID_EXTRACTION_PROVIDER": "gemini"})
     assert missing.value.code == "missing_api_key"
     with pytest.raises(ExtractionError) as unknown:
         configured_extraction_provider({"PATHAID_EXTRACTION_PROVIDER": "unknown"})
     assert unknown.value.code == "invalid_configuration"
+
+
+def test_ollama_adapter_sends_schema_to_loopback_and_validates_result():
+    """Local inference receives strict JSON Schema and returns normalized metadata."""
+
+    calls = []
+
+    def transport(url, payload, timeout):
+        calls.append((url, payload, timeout))
+        return {
+            "message": {"content": draft().model_dump_json()},
+            "prompt_eval_count": 120,
+            "eval_count": 80,
+        }
+
+    adapter = OllamaExtractionAdapter(
+        OllamaExtractionConfig(model="qwen3:4b", timeout_seconds=12),
+        transport=transport,
+    )
+    result = adapter.extract(Snapshot())
+
+    url, payload, timeout = calls[0]
+    assert url == "http://127.0.0.1:11434/api/chat"
+    assert timeout == 12
+    assert payload["model"] == "qwen3:4b"
+    assert payload["stream"] is False and payload["think"] is False
+    assert payload["options"]["temperature"] == 0
+    assert payload["format"]["title"] == "ExtractedProgramDraft"
+    assert "student_profile" not in payload["messages"][1]["content"]
+    assert result.draft.name == "Example Award"
+    assert result.usage.total_tokens == 200
+
+
+def test_ollama_configuration_is_loopback_only_and_failures_are_explicit():
+    """Source text cannot be redirected remotely and local failures remain actionable."""
+
+    with pytest.raises(ExtractionError) as remote:
+        OllamaExtractionConfig.from_env({"PATHAID_OLLAMA_URL": "https://example.com"})
+    assert remote.value.code == "invalid_configuration"
+
+    adapter = OllamaExtractionAdapter(
+        OllamaExtractionConfig(),
+        transport=lambda *_args: (_ for _ in ()).throw(ConnectionRefusedError("private")),
+    )
+    with pytest.raises(ExtractionError) as unavailable:
+        adapter.extract(Snapshot())
+    assert unavailable.value.code == "ollama_unavailable"
+    assert unavailable.value.retryable
+    assert "private" not in unavailable.value.safe_message
+
+
+def test_ollama_rejects_schema_valid_but_semantically_unsafe_draft():
+    """Local JSON cannot bypass deterministic coverage and evidence validation."""
+
+    unsafe = draft().model_dump(mode="json")
+    unsafe["eligibility_tree"]["evidence"]["excerpt"] = "Fabricated eligibility evidence."
+    adapter = OllamaExtractionAdapter(
+        OllamaExtractionConfig(),
+        transport=lambda *_args: {"message": {"content": json.dumps(unsafe)}},
+    )
+    with pytest.raises(ExtractionError) as caught:
+        adapter.extract(Snapshot())
+    assert caught.value.code == "invalid_output"
+    assert "coverage" not in caught.value.safe_message
+
+
+def test_ollama_removes_common_ungrounded_local_model_inferences():
+    """Lossless cleanup removes generic scope, cycle, and preference inventions."""
+
+    raw = draft().model_dump(mode="json")
+    raw["coverage"] = {"national": True, "states": ["US"], "institutions": ["all colleges"]}
+    raw["award_cycle"] = "Spring"
+    raw["coverage_complete"] = False
+    raw["selection_factors"] = [{
+        "description": "GPA preference",
+        "evidence": {"snapshot_id": "snapshot-1", "excerpt": "Applicants must have a 3.0 GPA."},
+    }]
+    raw["unresolved_conditions"] = [{
+        "description": "No other requirements specified",
+        "evidence": {"snapshot_id": "snapshot-1", "excerpt": "Applicants must have a 3.0 GPA."},
+    }]
+    adapter = OllamaExtractionAdapter(
+        OllamaExtractionConfig(),
+        transport=lambda *_args: {"message": {"content": json.dumps(raw)}},
+    )
+    result = adapter.extract(Snapshot())
+    assert result.draft.coverage.states == []
+    assert result.draft.coverage.institutions == []
+    assert result.draft.award_cycle is None
+    assert result.draft.selection_factors == []
+    assert result.draft.unresolved_conditions == []
+    assert result.draft.coverage_complete is True
 
 
 def test_gemini_block_and_rate_limit_map_to_safe_failures():

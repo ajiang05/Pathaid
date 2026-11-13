@@ -2,7 +2,7 @@
 
 PathAid is a local-first scholarship finder and application copilot for one
 student. It discovers scholarships from approved public sources, extracts
-requirements with Gemini, evaluates eligibility deterministically against a
+requirements with local Qwen3 through Ollama, evaluates eligibility deterministically against a
 private local profile, and helps fill applications in Chrome. The student
 reviews every application and submits it personally.
 
@@ -12,7 +12,7 @@ reviews every application and submits it personally.
 git clone https://github.com/aidanjiang/Pathaid.git
 cd Pathaid
 scripts/pathaid bootstrap
-scripts/pathaid set-gemini-key
+ollama pull qwen3:4b
 scripts/pathaid start
 ```
 
@@ -60,7 +60,7 @@ prints its exact targets and requires typing `RESET`.
 
 - Scholarship discovery is automated only on user-approved sources and within
   strict crawl boundaries.
-- Eligibility is deterministic: Gemini extracts public requirements but never
+- Eligibility is deterministic: local Qwen3 extracts public requirements but never
   decides whether the student qualifies.
 - BigFuture, Scholarship America, and Bold.org begin as manual lead sources;
   PathAid stores individual URLs and verifies the official sponsor page.
@@ -100,7 +100,7 @@ flowchart LR
     Leads[Manual lead URLs] --> Verify[Official-page verification]
     Scheduler --> Crawl[Bounded crawler and source adapters]
     Verify --> Crawl
-    Crawl --> Extract[Gemini requirement extraction]
+    Crawl --> Extract[Local Qwen3 extraction through Ollama]
     Extract --> Validate[Deterministic validation]
     Validate --> DB[(Local SQLite database)]
     Profile[Private local profile] --> Match[Deterministic matcher]
@@ -133,8 +133,10 @@ sponsor page must support the match.
 ## Privacy and AI
 
 The profile, matching, saved status, essays, and document metadata remain local.
-Gemini receives public scholarship content for extraction. Sensitive profile
-fields are not sent to Gemini for eligibility. Full essay analysis is optional
+Ollama receives public scholarship content over loopback for extraction.
+Scholarship extraction never calls Gemini; invalid local pages are recorded and
+the worker continues. Sensitive profile fields are never sent to a model for
+eligibility. Full Gemini essay analysis is separately optional
 and must be disabled when scholarship rules prohibit AI assistance; users must
 also understand the data handling terms of their Gemini account tier.
 

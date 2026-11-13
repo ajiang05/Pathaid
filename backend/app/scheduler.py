@@ -15,14 +15,15 @@ from sqlalchemy import and_, or_, select, update
 from .database import Database
 from .extraction import ExtractionError, ExtractionProvider, ExtractionResult, TokenUsage, configured_extraction_provider
 from .extraction_schemas import ExtractedProgramDraft
-from .models import DiscoveryExtractionArtifact, DiscoveryJob, SourceScope, SourceSnapshot
+from .models import DiscoveryExtractionArtifact, DiscoveryJob, SourcePageState, SourceScope, SourceSnapshot
 from .scholarship_activation import activate_validated_extraction
-from .secrets import GEMINI_API_KEY, SecretStore, SecretStoreError
+from .secrets import SecretStore
 from .source_registry import RegistryError
 from .source_scanning import execute_registered_scan
 
 
 TRANSIENT_SCAN_ERRORS = {"timeout", "upstream_unavailable"}
+PAGE_EXTRACTION_ERRORS = {"invalid_output", "model_refusal", "source_too_large"}
 
 
 def _utc(value: datetime) -> datetime:
@@ -61,18 +62,47 @@ def enqueue_due_sources(
             manual = scope.scan_requested_at is not None
             trigger = "manual" if manual else "scheduled"
             window = _utc(scope.scan_requested_at) if manual else _day_window(moment)
+            active = db.scalar(select(DiscoveryJob.id).where(
+                DiscoveryJob.source_scope_id == scope.id,
+                DiscoveryJob.status.in_(("queued", "running", "retry_wait")),
+            ).limit(1))
+            if active is not None:
+                # One source is processed serially. A repeated Scan now request
+                # joins the existing work instead of creating a duplicate job.
+                if manual:
+                    scope.scan_requested_at = None
+                continue
             existing = db.scalar(select(DiscoveryJob.id).where(
                 DiscoveryJob.source_scope_id == scope.id,
                 DiscoveryJob.trigger == trigger,
                 DiscoveryJob.window_start == window,
             ))
             if existing is None:
+                # A manual retry after Gemini/extraction failed should reuse
+                # the successful acquisition. The immutable snapshots and
+                # current-page state are already durable, so downloading the
+                # same directory again would only waste time and bandwidth.
+                resumable = None
+                if manual:
+                    resumable = db.scalar(
+                        select(DiscoveryJob).where(
+                            DiscoveryJob.source_scope_id == scope.id,
+                            DiscoveryJob.status == "failed",
+                            DiscoveryJob.scan_run_id.is_not(None),
+                            DiscoveryJob.stage.in_(("extraction", "activation")),
+                        ).order_by(DiscoveryJob.created_at.desc(), DiscoveryJob.id.desc()).limit(1)
+                    )
                 job_id = str(uuid4())
                 db.add(DiscoveryJob(
                     id=job_id, source_scope_id=scope.id, trigger=trigger,
-                    window_start=window, status="queued", stage="acquisition",
+                    window_start=window, status="queued",
+                    # Activation is deliberately replayed through extraction:
+                    # successful artifacts are copied without another Gemini
+                    # call, then all copied/new artifacts are activated.
+                    stage="extraction" if resumable is not None else "acquisition",
                     attempt_count=0, max_attempts=max_attempts,
                     available_at=moment,
+                    scan_run_id=resumable.scan_run_id if resumable is not None else None,
                 ))
                 queued.append(job_id)
             if manual:
@@ -94,10 +124,20 @@ def claim_next_job(
     moment = _utc(now or datetime.now(timezone.utc))
     eligible = or_(
         and_(DiscoveryJob.status.in_(("queued", "retry_wait")), DiscoveryJob.available_at <= moment),
-        and_(DiscoveryJob.status == "running", DiscoveryJob.lease_expires_at <= moment),
+        and_(DiscoveryJob.status == "running", DiscoveryJob.lease_expires_at <= moment, DiscoveryJob.attempt_count < DiscoveryJob.max_attempts),
     )
     while True:
         with database.sessions.begin() as db:
+            db.execute(
+                update(DiscoveryJob).where(
+                    DiscoveryJob.status == "running",
+                    DiscoveryJob.lease_expires_at <= moment,
+                    DiscoveryJob.attempt_count >= DiscoveryJob.max_attempts,
+                ).values(
+                    status="failed", last_error_code="worker_lease_expired",
+                    lease_owner=None, lease_expires_at=None,
+                )
+            )
             job = db.scalar(select(DiscoveryJob).where(eligible).order_by(DiscoveryJob.available_at, DiscoveryJob.created_at, DiscoveryJob.id).limit(1))
             if job is None:
                 return None
@@ -119,6 +159,48 @@ def claim_next_job(
                 continue
             db.expire_all()
             return db.get(DiscoveryJob, job.id)
+
+
+def renew_job_lease(
+    database: Database,
+    job_id: str,
+    worker_id: str,
+    *,
+    now: datetime | None = None,
+    lease_seconds: int = 300,
+) -> bool:
+    """Extend only the lease still owned by this running worker."""
+
+    moment = _utc(now or datetime.now(timezone.utc))
+    with database.sessions.begin() as db:
+        renewed = db.execute(
+            update(DiscoveryJob).where(
+                DiscoveryJob.id == job_id,
+                DiscoveryJob.status == "running",
+                DiscoveryJob.lease_owner == worker_id,
+            ).values(lease_expires_at=moment + timedelta(seconds=lease_seconds))
+        )
+        return renewed.rowcount == 1
+
+
+def _heartbeat_job_lease(
+    database: Database,
+    job_id: str,
+    worker_id: str,
+    stop_event: threading.Event,
+    *,
+    interval_seconds: int = 60,
+) -> None:
+    """Keep a long network/extraction job owned while its worker is healthy."""
+
+    while not stop_event.wait(interval_seconds):
+        try:
+            if not renew_job_lease(database, job_id, worker_id):
+                return
+        except Exception:
+            # A transient heartbeat write failure must not kill the worker; the
+            # existing lease still permits recovery if the process is unhealthy.
+            continue
 
 
 def _retry_or_fail(database: Database, job_id: str, worker_id: str, code: str, retryable: bool, moment: datetime) -> str:
@@ -168,7 +250,51 @@ def _skip_listing(scope: SourceScope, snapshot: SourceSnapshot) -> bool:
     return scope.adapter in {"academicworks", "kaleidoscope"} and snapshot.depth == 0
 
 
-def run_claimed_job(
+def _snapshots_for_extraction(db, job: DiscoveryJob) -> list[SourceSnapshot]:
+    """Return the newest retained snapshot for every currently visible page."""
+
+    current_urls = set(db.scalars(
+        select(SourcePageState.canonical_url).where(
+            SourcePageState.source_scope_id == job.source_scope_id,
+            SourcePageState.status == "current",
+        )
+    ).all())
+    if not current_urls:
+        # Compatibility for imported/fixture runs created before page-state
+        # reconciliation existed.
+        return list(db.scalars(
+            select(SourceSnapshot)
+            .where(SourceSnapshot.scan_run_id == job.scan_run_id)
+            .order_by(SourceSnapshot.depth, SourceSnapshot.id)
+        ).all())
+    candidates = db.scalars(
+        select(SourceSnapshot)
+        .where(
+            SourceSnapshot.source_scope_id == job.source_scope_id,
+            SourceSnapshot.canonical_url.in_(current_urls),
+        )
+        .order_by(SourceSnapshot.acquired_at.desc(), SourceSnapshot.id.desc())
+    ).all()
+    newest: dict[str, SourceSnapshot] = {}
+    for snapshot in candidates:
+        newest.setdefault(snapshot.canonical_url, snapshot)
+    return sorted(newest.values(), key=lambda item: (item.depth, item.canonical_url, item.id))
+
+
+def _reusable_artifact(db, job_id: str, snapshot_id: str) -> DiscoveryExtractionArtifact | None:
+    """Find a successful prior extraction for the exact immutable snapshot."""
+
+    return db.scalar(
+        select(DiscoveryExtractionArtifact).where(
+            DiscoveryExtractionArtifact.discovery_job_id != job_id,
+            DiscoveryExtractionArtifact.source_snapshot_id == snapshot_id,
+            DiscoveryExtractionArtifact.status.in_(("extracted", "activated")),
+            DiscoveryExtractionArtifact.draft.is_not(None),
+        ).order_by(DiscoveryExtractionArtifact.created_at.desc(), DiscoveryExtractionArtifact.id.desc()).limit(1)
+    )
+
+
+def _run_claimed_job(
     database: Database,
     job_id: str,
     worker_id: str,
@@ -202,9 +328,7 @@ def run_claimed_job(
     with database.sessions() as db:
         job = db.get(DiscoveryJob, job_id)
         scope = db.get(SourceScope, job.source_scope_id)
-        snapshots = db.scalars(
-            select(SourceSnapshot).where(SourceSnapshot.scan_run_id == job.scan_run_id).order_by(SourceSnapshot.depth, SourceSnapshot.id)
-        ).all()
+        snapshots = _snapshots_for_extraction(db, job)
         artifacts = {item.source_snapshot_id: item for item in db.scalars(
             select(DiscoveryExtractionArtifact).where(DiscoveryExtractionArtifact.discovery_job_id == job_id)
         ).all()}
@@ -221,10 +345,32 @@ def run_claimed_job(
                         source_snapshot_id=snapshot.id, status="skipped",
                     ))
                 continue
+            with database.sessions.begin() as db:
+                reusable = _reusable_artifact(db, job_id, snapshot.id)
+                if reusable is not None:
+                    db.add(DiscoveryExtractionArtifact(
+                        id=str(uuid4()), discovery_job_id=job_id,
+                        source_snapshot_id=snapshot.id, status=reusable.status,
+                        draft=reusable.draft, extraction_model=reusable.extraction_model,
+                        prompt_version=reusable.prompt_version, schema_version=reusable.schema_version,
+                        provider_request_id=reusable.provider_request_id,
+                        input_tokens=reusable.input_tokens, output_tokens=reusable.output_tokens,
+                        total_tokens=reusable.total_tokens,
+                    ))
+                    continue
             try:
                 provider = provider or provider_factory()
                 result = provider.extract(_provider_snapshot(snapshot))
             except ExtractionError as error:
+                if error.code in PAGE_EXTRACTION_ERRORS:
+                    with database.sessions.begin() as db:
+                        config = getattr(provider, "config", None)
+                        db.add(DiscoveryExtractionArtifact(
+                            id=str(uuid4()), discovery_job_id=job_id,
+                            source_snapshot_id=snapshot.id, status="validation_failed",
+                            extraction_model=getattr(config, "model", None),
+                        ))
+                    continue
                 return _retry_or_fail(database, job_id, worker_id, error.code, error.retryable, _utc(now()))
             with database.sessions.begin() as db:
                 db.add(DiscoveryExtractionArtifact(
@@ -259,19 +405,40 @@ def run_claimed_job(
     return "succeeded"
 
 
-def gemini_provider_factory(store: SecretStore) -> Callable[[], ExtractionProvider]:
-    """Build a lazy provider factory without copying the Keychain secret globally."""
+def run_claimed_job(
+    database: Database,
+    job_id: str,
+    worker_id: str,
+    *,
+    provider_factory: Callable[[], ExtractionProvider],
+    scanner: Callable[[Database, str], object] = execute_registered_scan,
+    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+) -> str:
+    """Run one claimed job while renewing its recoverable worker lease."""
+
+    stop_event = threading.Event()
+    heartbeat = threading.Thread(
+        target=_heartbeat_job_lease,
+        args=(database, job_id, worker_id, stop_event),
+        name=f"pathaid-job-heartbeat-{job_id}", daemon=True,
+    )
+    heartbeat.start()
+    try:
+        return _run_claimed_job(
+            database, job_id, worker_id,
+            provider_factory=provider_factory, scanner=scanner, now=now,
+        )
+    finally:
+        stop_event.set()
+        heartbeat.join(timeout=2)
+
+
+def local_provider_factory(_store: SecretStore) -> Callable[[], ExtractionProvider]:
+    """Build local-only Ollama scholarship extraction."""
 
     def build() -> ExtractionProvider:
-        try:
-            key = store.get(GEMINI_API_KEY)
-        except SecretStoreError as error:
-            raise ExtractionError("secret_store_unavailable", "The local secret store is unavailable.", retryable=True) from error
-        if not key:
-            raise ExtractionError("missing_api_key", "A Gemini API key is required for scheduled extraction.")
         environment = dict(os.environ)
-        environment["PATHAID_EXTRACTION_PROVIDER"] = "gemini"
-        environment["GEMINI_API_KEY"] = key
+        environment["PATHAID_EXTRACTION_PROVIDER"] = "ollama"
         return configured_extraction_provider(environment)
 
     return build
@@ -316,7 +483,7 @@ class SchedulerThread:
 
     def __init__(self, database: Database, store: SecretStore, *, interval_seconds: int = 60):
         self.database = database
-        self.provider_factory = gemini_provider_factory(store)
+        self.provider_factory = local_provider_factory(store)
         self.interval_seconds = interval_seconds
         self.worker_id = f"local-{uuid4()}"
         self.stop_event = threading.Event()

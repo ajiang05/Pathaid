@@ -16,6 +16,7 @@ flowchart LR
     Keychain[macOS Keychain]
     Public[Approved public scholarship sources]
     Portal[Official application portals]
+    Ollama[Local Ollama / Qwen3]
     Gemini[Google Gemini]
 
     User --> Web
@@ -27,7 +28,8 @@ flowchart LR
     Vault -. key .-> Keychain
     API -. API key .-> Keychain
     API --> Public
-    API --> Gemini
+    API --> Ollama
+    API -. optional essay analysis only .-> Gemini
     Ext --> Portal
     User --> Portal
 ```
@@ -41,7 +43,8 @@ flowchart TD
     Scope -- Yes --> Fetch[Bounded public fetch]
     Fetch --> Changed{Normalized content changed?}
     Changed -- No --> Fresh[Update scan freshness]
-    Changed -- Yes --> Extract[Gemini extracts structured requirements]
+    Changed -- Yes --> Extract[Local Qwen3 extracts structured requirements]
+    Extract -. local page failure .-> Partial[Record page failure and continue]
     Extract --> Validate{Deterministic validation passes?}
     Validate -- No --> Invalid[Keep prior valid version and record failure]
     Validate -- Yes --> Version[Store active scholarship version]
@@ -132,7 +135,7 @@ flowchart TB
 | Data | Location | Sent externally? |
 | --- | --- | --- |
 | Student profile and match results | SQLite | No for eligibility |
-| Public scholarship source text | Snapshots/SQLite | Yes, to Gemini extraction |
+| Public scholarship source text | Snapshots/SQLite | Local Ollama only |
 | Gemini key and document key | macOS Keychain | Gemini key only to Gemini |
 | Résumé/transcript | Encrypted local vault | Only to user-selected portal attachment |
 | Essays | SQLite/encrypted backup | Optional Gemini analysis when allowed |
